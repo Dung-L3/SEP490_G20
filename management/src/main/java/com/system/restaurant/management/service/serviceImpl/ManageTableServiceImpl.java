@@ -3,9 +3,9 @@ package com.system.restaurant.management.service.serviceImpl;
 import com.system.restaurant.management.entity.RestaurantTable;
 import com.system.restaurant.management.entity.TableGroup;
 import com.system.restaurant.management.exception.ResourceNotFoundException;
-import com.system.restaurant.management.repository.RestaurantTableRepository;
+import com.system.restaurant.management.repository.ManageTableRepository;
 import com.system.restaurant.management.repository.TableGroupRepository;
-import com.system.restaurant.management.service.TableService;
+import com.system.restaurant.management.service.ManageTableService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,9 +16,10 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class TableServiceImpl implements TableService {
-    private final RestaurantTableRepository repo;
+public class ManageTableServiceImpl implements ManageTableService {
+    private final ManageTableRepository repo;
     private final TableGroupRepository tableGroupRepository;
+
 
     @Override
     public RestaurantTable create(RestaurantTable table) {
@@ -57,7 +58,17 @@ public class TableServiceImpl implements TableService {
         repo.delete(existing);
     }
 
-    // Waiter functionality
+    @Override
+    @Transactional(readOnly = true)
+    public List<String> getAllTableTypes() {
+        return repo.findDistinctTableTypes();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<RestaurantTable> getByTableType(String tableType) {
+        return repo.findByTableType(tableType);
+    }
     @Override
     public RestaurantTable updateTableStatus(Integer tableId, String status) {
         RestaurantTable table = findById(tableId);

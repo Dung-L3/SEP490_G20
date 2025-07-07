@@ -5,7 +5,7 @@ import com.system.restaurant.management.entity.TableGroup;
 
 import java.util.List;
 
-public interface TableService {
+public interface ManageTableService {
     RestaurantTable create(RestaurantTable table);
     RestaurantTable findById(Integer id);
     List<RestaurantTable> findAll();
@@ -24,6 +24,8 @@ public interface TableService {
     TableGroup createTableGroup(List<Integer> tableIds, Integer createdBy, String notes);
     void disbandTableGroup(Integer groupId);
     List<RestaurantTable> getTablesInGroup(Integer groupId);
+    List<String> getAllTableTypes();
+    List<RestaurantTable> getByTableType(String tableType);
 }
 
 
