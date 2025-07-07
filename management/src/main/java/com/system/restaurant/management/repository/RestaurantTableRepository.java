@@ -7,7 +7,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface TableRepository extends JpaRepository<RestaurantTable, Integer> {
+public interface RestaurantTableRepository extends JpaRepository<RestaurantTable, Integer> {
     List<RestaurantTable> findByStatus(String status);
     List<RestaurantTable> findByAreaId(Integer areaId);
 }

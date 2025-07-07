@@ -38,4 +38,8 @@ public class User {
 
     @Column(name = "CreatedAt", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    public String getPasswordHash() {
+        return passwordHash;
+    }
 }
