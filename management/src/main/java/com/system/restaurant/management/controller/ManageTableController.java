@@ -5,7 +5,6 @@ import com.system.restaurant.management.dto.TableStatusRequest;
 import com.system.restaurant.management.entity.RestaurantTable;
 import com.system.restaurant.management.entity.TableGroup;
 import com.system.restaurant.management.service.ManageTableService;
-import com.system.restaurant.management.service.ManageTableService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -55,7 +54,6 @@ public class ManageTableController {
     public ResponseEntity<List<RestaurantTable>> getByType(@PathVariable String type) {
         return ResponseEntity.ok(service.getByTableType(type));
     }
-}
 
     // Additional table management endpoints
     @PutMapping("/{id}/status")
