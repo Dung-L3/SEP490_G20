@@ -3,7 +3,7 @@ package com.system.restaurant.management.service.serviceImpl;
 import com.system.restaurant.management.entity.RestaurantTable;
 import com.system.restaurant.management.entity.TableGroup;
 import com.system.restaurant.management.exception.ResourceNotFoundException;
-import com.system.restaurant.management.repository.TableRepository;
+import com.system.restaurant.management.repository.RestaurantTableRepository;
 import com.system.restaurant.management.repository.TableGroupRepository;
 import com.system.restaurant.management.service.TableService;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +17,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Transactional
 public class TableServiceImpl implements TableService {
-    private final TableRepository repo;
+    private final RestaurantTableRepository repo;
     private final TableGroupRepository tableGroupRepository;
 
     @Override
