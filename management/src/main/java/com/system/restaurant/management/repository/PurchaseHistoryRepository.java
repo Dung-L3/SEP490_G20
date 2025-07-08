@@ -23,8 +23,8 @@ public interface PurchaseHistoryRepository extends JpaRepository<Order, Integer>
             o.subTotal,
             o.discountAmount,
             o.finalTotal,
-            COALESCE(pm.methodName, 'Unknown'),
-            o.isRefunded
+            COALESCE(pm.methodName, 'Cash'),
+            COALESCE(o.isRefunded, false)
         )
         FROM Order o
         LEFT JOIN Invoice i ON i.order.orderId = o.orderId
@@ -45,8 +45,8 @@ public interface PurchaseHistoryRepository extends JpaRepository<Order, Integer>
             o.subTotal,
             o.discountAmount,
             o.finalTotal,
-            COALESCE(pm.methodName, 'Unknown'),
-            o.isRefunded
+            COALESCE(pm.methodName, 'Cash'),
+            COALESCE(o.isRefunded, false)
         )
         FROM Order o
         LEFT JOIN Invoice i ON i.order.orderId = o.orderId
@@ -67,8 +67,8 @@ public interface PurchaseHistoryRepository extends JpaRepository<Order, Integer>
             o.subTotal,
             o.discountAmount,
             o.finalTotal,
-            COALESCE(pm.methodName, 'Unknown'),
-            o.isRefunded
+            COALESCE(pm.methodName, 'Cash'),
+            COALESCE(o.isRefunded, false)
         )
         FROM Order o
         LEFT JOIN Invoice i ON i.order.orderId = o.orderId
@@ -89,8 +89,8 @@ public interface PurchaseHistoryRepository extends JpaRepository<Order, Integer>
             o.subTotal,
             o.discountAmount,
             o.finalTotal,
-            COALESCE(pm.methodName, 'Unknown'),
-            o.isRefunded
+            COALESCE(pm.methodName, 'Cash'),
+            COALESCE(o.isRefunded, false)
         )
         FROM Order o
         LEFT JOIN Invoice i ON i.order.orderId = o.orderId
@@ -112,8 +112,8 @@ public interface PurchaseHistoryRepository extends JpaRepository<Order, Integer>
             o.subTotal,
             o.discountAmount,
             o.finalTotal,
-            COALESCE(pm.methodName, 'Unknown'),
-            o.isRefunded
+            COALESCE(pm.methodName, 'Cash'),
+            COALESCE(o.isRefunded, false)
         )
         FROM Order o
         LEFT JOIN Invoice i ON i.order.orderId = o.orderId
