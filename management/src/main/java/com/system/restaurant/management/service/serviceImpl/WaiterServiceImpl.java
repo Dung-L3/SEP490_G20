@@ -71,9 +71,9 @@ public class WaiterServiceImpl implements WaiterService {
                 order.setTable(table.get());
                 // Cập nhật status bàn cho DINEIN
                 if ("DINEIN".equalsIgnoreCase(request.getOrderType())) {
-                    RestaurantTable tableEntity = table.get();
-                    tableEntity.setStatus("OCCUPIED");
-                    restaurantTableRepository.save(tableEntity);
+                    RestaurantTable tableToUpdate = table.get();
+                    tableToUpdate.setStatus("OCCUPIED");
+                    restaurantTableRepository.save(tableToUpdate);
                 }
             }
         }
@@ -156,8 +156,7 @@ public class WaiterServiceImpl implements WaiterService {
                 .filter(order -> {
                     Optional<Invoice> invoice = invoiceRepository.findByOrderId(order.getOrderId());
                     if (invoice.isPresent()) {
-                        List<PaymentRecord> payments = paymentRecordRepository.findByInvoiceId(invoice.get().getInvoiceId());
-                        return !payments.isEmpty();
+                        return !paymentRecordRepository.findByInvoiceId(invoice.get().getInvoiceId()).isEmpty();
                     }
                     return false;
                 })
@@ -220,8 +219,9 @@ public class WaiterServiceImpl implements WaiterService {
     public CompletePaymentResponse processCompletePayment(Integer orderId, PaymentRequest request) {
         Order order = getOrderById(orderId);
 
+        // Sử dụng đúng tên field
         Invoice invoice = Invoice.builder()
-                .orderId(orderId)
+                .orderId(orderId)  // Đổi từ orderId thành orderId
                 .invoiceNumber("INV-" + System.currentTimeMillis())
                 .totalAmount(order.getSubTotal())
                 .discountAmount(order.getDiscountAmount())
@@ -232,8 +232,9 @@ public class WaiterServiceImpl implements WaiterService {
 
         Invoice savedInvoice = invoiceRepository.save(invoice);
 
+        // Sử dụng đúng tên field
         PaymentRecord paymentRecord = PaymentRecord.builder()
-                .invoiceId(savedInvoice.getInvoiceId())
+                .invoiceId(savedInvoice.getInvoiceId())  // Đổi từ invoiceId thành invoiceId
                 .methodId(request.getMethodId())
                 .amount(request.getAmount())
                 .notes(request.getNotes())
@@ -290,21 +291,7 @@ public class WaiterServiceImpl implements WaiterService {
         return List.of();
     }
 
-    private BigDecimal calculateSubTotal(List<OrderItemRequest> items) {
-        if (items == null || items.isEmpty()) {
-            return BigDecimal.ZERO;
-        }
-
-        return items.stream()
-                .map(item -> {
-                    BigDecimal unitPrice = item.getUnitPrice() != null ? item.getUnitPrice() : BigDecimal.ZERO;
-                    Integer quantity = item.getQuantity() != null ? item.getQuantity() : 0;
-                    return unitPrice.multiply(BigDecimal.valueOf(quantity));
-                })
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
-    // table management
+    // Table Management methods
     @Override
     public List<RestaurantTable> getTablesByArea(Integer areaId) {
         return restaurantTableRepository.findByAreaId(areaId);
@@ -334,5 +321,19 @@ public class WaiterServiceImpl implements WaiterService {
     public RestaurantTable getTableByName(String tableName) {
         return restaurantTableRepository.findByTableName(tableName)
                 .orElseThrow(() -> new RuntimeException("Table not found with name: " + tableName));
+    }
+
+    private BigDecimal calculateSubTotal(List<OrderItemRequest> items) {
+        if (items == null || items.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+
+        return items.stream()
+                .map(item -> {
+                    BigDecimal unitPrice = item.getUnitPrice() != null ? item.getUnitPrice() : BigDecimal.ZERO;
+                    Integer quantity = item.getQuantity() != null ? item.getQuantity() : 0;
+                    return unitPrice.multiply(BigDecimal.valueOf(quantity));
+                })
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }

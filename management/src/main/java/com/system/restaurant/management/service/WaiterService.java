@@ -14,11 +14,11 @@ public interface WaiterService {
     Order getOrderById(Integer orderId);
     Order updateOrderStatus(Integer orderId, Integer statusId);
 
-    // Table Management - Basic
+    // Table Management
     List<RestaurantTable> getTablesByStatus(String status);
     RestaurantTable updateTableStatus(Integer tableId, String status);
 
-    // Table Management - Advanced
+    // Table Management
     List<RestaurantTable> getTablesByArea(Integer areaId);
     List<RestaurantTable> getFreeTablesByArea(Integer areaId);
     List<RestaurantTable> getWindowTables();

@@ -6,35 +6,46 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "Invoices")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Table(name = "Invoices")
 public class Invoice {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "InvoiceID")
     private Integer invoiceId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "OrderID", nullable = false)
-    private Order order;
+    @Column(name = "OrderID", nullable = false)
+    private Integer orderId;
 
-    @Column(name = "SubTotal", nullable = false)
-    private BigDecimal subTotal;
+    @Column(name = "InvoiceNumber", length = 50, nullable = false)
+    private String invoiceNumber;
 
-    @Column(name = "DiscountAmount", nullable = false)
+    @Column(name = "TotalAmount", precision = 10, scale = 2, nullable = false)
+    private BigDecimal totalAmount;
+
+    @Column(name = "DiscountAmount", precision = 10, scale = 2)
     private BigDecimal discountAmount;
 
-    @Column(name = "FinalTotal", nullable = false)
-    private BigDecimal finalTotal;
+    @Column(name = "FinalAmount", precision = 10, scale = 2, nullable = false)
+    private BigDecimal finalAmount;
 
-    @Column(name = "IssuedBy", nullable = false)
-    private Integer issuedBy;
+    @Column(name = "CreatedAt", nullable = false)
+    private LocalDateTime createdAt;
 
-    @Column(name = "IssuedAt", nullable = false)
-    private LocalDateTime issuedAt;
+    @Column(name = "CustomerPhone", length = 20)
+    private String customerPhone;
+
+    @Column(name = "CustomerName", length = 200)
+    private String customerName;
+
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+    }
 }
