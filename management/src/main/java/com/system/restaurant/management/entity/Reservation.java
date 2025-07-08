@@ -1,65 +1,63 @@
 package com.system.restaurant.management.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
+import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "Reservations")
-@Data
-@Builder
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
+@Table(name = "Reservations")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Reservation {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ReservationID")
     private Integer reservationId;
 
-    @Column(name = "customer_name", nullable = false)
+    @Column(name = "CustomerID")
+    private Integer customerId;
+
+    @Column(name = "CustomerName", length = 255)
     private String customerName;
 
-    @Column(name = "phone", nullable = false)
+    @Column(name = "Phone", length = 20, nullable = false)
     private String phone;
 
-    @Column(name = "table_id")
+    @Column(name = "Email", length = 100)
+    private String email;
+
+    @Column(name = "TableID", nullable = false)
     private Integer tableId;
 
-    @Column(name = "reservation_date")
-    private LocalDateTime reservationDate;
+    @Column(name = "ReservationAt", nullable = false)
+    private LocalDateTime reservationAt;
 
-    @Column(name = "party_size")
-    private Integer partySize;
+    @Column(name = "StatusID", nullable = false)
+    private Integer statusId; // Thêm field này
 
-    @Column(name = "status")
-    private String status;
-
-    @Column(name = "notes")
-    private String notes;
-
-    @Column(name = "created_at")
+    @Column(name = "CreatedAt", nullable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    @Column(name = "Notes", length = 255)
+    private String notes;
 
-    // Relationship with RestaurantTable
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "table_id", insertable = false, updatable = false)
+    @JoinColumn(name = "TableID", insertable = false, updatable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private RestaurantTable table;
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+        if (statusId == null) {
+            statusId = 1; // Pending
+        }
     }
 }

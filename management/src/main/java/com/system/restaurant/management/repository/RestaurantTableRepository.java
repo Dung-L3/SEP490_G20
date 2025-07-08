@@ -17,12 +17,12 @@ public interface RestaurantTableRepository extends JpaRepository<RestaurantTable
     @Query("SELECT rt FROM RestaurantTable rt WHERE rt.areaId = :areaId")
     List<RestaurantTable> findByAreaId(@Param("areaId") Integer areaId);
 
-    @Query("SELECT rt FROM RestaurantTable rt WHERE rt.areaId = :areaId AND rt.status = 'FREE'")
+    @Query("SELECT rt FROM RestaurantTable rt WHERE rt.areaId = :areaId AND rt.status = 'AVAILABLE'")
     List<RestaurantTable> findFreeTablesByArea(@Param("areaId") Integer areaId);
 
     List<RestaurantTable> findByIsWindow(Boolean isWindow);
 
-    @Query("SELECT rt FROM RestaurantTable rt WHERE rt.isWindow = true AND rt.status = 'FREE'")
+    @Query("SELECT rt FROM RestaurantTable rt WHERE rt.isWindow = true AND rt.status = 'AVAILABLE'")
     List<RestaurantTable> findFreeWindowTables();
 
     List<RestaurantTable> findByTableType(String tableType);

@@ -57,7 +57,7 @@ public class WaiterServiceImpl implements WaiterService {
                 .discountAmount(discountAmount)
                 .finalTotal(finalTotal)
                 .statusId(1)
-                .isRefunded(false)
+                .isRefunded(0) // 0 thay vì false
                 .notes(request.getNotes())
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -118,7 +118,7 @@ public class WaiterServiceImpl implements WaiterService {
         }
 
         Reservation res = reservation.get();
-        res.setStatus("CHECKED_IN");
+        res.setStatusId(2); // 2 = Confirmed
         reservationRepository.save(res);
 
         CreateOrderRequest orderRequest = new CreateOrderRequest();
@@ -154,37 +154,41 @@ public class WaiterServiceImpl implements WaiterService {
 
         Invoice invoice = invoiceRepository.findByOrderId(orderId)
                 .orElseGet(() -> {
-                    Invoice newInvoice = new Invoice();
-                    newInvoice.setOrder(order);
-                    newInvoice.setInvoiceNumber("INV-" + orderId + "-" + System.currentTimeMillis());
-                    newInvoice.setTotalAmount(order.getFinalTotal());
-                    newInvoice.setCreatedAt(LocalDateTime.now());
+                    Invoice newInvoice = Invoice.builder()
+                            .orderId(orderId)
+                            .subTotal(order.getSubTotal())
+                            .discountAmount(order.getDiscountAmount())
+                            .finalTotal(order.getFinalTotal())
+                            .issuedBy(paymentRequest.getIssuedBy())
+                            .build();
                     return invoiceRepository.save(newInvoice);
                 });
 
-        PaymentRecord paymentRecord = new PaymentRecord();
-        paymentRecord.setInvoice(invoice);
-        paymentRecord.setAmount(paymentRequest.getAmount());
-        paymentRecord.setPaymentDate(LocalDateTime.now());
-        paymentRecord.setNotes(paymentRequest.getNotes());
+        PaymentRecord paymentRecord = PaymentRecord.builder()
+                .invoiceId(invoice.getInvoiceId())
+                .methodId(paymentRequest.getMethodId())
+                .amount(paymentRequest.getAmount())
+                .notes(paymentRequest.getNotes())
+                .build();
+
         paymentRecord = paymentRecordRepository.save(paymentRecord);
 
-        order.setStatusId(4);
+        order.setStatusId(3); // 3 = Done
         orderRepository.save(order);
 
         if ("DINEIN".equalsIgnoreCase(order.getOrderType()) && order.getTable() != null) {
             RestaurantTable table = order.getTable();
-            table.setStatus("FREE");
+            table.setStatus("AVAILABLE"); // AVAILABLE thay vì FREE
             restaurantTableRepository.save(table);
         }
 
         return CompletePaymentResponse.builder()
                 .orderId(orderId)
                 .paymentRecordId(paymentRecord.getPaymentId())
-                .invoiceNumber(invoice.getInvoiceNumber())
+                .invoiceNumber("INV-" + orderId + "-" + System.currentTimeMillis())
                 .paidAmount(paymentRequest.getAmount())
                 .totalAmount(order.getFinalTotal())
-                .paymentDate(paymentRecord.getPaymentDate())
+                .paymentDate(paymentRecord.getPaidAt())
                 .paymentMethod(paymentRequest.getPaymentMethod())
                 .status("COMPLETED")
                 .message("Thanh toán thành công")

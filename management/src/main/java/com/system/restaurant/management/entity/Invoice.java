@@ -1,5 +1,6 @@
 package com.system.restaurant.management.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
@@ -13,44 +14,51 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 @Table(name = "Invoices")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Invoice {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "InvoiceID")
     private Integer invoiceId;
 
-    @Column(name = "InvoiceNumber", length = 50, nullable = false)
-    private String invoiceNumber;
+    @Column(name = "OrderID")
+    private Integer orderId;
 
-    @Column(name = "TotalAmount", precision = 10, scale = 2, nullable = false)
-    private BigDecimal totalAmount;
+    @Column(name = "SubTotal", precision = 10, scale = 2, nullable = false)
+    private BigDecimal subTotal;
 
     @Column(name = "DiscountAmount", precision = 10, scale = 2)
     private BigDecimal discountAmount;
 
-    @Column(name = "FinalAmount", precision = 10, scale = 2, nullable = false)
-    private BigDecimal finalAmount;
+    @Column(name = "FinalTotal", precision = 10, scale = 2, nullable = false)
+    private BigDecimal finalTotal;
 
-    @Column(name = "CreatedAt", nullable = false)
-    private LocalDateTime createdAt;
+    @Column(name = "IssuedBy")
+    private Integer issuedBy;
 
-    @Column(name = "CustomerPhone", length = 20)
-    private String customerPhone;
+    @Column(name = "IssuedAt", nullable = false)
+    private LocalDateTime issuedAt;
 
-    @Column(name = "CustomerName", length = 200)
-    private String customerName;
+    // Thêm fields cho WaiterServiceImpl
+    @Transient
+    private String invoiceNumber;
+
+    @Transient
+    private BigDecimal totalAmount;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "OrderID", nullable = false)
+    @JoinColumn(name = "OrderID", insertable = false, updatable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Order order;
 
-    @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "invoiceId", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private List<PaymentRecord> paymentRecords;
 
     @PrePersist
     protected void onCreate() {
-        if (createdAt == null) {
-            createdAt = LocalDateTime.now();
+        if (issuedAt == null) {
+            issuedAt = LocalDateTime.now();
         }
     }
 }

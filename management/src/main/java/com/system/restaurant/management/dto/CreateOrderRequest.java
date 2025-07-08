@@ -5,11 +5,11 @@ import java.util.List;
 
 @Data
 public class CreateOrderRequest {
-    private Integer tableId;
-    private Integer reservationId; // tracking customer phone/name
-    private String orderType; // DINEIN or TAKEAWAY
-    private String customerPhone;
+    private String orderType;
     private String customerName;
-    private List<OrderItemRequest> items;
+    private String customerPhone; // Thêm field này
+    private Integer tableId;
+    private Integer reservationId; // Thêm field này
     private String notes;
+    private List<OrderItemRequest> items; // Thêm field này
 }
