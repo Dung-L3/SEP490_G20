@@ -34,21 +34,20 @@ public class WaiterServiceImpl implements WaiterService {
             Optional<Reservation> reservation = reservationRepository.findById(request.getReservationId());
             if (reservation.isPresent()) {
                 Reservation res = reservation.get();
-                // Ưu tiên thông tin từ reservation
                 customerName = res.getCustomerName();
                 phone = res.getPhone();
             }
         }
 
-        // Kiểm tra bắt buộc có phone và customerName
+        // Kiểm tra bắt buộc
         if (phone == null || phone.trim().isEmpty()) {
-            throw new IllegalArgumentException("Customer phone is required and cannot be empty");
+            throw new IllegalArgumentException("Customer phone is required");
         }
         if (customerName == null || customerName.trim().isEmpty()) {
-            throw new IllegalArgumentException("Customer name is required and cannot be empty");
+            throw new IllegalArgumentException("Customer name is required");
         }
 
-        // Tính toán tổng tiền từ order items (nếu có)
+        // Tính toán tổng tiền
         BigDecimal subTotal = calculateSubTotal(request.getItems());
         BigDecimal discountAmount = BigDecimal.ZERO;
         BigDecimal finalTotal = subTotal.subtract(discountAmount);
@@ -60,7 +59,6 @@ public class WaiterServiceImpl implements WaiterService {
                 .subTotal(subTotal)
                 .discountAmount(discountAmount)
                 .finalTotal(finalTotal)
-                .createdAt(LocalDateTime.now())
                 .statusId(1) // Pending
                 .isRefunded(false)
                 .notes(request.getNotes())
@@ -71,7 +69,7 @@ public class WaiterServiceImpl implements WaiterService {
             Optional<RestaurantTable> table = restaurantTableRepository.findById(request.getTableId());
             if (table.isPresent()) {
                 order.setTable(table.get());
-                // Cập nhật trạng thái bàn thành OCCUPIED cho DINEIN
+                // Cập nhật status bàn cho DINEIN
                 if ("DINEIN".equalsIgnoreCase(request.getOrderType())) {
                     RestaurantTable tableEntity = table.get();
                     tableEntity.setStatus("OCCUPIED");
@@ -85,7 +83,6 @@ public class WaiterServiceImpl implements WaiterService {
 
     @Override
     public Order createDineInOrder(CreateDineInOrderRequest request) {
-        // Chuyển đổi sang CreateOrderRequest
         CreateOrderRequest orderRequest = new CreateOrderRequest();
         orderRequest.setTableId(request.getTableId());
         orderRequest.setReservationId(request.getReservationId());
@@ -99,7 +96,6 @@ public class WaiterServiceImpl implements WaiterService {
 
     @Override
     public Order createTakeawayOrder(CreateTakeawayOrderRequest request) {
-        // Bắt buộc phải có phone cho takeaway
         if (request.getCustomerPhone() == null || request.getCustomerPhone().trim().isEmpty()) {
             throw new IllegalArgumentException("Customer phone is required for takeaway order");
         }
@@ -107,7 +103,6 @@ public class WaiterServiceImpl implements WaiterService {
             throw new IllegalArgumentException("Customer name is required for takeaway order");
         }
 
-        // Chuyển đổi sang CreateOrderRequest
         CreateOrderRequest orderRequest = new CreateOrderRequest();
         orderRequest.setOrderType("TAKEAWAY");
         orderRequest.setCustomerName(request.getCustomerName());
@@ -124,7 +119,7 @@ public class WaiterServiceImpl implements WaiterService {
 
     @Override
     public List<Order> getActiveOrders() {
-        return orderRepository.findByStatusIdIn(List.of(1, 2, 3)); // Pending, Processing, Ready
+        return orderRepository.findByStatusIdIn(List.of(1, 2, 3));
     }
 
     @Override
@@ -155,10 +150,8 @@ public class WaiterServiceImpl implements WaiterService {
 
     @Override
     public CustomerPurchaseHistoryResponse getCustomerPurchaseHistoryByPhone(String phone) {
-        // Lấy tất cả orders của customer
         List<Order> orders = orderRepository.findByPhone(phone);
 
-        // Chỉ lấy orders có đầy đủ invoice và payment record
         List<Order> completeOrders = orders.stream()
                 .filter(order -> {
                     Optional<Invoice> invoice = invoiceRepository.findByOrderId(order.getOrderId());
@@ -170,22 +163,19 @@ public class WaiterServiceImpl implements WaiterService {
                 })
                 .toList();
 
-        // Lấy invoices từ complete orders
         List<Integer> orderIds = completeOrders.stream().map(Order::getOrderId).toList();
         List<Invoice> invoices = invoiceRepository.findByOrderIdIn(orderIds);
 
-        // Lấy payment records từ invoices
         List<Integer> invoiceIds = invoices.stream().map(Invoice::getInvoiceId).toList();
         List<PaymentRecord> paymentRecords = paymentRecordRepository.findByInvoiceIdIn(invoiceIds);
 
-        // Tính tổng tiền
         BigDecimal totalSpent = completeOrders.stream()
                 .map(Order::getFinalTotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         CustomerPurchaseHistoryResponse response = new CustomerPurchaseHistoryResponse();
         response.setPhone(phone);
-        response.setOrders(completeOrders); // Chỉ trả về orders có đầy đủ dữ liệu
+        response.setOrders(completeOrders);
         response.setInvoices(invoices);
         response.setPaymentRecords(paymentRecords);
         response.setTotalSpent(totalSpent);
@@ -206,11 +196,9 @@ public class WaiterServiceImpl implements WaiterService {
         RestaurantTable table = restaurantTableRepository.findById(tableId)
                 .orElseThrow(() -> new RuntimeException("Table not found"));
 
-        // Cập nhật trạng thái bàn từ RESERVED → OCCUPIED
         table.setStatus("OCCUPIED");
         restaurantTableRepository.save(table);
 
-        // Tạo order tự động từ reservation
         CreateOrderRequest orderRequest = new CreateOrderRequest();
         orderRequest.setTableId(tableId);
         orderRequest.setReservationId(reservationId);
@@ -223,7 +211,7 @@ public class WaiterServiceImpl implements WaiterService {
         response.setReservation(reservation);
         response.setTable(table);
         response.setCreatedOrder(savedOrder);
-        response.setMessage("Check-in successful. Order created automatically with customer info from reservation.");
+        response.setMessage("Check-in successful. Order created with customer info from reservation.");
 
         return response;
     }
@@ -232,36 +220,30 @@ public class WaiterServiceImpl implements WaiterService {
     public CompletePaymentResponse processCompletePayment(Integer orderId, PaymentRequest request) {
         Order order = getOrderById(orderId);
 
-        // Tạo Invoice
         Invoice invoice = Invoice.builder()
                 .orderId(orderId)
                 .invoiceNumber("INV-" + System.currentTimeMillis())
                 .totalAmount(order.getSubTotal())
                 .discountAmount(order.getDiscountAmount())
                 .finalAmount(order.getFinalTotal())
-                .createdAt(LocalDateTime.now())
                 .customerPhone(order.getPhone())
                 .customerName(order.getCustomerName())
                 .build();
 
         Invoice savedInvoice = invoiceRepository.save(invoice);
 
-        // Tạo PaymentRecord
         PaymentRecord paymentRecord = PaymentRecord.builder()
                 .invoiceId(savedInvoice.getInvoiceId())
                 .methodId(request.getMethodId())
                 .amount(request.getAmount())
-                .paymentDate(LocalDateTime.now())
                 .notes(request.getNotes())
                 .build();
 
         PaymentRecord savedPaymentRecord = paymentRecordRepository.save(paymentRecord);
 
-        // Cập nhật trạng thái order thành completed
         order.setStatusId(4); // Completed
         Order updatedOrder = orderRepository.save(order);
 
-        // Nếu là dine-in, giải phóng bàn
         if ("DINEIN".equalsIgnoreCase(order.getOrderType()) && order.getTable() != null) {
             RestaurantTable table = order.getTable();
             table.setStatus("FREE");
@@ -308,7 +290,6 @@ public class WaiterServiceImpl implements WaiterService {
         return List.of();
     }
 
-    // Helper method để tính toán subtotal từ order items
     private BigDecimal calculateSubTotal(List<OrderItemRequest> items) {
         if (items == null || items.isEmpty()) {
             return BigDecimal.ZERO;
@@ -316,11 +297,42 @@ public class WaiterServiceImpl implements WaiterService {
 
         return items.stream()
                 .map(item -> {
-                    // Giả sử có unitPrice trong OrderItemRequest
                     BigDecimal unitPrice = item.getUnitPrice() != null ? item.getUnitPrice() : BigDecimal.ZERO;
                     Integer quantity = item.getQuantity() != null ? item.getQuantity() : 0;
                     return unitPrice.multiply(BigDecimal.valueOf(quantity));
                 })
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    // table management
+    @Override
+    public List<RestaurantTable> getTablesByArea(Integer areaId) {
+        return restaurantTableRepository.findByAreaId(areaId);
+    }
+
+    @Override
+    public List<RestaurantTable> getFreeTablesByArea(Integer areaId) {
+        return restaurantTableRepository.findFreeTablesByArea(areaId);
+    }
+
+    @Override
+    public List<RestaurantTable> getWindowTables() {
+        return restaurantTableRepository.findByIsWindow(true);
+    }
+
+    @Override
+    public List<RestaurantTable> getFreeWindowTables() {
+        return restaurantTableRepository.findFreeWindowTables();
+    }
+
+    @Override
+    public List<RestaurantTable> getTablesByType(String tableType) {
+        return restaurantTableRepository.findByTableType(tableType);
+    }
+
+    @Override
+    public RestaurantTable getTableByName(String tableName) {
+        return restaurantTableRepository.findByTableName(tableName)
+                .orElseThrow(() -> new RuntimeException("Table not found with name: " + tableName));
     }
 }
