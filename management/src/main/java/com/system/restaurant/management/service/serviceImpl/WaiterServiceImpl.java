@@ -1,4 +1,4 @@
-package com.system.restaurant.management.service.impl;
+package com.system.restaurant.management.service.serviceImpl;
 
 import com.system.restaurant.management.dto.*;
 import com.system.restaurant.management.entity.*;
@@ -23,6 +23,8 @@ public class WaiterServiceImpl implements WaiterService {
     private final ReservationRepository reservationRepository;
     private final InvoiceRepository invoiceRepository;
     private final PaymentRecordRepository paymentRecordRepository;
+    private final PaymentMethodRepository paymentMethodRepository;
+
 
     @Override
     public Order createOrderWithReservationTracking(CreateOrderRequest request) {
@@ -219,9 +221,9 @@ public class WaiterServiceImpl implements WaiterService {
     public CompletePaymentResponse processCompletePayment(Integer orderId, PaymentRequest request) {
         Order order = getOrderById(orderId);
 
-        // Sử dụng đúng tên field
+        // Tạo Invoice với relationship đúng
         Invoice invoice = Invoice.builder()
-                .orderId(orderId)  // Đổi từ orderId thành orderId
+                .order(order)
                 .invoiceNumber("INV-" + System.currentTimeMillis())
                 .totalAmount(order.getSubTotal())
                 .discountAmount(order.getDiscountAmount())
@@ -232,10 +234,14 @@ public class WaiterServiceImpl implements WaiterService {
 
         Invoice savedInvoice = invoiceRepository.save(invoice);
 
-        // Sử dụng đúng tên field
+        // Lấy PaymentMethod object từ methodId
+        PaymentMethod paymentMethod = paymentMethodRepository.findById(request.getMethodId())
+                .orElseThrow(() -> new RuntimeException("Payment method not found with id: " + request.getMethodId()));
+
+        // Tạo PaymentRecord với relationship đúng
         PaymentRecord paymentRecord = PaymentRecord.builder()
-                .invoiceId(savedInvoice.getInvoiceId())  // Đổi từ invoiceId thành invoiceId
-                .methodId(request.getMethodId())
+                .invoice(savedInvoice)
+                .paymentMethod(paymentMethod)  // Sử dụng PaymentMethod object thay vì methodId
                 .amount(request.getAmount())
                 .notes(request.getNotes())
                 .build();

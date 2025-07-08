@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Getter
@@ -40,7 +41,7 @@ public class Order {
     private Integer statusId;
 
     @Column(name = "IsRefunded", nullable = false)
-    private Boolean isRefunded;
+    private Boolean isRefunded = false;
 
     @Column(name = "Notes", length = 500)
     private String notes;
@@ -48,10 +49,12 @@ public class Order {
     @Column(name = "CreatedAt", nullable = false)
     private LocalDateTime createdAt;
 
-    // Relationship with RestaurantTable
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "TableID")
     private RestaurantTable table;
+
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Invoice> invoices;
 
     @PrePersist
     protected void onCreate() {

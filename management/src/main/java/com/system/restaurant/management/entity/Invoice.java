@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Getter
@@ -17,9 +18,6 @@ public class Invoice {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "InvoiceID")
     private Integer invoiceId;
-
-    @Column(name = "OrderID", nullable = false)
-    private Integer orderId;
 
     @Column(name = "InvoiceNumber", length = 50, nullable = false)
     private String invoiceNumber;
@@ -41,6 +39,13 @@ public class Invoice {
 
     @Column(name = "CustomerName", length = 200)
     private String customerName;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "OrderID", nullable = false)
+    private Order order;
+
+    @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<PaymentRecord> paymentRecords;
 
     @PrePersist
     protected void onCreate() {

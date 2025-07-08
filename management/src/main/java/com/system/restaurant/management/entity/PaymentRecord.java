@@ -18,12 +18,6 @@ public class PaymentRecord {
     @Column(name = "PaymentID")
     private Integer paymentId;
 
-    @Column(name = "InvoiceID", nullable = false)
-    private Integer invoiceId;
-
-    @Column(name = "MethodID", nullable = false)
-    private Integer methodId;
-
     @Column(name = "Amount", precision = 10, scale = 2, nullable = false)
     private BigDecimal amount;
 
@@ -32,6 +26,15 @@ public class PaymentRecord {
 
     @Column(name = "Notes", length = 500)
     private String notes;
+
+    // Relationships
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "InvoiceID", nullable = false)
+    private Invoice invoice;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "MethodID", nullable = false)
+    private PaymentMethod paymentMethod;
 
     @PrePersist
     protected void onCreate() {
