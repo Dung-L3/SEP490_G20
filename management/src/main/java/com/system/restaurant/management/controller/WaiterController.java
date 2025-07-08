@@ -14,53 +14,41 @@ import java.util.List;
 @RequestMapping("/api/waiter")
 @RequiredArgsConstructor
 public class WaiterController {
+
     private final WaiterService waiterService;
 
-    // Order Management with Reservation Tracking
+    // Order Management
     @PostMapping("/orders/create")
     public ResponseEntity<Order> createOrder(@RequestBody CreateOrderRequest request) {
-        Order order = waiterService.createOrderWithReservationTracking(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(order);
+        try {
+            Order order = waiterService.createOrderWithReservationTracking(request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(order);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @PostMapping("/orders/create-dine-in")
     public ResponseEntity<Order> createDineInOrder(@RequestBody CreateDineInOrderRequest request) {
-        Order order = waiterService.createDineInOrder(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(order);
+        try {
+            Order order = waiterService.createDineInOrder(request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(order);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @PostMapping("/orders/create-takeaway")
     public ResponseEntity<Order> createTakeawayOrder(@RequestBody CreateTakeawayOrderRequest request) {
-        Order order = waiterService.createTakeawayOrder(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(order);
+        try {
+            Order order = waiterService.createTakeawayOrder(request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(order);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
-    @GetMapping("/orders/table/{tableId}")
-    public ResponseEntity<List<Order>> getOrdersByTable(@PathVariable Integer tableId) {
-        List<Order> orders = waiterService.getOrdersByTable(tableId);
-        return ResponseEntity.ok(orders);
-    }
-
-    @GetMapping("/orders/active")
-    public ResponseEntity<List<Order>> getActiveOrders() {
-        List<Order> orders = waiterService.getActiveOrders();
-        return ResponseEntity.ok(orders);
-    }
-
-    @GetMapping("/orders/{orderId}")
-    public ResponseEntity<Order> getOrderById(@PathVariable Integer orderId) {
-        Order order = waiterService.getOrderById(orderId);
-        return ResponseEntity.ok(order);
-    }
-
-    @PutMapping("/orders/{orderId}/status")
-    public ResponseEntity<Order> updateOrderStatus(@PathVariable Integer orderId,
-                                                   @RequestBody OrderStatusRequest request) {
-        Order order = waiterService.updateOrderStatus(orderId, request.getStatusId());
-        return ResponseEntity.ok(order);
-    }
-
-    // Table Management - FREE, OCCUPIED, RESERVED
+    // Table Management
     @GetMapping("/tables/free")
     public ResponseEntity<List<RestaurantTable>> getFreeTables() {
         List<RestaurantTable> tables = waiterService.getTablesByStatus("FREE");
@@ -79,42 +67,117 @@ public class WaiterController {
         return ResponseEntity.ok(tables);
     }
 
+    // Table Management
+    @GetMapping("/tables/area/{areaId}")
+    public ResponseEntity<List<RestaurantTable>> getTablesByArea(@PathVariable Integer areaId) {
+        List<RestaurantTable> tables = waiterService.getTablesByArea(areaId);
+        return ResponseEntity.ok(tables);
+    }
+
+    @GetMapping("/tables/area/{areaId}/free")
+    public ResponseEntity<List<RestaurantTable>> getFreeTablesByArea(@PathVariable Integer areaId) {
+        List<RestaurantTable> tables = waiterService.getFreeTablesByArea(areaId);
+        return ResponseEntity.ok(tables);
+    }
+
+    @GetMapping("/tables/window")
+    public ResponseEntity<List<RestaurantTable>> getWindowTables() {
+        List<RestaurantTable> tables = waiterService.getWindowTables();
+        return ResponseEntity.ok(tables);
+    }
+
+    @GetMapping("/tables/window/free")
+    public ResponseEntity<List<RestaurantTable>> getFreeWindowTables() {
+        List<RestaurantTable> tables = waiterService.getFreeWindowTables();
+        return ResponseEntity.ok(tables);
+    }
+
+    @GetMapping("/tables/type/{tableType}")
+    public ResponseEntity<List<RestaurantTable>> getTablesByType(@PathVariable String tableType) {
+        List<RestaurantTable> tables = waiterService.getTablesByType(tableType);
+        return ResponseEntity.ok(tables);
+    }
+
+    @GetMapping("/tables/name/{tableName}")
+    public ResponseEntity<RestaurantTable> getTableByName(@PathVariable String tableName) {
+        try {
+            RestaurantTable table = waiterService.getTableByName(tableName);
+            return ResponseEntity.ok(table);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
     @PutMapping("/tables/{tableId}/occupy")
     public ResponseEntity<RestaurantTable> occupyTable(@PathVariable Integer tableId) {
-        RestaurantTable table = waiterService.updateTableStatus(tableId, "OCCUPIED");
-        return ResponseEntity.ok(table);
+        try {
+            RestaurantTable table = waiterService.updateTableStatus(tableId, "OCCUPIED");
+            return ResponseEntity.ok(table);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @PutMapping("/tables/{tableId}/free")
     public ResponseEntity<RestaurantTable> freeTable(@PathVariable Integer tableId) {
-        RestaurantTable table = waiterService.updateTableStatus(tableId, "FREE");
-        return ResponseEntity.ok(table);
+        try {
+            RestaurantTable table = waiterService.updateTableStatus(tableId, "FREE");
+            return ResponseEntity.ok(table);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
-    // Customer Purchase History with PaymentRecord, Order, Invoice
+    @PutMapping("/tables/{tableId}/reserve")
+    public ResponseEntity<RestaurantTable> reserveTable(@PathVariable Integer tableId) {
+        try {
+            RestaurantTable table = waiterService.updateTableStatus(tableId, "RESERVED");
+            return ResponseEntity.ok(table);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @GetMapping("/orders/table/{tableId}")
+    public ResponseEntity<List<Order>> getOrdersByTable(@PathVariable Integer tableId) {
+        List<Order> orders = waiterService.getOrdersByTable(tableId);
+        return ResponseEntity.ok(orders);
+    }
+
+    @GetMapping("/orders/active")
+    public ResponseEntity<List<Order>> getActiveOrders() {
+        List<Order> orders = waiterService.getActiveOrders();
+        return ResponseEntity.ok(orders);
+    }
+
     @GetMapping("/customers/phone/{phone}/purchase-history")
     public ResponseEntity<CustomerPurchaseHistoryResponse> getCustomerPurchaseHistoryByPhone(@PathVariable String phone) {
         CustomerPurchaseHistoryResponse history = waiterService.getCustomerPurchaseHistoryByPhone(phone);
         return ResponseEntity.ok(history);
     }
 
-    // Reservation Check-in with Phone Tracking
     @PutMapping("/reservations/{reservationId}/checkin")
     public ResponseEntity<CheckInResponse> checkInReservation(@PathVariable Integer reservationId,
                                                               @RequestBody CheckInRequest request) {
-        CheckInResponse response = waiterService.checkInReservation(reservationId, request.getTableId());
-        return ResponseEntity.ok(response);
+        try {
+            CheckInResponse response = waiterService.checkInReservation(reservationId, request.getTableId());
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
-    // Complete Payment Flow: Order -> Invoice -> PaymentRecord
     @PostMapping("/orders/{orderId}/complete-payment")
     public ResponseEntity<CompletePaymentResponse> processCompletePayment(@PathVariable Integer orderId,
                                                                           @RequestBody PaymentRequest request) {
-        CompletePaymentResponse response = waiterService.processCompletePayment(orderId, request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        try {
+            CompletePaymentResponse response = waiterService.processCompletePayment(orderId, request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
-    // Order Types: DINEIN, TAKEAWAY
     @GetMapping("/orders/dine-in")
     public ResponseEntity<List<Order>> getDineInOrders() {
         List<Order> orders = waiterService.getOrdersByType("DINEIN");
@@ -125,31 +188,5 @@ public class WaiterController {
     public ResponseEntity<List<Order>> getTakeawayOrders() {
         List<Order> orders = waiterService.getOrdersByType("TAKEAWAY");
         return ResponseEntity.ok(orders);
-    }
-
-    // Invoice Management
-    @GetMapping("/invoices/order/{orderId}")
-    public ResponseEntity<Invoice> getInvoiceByOrder(@PathVariable Integer orderId) {
-        Invoice invoice = waiterService.getInvoiceByOrder(orderId);
-        return ResponseEntity.ok(invoice);
-    }
-
-    @GetMapping("/invoices/{invoiceId}")
-    public ResponseEntity<Invoice> getInvoiceById(@PathVariable Integer invoiceId) {
-        Invoice invoice = waiterService.getInvoiceById(invoiceId);
-        return ResponseEntity.ok(invoice);
-    }
-
-    // Payment Records
-    @GetMapping("/payments/invoice/{invoiceId}")
-    public ResponseEntity<List<PaymentRecord>> getPaymentRecordsByInvoice(@PathVariable Integer invoiceId) {
-        List<PaymentRecord> records = waiterService.getPaymentRecordsByInvoice(invoiceId);
-        return ResponseEntity.ok(records);
-    }
-
-    @GetMapping("/payments/order/{orderId}")
-    public ResponseEntity<List<PaymentRecord>> getPaymentRecordsByOrder(@PathVariable Integer orderId) {
-        List<PaymentRecord> records = waiterService.getPaymentRecordsByOrder(orderId);
-        return ResponseEntity.ok(records);
     }
 }
