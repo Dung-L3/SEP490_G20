@@ -1,6 +1,5 @@
 package com.system.restaurant.management.entity;
 
-
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
@@ -19,30 +18,23 @@ public class Order {
     @Column(name = "OrderID")
     private Integer orderId;
 
-    @Column(name = "OrderType", nullable = false, length = 20)
+    @Column(name = "OrderType", length = 20, nullable = false)
     private String orderType;
 
-    @Column(name = "CustomerName", length = 200)
+    @Column(name = "CustomerName", length = 200, nullable = false)
     private String customerName;
 
-    @Column(name = "Phone", length = 20)
+    @Column(name = "Phone", length = 20, nullable = false)
     private String phone;
 
-    @Column(name = "SubTotal", nullable = false)
+    @Column(name = "SubTotal", precision = 10, scale = 2)
     private BigDecimal subTotal;
 
-    @Column(name = "DiscountAmount", nullable = false)
+    @Column(name = "DiscountAmount", precision = 10, scale = 2)
     private BigDecimal discountAmount;
 
-    @Column(name = "FinalTotal", nullable = false)
+    @Column(name = "FinalTotal", precision = 10, scale = 2)
     private BigDecimal finalTotal;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "TableID")
-    private RestaurantTable table;
-
-    @Column(name = "CreatedAt", nullable = false)
-    private LocalDateTime createdAt;
 
     @Column(name = "StatusID", nullable = false)
     private Integer statusId;
@@ -50,6 +42,24 @@ public class Order {
     @Column(name = "IsRefunded", nullable = false)
     private Boolean isRefunded;
 
-    @Column(name = "Notes", length = 255)
+    @Column(name = "Notes", length = 500)
     private String notes;
+
+    @Column(name = "CreatedAt", nullable = false)
+    private LocalDateTime createdAt;
+
+    // Relationship with RestaurantTable
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "TableID")
+    private RestaurantTable table;
+
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+        if (isRefunded == null) {
+            isRefunded = false;
+        }
+    }
 }

@@ -1,43 +1,65 @@
 package com.system.restaurant.management.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.time.LocalDateTime;
 
 @Entity
-@Getter
-@Setter
+@Table(name = "Reservations")
+@Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-@Table(name = "Reservations")
 public class Reservation {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ReservationID")
     private Integer reservationId;
 
-    @Column(name = "CustomerName", length = 200, nullable = false)
+    @Column(name = "customer_name", nullable = false)
     private String customerName;
 
-    @Column(name = "Phone", length = 20, nullable = false)
+    @Column(name = "phone", nullable = false)
     private String phone;
 
-    @Column(name = "TableID")
+    @Column(name = "table_id")
     private Integer tableId;
 
-    @Column(name = "ReservationDate", nullable = false)
+    @Column(name = "reservation_date")
     private LocalDateTime reservationDate;
 
-    @Column(name = "PartySize", nullable = false)
+    @Column(name = "party_size")
     private Integer partySize;
 
-    @Column(name = "Status", length = 20, nullable = false)
+    @Column(name = "status")
     private String status;
 
-    @Column(name = "Notes", length = 255)
+    @Column(name = "notes")
     private String notes;
 
-    @Column(name = "CreatedAt", nullable = false)
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    // Relationship with RestaurantTable
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "table_id", insertable = false, updatable = false)
+    private RestaurantTable table;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }
