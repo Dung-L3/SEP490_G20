@@ -1,16 +1,13 @@
 package com.system.restaurant.management.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-
+import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "RestaurantTables")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -30,7 +27,7 @@ public class RestaurantTable {
     private String tableType;
 
     @Column(name = "Status", nullable = false, length = 20)
-    private String status;
+    private String status; // FREE, OCCUPIED, RESERVED
 
     @Column(name = "IsWindow", nullable = false)
     private Boolean isWindow = false;
@@ -39,5 +36,15 @@ public class RestaurantTable {
     private String notes;
 
     @Column(name = "CreatedAt", nullable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+        if (isWindow == null) {
+            isWindow = false;
+        }
+    }
 }
