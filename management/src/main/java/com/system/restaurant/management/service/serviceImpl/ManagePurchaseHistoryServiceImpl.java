@@ -6,7 +6,6 @@ import com.system.restaurant.management.repository.PurchaseHistoryRepository;
 import com.system.restaurant.management.service.ManagePurchaseHistoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -14,7 +13,6 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class ManagePurchaseHistoryServiceImpl implements ManagePurchaseHistoryService {
 
     private final PurchaseHistoryRepository purchaseHistoryRepository;
@@ -25,40 +23,36 @@ public class ManagePurchaseHistoryServiceImpl implements ManagePurchaseHistorySe
     }
 
     @Override
-    public List<PurchaseHistoryDto> getHistoryByCustomer(String cusPhone) {
-        return purchaseHistoryRepository.findHistoryByPhone(cusPhone);
-    }
-
-    @Override
-    public List<PurchaseHistoryDto> getPurchaseHistoryByPhone(String phone) {
+    public List<PurchaseHistoryDto> getHistoryByPhone(String phone) {
         return purchaseHistoryRepository.findHistoryByPhone(phone);
     }
 
     @Override
-    public List<PurchaseHistoryDto> getPurchaseHistoryByCustomerName(String customerName) {
+    public List<PurchaseHistoryDto> getHistoryByCustomerName(String customerName) {
         return purchaseHistoryRepository.findHistoryByCustomerName(customerName);
     }
 
     @Override
-    public List<PurchaseHistoryDto> getPurchaseHistoryByDateRange(LocalDateTime startDate, LocalDateTime endDate) {
+    public List<PurchaseHistoryDto> getHistoryByDateRange(LocalDateTime startDate, LocalDateTime endDate) {
         return purchaseHistoryRepository.findHistoryByDateRange(startDate, endDate);
     }
 
     @Override
-    public List<PurchaseHistoryDto> getPurchaseHistoryByOrderType(String orderType) {
+    public List<PurchaseHistoryDto> getHistoryByOrderType(String orderType) {
         return purchaseHistoryRepository.findHistoryByOrderType(orderType);
     }
 
     @Override
     public PurchaseHistoryResponse getCustomerStatistics(String phone) {
-        List<PurchaseHistoryDto> customerHistory = getPurchaseHistoryByPhone(phone);
+        List<PurchaseHistoryDto> customerHistory = getHistoryByPhone(phone);
 
         if (customerHistory.isEmpty()) {
             return PurchaseHistoryResponse.builder()
                     .customerPhone(phone)
+                    .customerName("Unknown")
                     .totalOrders(0)
                     .totalSpent(BigDecimal.ZERO)
-                    .purchaseHistory(List.of())
+                    .purchaseHistory(customerHistory)
                     .build();
         }
 
@@ -73,15 +67,5 @@ public class ManagePurchaseHistoryServiceImpl implements ManagePurchaseHistorySe
                 .totalSpent(totalSpent)
                 .purchaseHistory(customerHistory)
                 .build();
-    }
-
-    @Override
-    public List<Object[]> getTopCustomers() {
-        return purchaseHistoryRepository.findTopCustomersByTotalSpent();
-    }
-
-    @Override
-    public List<Object[]> getMonthlyStatistics() {
-        return purchaseHistoryRepository.findMonthlyStatistics();
     }
 }

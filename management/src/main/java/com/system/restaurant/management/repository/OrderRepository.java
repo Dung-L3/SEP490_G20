@@ -6,36 +6,25 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Integer> {
 
+    // Tìm order theo table ID
     @Query("SELECT o FROM Order o WHERE o.table.tableId = :tableId")
-    List<Order> findByTableId(@Param("tableId") Integer tableId);
+    List<Order> findByTable_TableId(@Param("tableId") Integer tableId);
 
-    @Query("SELECT o FROM Order o WHERE o.table.tableId = :tableId AND o.statusId IN (1, 2, 3)")
-    List<Order> findActiveOrdersByTableId(@Param("tableId") Integer tableId);
+    // Tìm order theo nhiều status
+    @Query("SELECT o FROM Order o WHERE o.statusId IN :statusIds")
+    List<Order> findByStatusIdIn(@Param("statusIds") List<Integer> statusIds);
 
+    // Tìm order theo status đơn lẻ
     List<Order> findByStatusId(Integer statusId);
 
+    // Tìm order theo số điện thoại khách hàng
     List<Order> findByPhone(String phone);
 
+    // Tìm order theo loại đơn hàng
     List<Order> findByOrderType(String orderType);
-
-    List<Order> findByCustomerNameContainingIgnoreCase(String customerName);
-
-    @Query("SELECT o FROM Order o WHERE o.statusId = 4 ORDER BY o.createdAt DESC")
-    List<Order> findCompletedOrders();
-
-    @Query("SELECT o FROM Order o WHERE o.createdAt BETWEEN :startDate AND :endDate")
-    List<Order> findOrdersByDateRange(@Param("startDate") LocalDateTime startDate,
-                                      @Param("endDate") LocalDateTime endDate);
-
-    @Query("SELECT o FROM Order o WHERE o.statusId IN (1, 2, 3) ORDER BY o.createdAt DESC")
-    List<Order> findActiveOrders();
-
-    Optional<Order> findByOrderId(Integer orderId);
 }

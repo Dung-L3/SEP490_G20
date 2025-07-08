@@ -1,12 +1,17 @@
 package com.system.restaurant.management.dto;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
-import java.math.BigDecimal;
+import lombok.NoArgsConstructor;
+
+import java.util.List;
 
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class CreateTakeawayOrderRequest {
     private String customerName;
     private String customerPhone;
     private String notes;
-    private String pickupTime;
+    private List<OrderItemRequest> orderItems;
 }

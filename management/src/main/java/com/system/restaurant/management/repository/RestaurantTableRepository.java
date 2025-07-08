@@ -12,39 +12,20 @@ import java.util.Optional;
 @Repository
 public interface RestaurantTableRepository extends JpaRepository<RestaurantTable, Integer> {
 
-    // Tìm theo status
     List<RestaurantTable> findByStatus(String status);
 
-    // Tìm theo area
-    List<RestaurantTable> findByAreaId(Integer areaId);
+    @Query("SELECT rt FROM RestaurantTable rt WHERE rt.areaId = :areaId")
+    List<RestaurantTable> findByAreaId(@Param("areaId") Integer areaId);
 
-    // Tìm theo table type
-    List<RestaurantTable> findByTableType(String tableType);
-
-    // Tìm theo table name
-    Optional<RestaurantTable> findByTableName(String tableName);
-
-    // Tìm bàn cửa sổ
-    List<RestaurantTable> findByIsWindow(Boolean isWindow);
-
-    // Tìm theo area và status
-    List<RestaurantTable> findByAreaIdAndStatus(Integer areaId, String status);
-
-    // Tìm theo table type và status
-    List<RestaurantTable> findByTableTypeAndStatus(String tableType, String status);
-
-    // Tìm bàn cửa sổ theo status
-    List<RestaurantTable> findByIsWindowAndStatus(Boolean isWindow, String status);
-
-    // Query tìm bàn trống trong area cụ thể
-    @Query("SELECT t FROM RestaurantTable t WHERE t.areaId = :areaId AND t.status = 'FREE'")
+    @Query("SELECT rt FROM RestaurantTable rt WHERE rt.areaId = :areaId AND rt.status = 'FREE'")
     List<RestaurantTable> findFreeTablesByArea(@Param("areaId") Integer areaId);
 
-    // Query tìm bàn cửa sổ trống
-    @Query("SELECT t FROM RestaurantTable t WHERE t.isWindow = true AND t.status = 'FREE'")
+    List<RestaurantTable> findByIsWindow(Boolean isWindow);
+
+    @Query("SELECT rt FROM RestaurantTable rt WHERE rt.isWindow = true AND rt.status = 'FREE'")
     List<RestaurantTable> findFreeWindowTables();
 
-    // Query tìm bàn theo type và area
-    @Query("SELECT t FROM RestaurantTable t WHERE t.tableType = :tableType AND t.areaId = :areaId")
-    List<RestaurantTable> findByTableTypeAndArea(@Param("tableType") String tableType, @Param("areaId") Integer areaId);
+    List<RestaurantTable> findByTableType(String tableType);
+
+    Optional<RestaurantTable> findByTableName(String tableName);
 }

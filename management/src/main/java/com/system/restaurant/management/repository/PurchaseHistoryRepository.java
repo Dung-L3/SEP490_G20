@@ -23,13 +23,10 @@ public interface PurchaseHistoryRepository extends JpaRepository<Order, Integer>
             o.subTotal,
             o.discountAmount,
             o.finalTotal,
-            COALESCE(pm.methodName, 'Cash'),
-            COALESCE(o.isRefunded, false)
+            'Cash',
+            false
         )
         FROM Order o
-        LEFT JOIN Invoice i ON i.order.orderId = o.orderId
-        LEFT JOIN PaymentRecord pr ON pr.invoice.invoiceId = i.invoiceId
-        LEFT JOIN PaymentMethod pm ON pm.methodId = pr.paymentMethod.methodId
         WHERE o.statusId = 4
         ORDER BY o.createdAt DESC
         """)
@@ -45,13 +42,10 @@ public interface PurchaseHistoryRepository extends JpaRepository<Order, Integer>
             o.subTotal,
             o.discountAmount,
             o.finalTotal,
-            COALESCE(pm.methodName, 'Cash'),
-            COALESCE(o.isRefunded, false)
+            'Cash',
+            false
         )
         FROM Order o
-        LEFT JOIN Invoice i ON i.order.orderId = o.orderId
-        LEFT JOIN PaymentRecord pr ON pr.invoice.invoiceId = i.invoiceId
-        LEFT JOIN PaymentMethod pm ON pm.methodId = pr.paymentMethod.methodId
         WHERE o.phone = :phone AND o.statusId = 4
         ORDER BY o.createdAt DESC
         """)
@@ -67,13 +61,10 @@ public interface PurchaseHistoryRepository extends JpaRepository<Order, Integer>
             o.subTotal,
             o.discountAmount,
             o.finalTotal,
-            COALESCE(pm.methodName, 'Cash'),
-            COALESCE(o.isRefunded, false)
+            'Cash',
+            false
         )
         FROM Order o
-        LEFT JOIN Invoice i ON i.order.orderId = o.orderId
-        LEFT JOIN PaymentRecord pr ON pr.invoice.invoiceId = i.invoiceId
-        LEFT JOIN PaymentMethod pm ON pm.methodId = pr.paymentMethod.methodId
         WHERE LOWER(o.customerName) LIKE LOWER(CONCAT('%', :customerName, '%')) AND o.statusId = 4
         ORDER BY o.createdAt DESC
         """)
@@ -89,13 +80,10 @@ public interface PurchaseHistoryRepository extends JpaRepository<Order, Integer>
             o.subTotal,
             o.discountAmount,
             o.finalTotal,
-            COALESCE(pm.methodName, 'Cash'),
-            COALESCE(o.isRefunded, false)
+            'Cash',
+            false
         )
         FROM Order o
-        LEFT JOIN Invoice i ON i.order.orderId = o.orderId
-        LEFT JOIN PaymentRecord pr ON pr.invoice.invoiceId = i.invoiceId
-        LEFT JOIN PaymentMethod pm ON pm.methodId = pr.paymentMethod.methodId
         WHERE o.createdAt BETWEEN :startDate AND :endDate AND o.statusId = 4
         ORDER BY o.createdAt DESC
         """)
@@ -112,33 +100,12 @@ public interface PurchaseHistoryRepository extends JpaRepository<Order, Integer>
             o.subTotal,
             o.discountAmount,
             o.finalTotal,
-            COALESCE(pm.methodName, 'Cash'),
-            COALESCE(o.isRefunded, false)
+            'Cash',
+            false
         )
         FROM Order o
-        LEFT JOIN Invoice i ON i.order.orderId = o.orderId
-        LEFT JOIN PaymentRecord pr ON pr.invoice.invoiceId = i.invoiceId
-        LEFT JOIN PaymentMethod pm ON pm.methodId = pr.paymentMethod.methodId
         WHERE o.orderType = :orderType AND o.statusId = 4
         ORDER BY o.createdAt DESC
         """)
     List<PurchaseHistoryDto> findHistoryByOrderType(@Param("orderType") String orderType);
-
-    @Query("""
-        SELECT o.phone, o.customerName, COUNT(o), SUM(o.finalTotal)
-        FROM Order o
-        WHERE o.statusId = 4
-        GROUP BY o.phone, o.customerName
-        ORDER BY SUM(o.finalTotal) DESC
-        """)
-    List<Object[]> findTopCustomersByTotalSpent();
-
-    @Query("""
-        SELECT YEAR(o.createdAt), MONTH(o.createdAt), COUNT(o), SUM(o.finalTotal)
-        FROM Order o
-        WHERE o.statusId = 4
-        GROUP BY YEAR(o.createdAt), MONTH(o.createdAt)
-        ORDER BY YEAR(o.createdAt) DESC, MONTH(o.createdAt) DESC
-        """)
-    List<Object[]> findMonthlyStatistics();
 }
