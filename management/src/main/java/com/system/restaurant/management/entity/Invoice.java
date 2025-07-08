@@ -21,44 +21,39 @@ public class Invoice {
     @Column(name = "InvoiceID")
     private Integer invoiceId;
 
-    @Column(name = "OrderID")
+    @Column(name = "OrderID", nullable = false)
     private Integer orderId;
 
-    @Column(name = "SubTotal", precision = 10, scale = 2, nullable = false)
+    @Column(name = "SubTotal", nullable = false, precision = 10, scale = 2)
     private BigDecimal subTotal;
 
-    @Column(name = "DiscountAmount", precision = 10, scale = 2)
-    private BigDecimal discountAmount;
+    @Column(name = "DiscountAmount", nullable = false, precision = 10, scale = 2)
+    private BigDecimal discountAmount = BigDecimal.ZERO;
 
-    @Column(name = "FinalTotal", precision = 10, scale = 2, nullable = false)
+    @Column(name = "FinalTotal", nullable = false, precision = 10, scale = 2)
     private BigDecimal finalTotal;
 
-    @Column(name = "IssuedBy")
+    @Column(name = "IssuedBy", nullable = false)
     private Integer issuedBy;
 
-    @Column(name = "IssuedAt", nullable = false)
-    private LocalDateTime issuedAt;
-
-    // Thêm fields cho WaiterServiceImpl
-    @Transient
-    private String invoiceNumber;
-
-    @Transient
-    private BigDecimal totalAmount;
+    @Column(name = "CreatedAt", nullable = false)
+    private LocalDateTime createdAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "OrderID", insertable = false, updatable = false)
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Order order;
 
-    @OneToMany(mappedBy = "invoiceId", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    @Transient
     private List<PaymentRecord> paymentRecords;
 
     @PrePersist
     protected void onCreate() {
-        if (issuedAt == null) {
-            issuedAt = LocalDateTime.now();
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+        if (discountAmount == null) {
+            discountAmount = BigDecimal.ZERO;
         }
     }
 }

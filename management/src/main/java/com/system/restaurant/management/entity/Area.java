@@ -1,15 +1,17 @@
 package com.system.restaurant.management.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
+import lombok.*;
 
 @Entity
-@Table(name = "Areas")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
+@Table(name = "Areas")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Area {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

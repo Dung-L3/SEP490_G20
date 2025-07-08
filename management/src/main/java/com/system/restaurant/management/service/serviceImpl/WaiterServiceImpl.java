@@ -232,12 +232,14 @@ public class WaiterServiceImpl implements WaiterService {
 
         // Load invoices và payment records cho từng order
         for (Order order : orders) {
-            List<Invoice> invoices = invoiceRepository.findByOrderId(order.getOrderId());
-            for (Invoice invoice : invoices) {
+            // Sửa: findByOrderId trả về Optional, không phải List
+            Optional<Invoice> invoiceOpt = invoiceRepository.findByOrderId(order.getOrderId());
+            if (invoiceOpt.isPresent()) {
+                Invoice invoice = invoiceOpt.get();
                 List<PaymentRecord> paymentRecords = paymentRecordRepository.findByInvoiceId(invoice.getInvoiceId());
                 invoice.setPaymentRecords(paymentRecords);
+                order.setInvoices(List.of(invoice)); // Chuyển thành List
             }
-            order.setInvoices(invoices);
         }
 
         return CustomerPurchaseHistoryResponse.builder()
@@ -304,5 +306,13 @@ public class WaiterServiceImpl implements WaiterService {
     public Invoice getInvoiceByOrder(Integer orderId) {
         return invoiceRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy invoice cho order: " + orderId));
+    }
+    @Override
+    public RestaurantTable updateTableStatus(Integer tableId, String status) {
+        RestaurantTable table = restaurantTableRepository.findById(tableId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bàn với ID: " + tableId));
+
+        table.setStatus(status);
+        return restaurantTableRepository.save(table);
     }
 }
