@@ -9,7 +9,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/waiter")
@@ -17,10 +16,22 @@ import java.util.Map;
 public class WaiterController {
     private final WaiterService waiterService;
 
-    // Order Management
+    // Order Management with Reservation Tracking
     @PostMapping("/orders/create")
     public ResponseEntity<Order> createOrder(@RequestBody CreateOrderRequest request) {
-        Order order = waiterService.createOrder(request);
+        Order order = waiterService.createOrderWithReservationTracking(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(order);
+    }
+
+    @PostMapping("/orders/create-dine-in")
+    public ResponseEntity<Order> createDineInOrder(@RequestBody CreateDineInOrderRequest request) {
+        Order order = waiterService.createDineInOrder(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(order);
+    }
+
+    @PostMapping("/orders/create-takeaway")
+    public ResponseEntity<Order> createTakeawayOrder(@RequestBody CreateTakeawayOrderRequest request) {
+        Order order = waiterService.createTakeawayOrder(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(order);
     }
 
@@ -45,234 +56,100 @@ public class WaiterController {
     @PutMapping("/orders/{orderId}/status")
     public ResponseEntity<Order> updateOrderStatus(@PathVariable Integer orderId,
                                                    @RequestBody OrderStatusRequest request) {
-        Order order = waiterService.updateOrderStatus(orderId, request.getStatus());
+        Order order = waiterService.updateOrderStatus(orderId, request.getStatusId());
         return ResponseEntity.ok(order);
     }
 
-    // Order Item Management
-    @PostMapping("/orders/{orderId}/items")
-    public ResponseEntity<OrderItem> addOrderItem(@PathVariable Integer orderId,
-                                                  @RequestBody AddOrderItemRequest request) {
-        OrderItem orderItem = waiterService.addOrderItem(orderId, request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(orderItem);
-    }
-
-    @PutMapping("/orders/items/{itemId}")
-    public ResponseEntity<OrderItem> updateOrderItem(@PathVariable Integer itemId,
-                                                     @RequestBody UpdateOrderItemRequest request) {
-        OrderItem orderItem = waiterService.updateOrderItem(itemId, request);
-        return ResponseEntity.ok(orderItem);
-    }
-
-    @DeleteMapping("/orders/items/{itemId}")
-    public ResponseEntity<Void> removeOrderItem(@PathVariable Integer itemId) {
-        waiterService.removeOrderItem(itemId);
-        return ResponseEntity.noContent().build();
-    }
-
-    @GetMapping("/orders/{orderId}/items")
-    public ResponseEntity<List<OrderItem>> getOrderItems(@PathVariable Integer orderId) {
-        List<OrderItem> items = waiterService.getOrderItems(orderId);
-        return ResponseEntity.ok(items);
-    }
-
-    // Table Management - Only READ operations (no conflict with ManageTableController)
-    @GetMapping("/tables/my-assigned")
-    public ResponseEntity<List<RestaurantTable>> getMyAssignedTables() {
-        List<RestaurantTable> tables = waiterService.getMyAssignedTables();
+    // Table Management - FREE, OCCUPIED, RESERVED
+    @GetMapping("/tables/free")
+    public ResponseEntity<List<RestaurantTable>> getFreeTables() {
+        List<RestaurantTable> tables = waiterService.getTablesByStatus("FREE");
         return ResponseEntity.ok(tables);
     }
 
-    @GetMapping("/tables/available-for-service")
-    public ResponseEntity<List<RestaurantTable>> getAvailableTablesForService() {
-        List<RestaurantTable> tables = waiterService.getAvailableTablesForService();
+    @GetMapping("/tables/occupied")
+    public ResponseEntity<List<RestaurantTable>> getOccupiedTables() {
+        List<RestaurantTable> tables = waiterService.getTablesByStatus("OCCUPIED");
         return ResponseEntity.ok(tables);
     }
 
-    @GetMapping("/tables/{tableId}/current-order")
-    public ResponseEntity<Order> getCurrentTableOrder(@PathVariable Integer tableId) {
-        Order order = waiterService.getCurrentTableOrder(tableId);
-        return ResponseEntity.ok(order);
+    @GetMapping("/tables/reserved")
+    public ResponseEntity<List<RestaurantTable>> getReservedTables() {
+        List<RestaurantTable> tables = waiterService.getTablesByStatus("RESERVED");
+        return ResponseEntity.ok(tables);
     }
 
-    // Menu Management
-    @GetMapping("/menu/available")
-    public ResponseEntity<List<MenuItem>> getAvailableMenuItems() {
-        List<MenuItem> items = waiterService.getAvailableMenuItems();
-        return ResponseEntity.ok(items);
+    @PutMapping("/tables/{tableId}/occupy")
+    public ResponseEntity<RestaurantTable> occupyTable(@PathVariable Integer tableId) {
+        RestaurantTable table = waiterService.updateTableStatus(tableId, "OCCUPIED");
+        return ResponseEntity.ok(table);
     }
 
-    @GetMapping("/menu/category/{category}")
-    public ResponseEntity<List<MenuItem>> getMenuByCategory(@PathVariable String category) {
-        List<MenuItem> items = waiterService.getMenuByCategory(category);
-        return ResponseEntity.ok(items);
+    @PutMapping("/tables/{tableId}/free")
+    public ResponseEntity<RestaurantTable> freeTable(@PathVariable Integer tableId) {
+        RestaurantTable table = waiterService.updateTableStatus(tableId, "FREE");
+        return ResponseEntity.ok(table);
     }
 
-    @GetMapping("/menu/search")
-    public ResponseEntity<List<MenuItem>> searchMenuItems(@RequestParam String keyword) {
-        List<MenuItem> items = waiterService.searchMenuItems(keyword);
-        return ResponseEntity.ok(items);
+    // Customer Purchase History with PaymentRecord, Order, Invoice
+    @GetMapping("/customers/phone/{phone}/purchase-history")
+    public ResponseEntity<CustomerPurchaseHistoryResponse> getCustomerPurchaseHistoryByPhone(@PathVariable String phone) {
+        CustomerPurchaseHistoryResponse history = waiterService.getCustomerPurchaseHistoryByPhone(phone);
+        return ResponseEntity.ok(history);
     }
 
-    // Customer Management
-    @PostMapping("/customers/register")
-    public ResponseEntity<Customer> registerCustomer(@RequestBody CustomerRegistrationRequest request) {
-        Customer customer = waiterService.registerCustomer(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(customer);
-    }
-
-    @GetMapping("/customers/search")
-    public ResponseEntity<List<Customer>> searchCustomers(@RequestParam String keyword) {
-        List<Customer> customers = waiterService.searchCustomers(keyword);
-        return ResponseEntity.ok(customers);
-    }
-
-    @GetMapping("/customers/{customerId}")
-    public ResponseEntity<Customer> getCustomerById(@PathVariable Integer customerId) {
-        Customer customer = waiterService.getCustomerById(customerId);
-        return ResponseEntity.ok(customer);
-    }
-
-    // Reservation Management
-    @PostMapping("/reservations/create")
-    public ResponseEntity<Reservation> createReservation(@RequestBody CreateReservationRequest request) {
-        Reservation reservation = waiterService.createReservation(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(reservation);
-    }
-
-    @GetMapping("/reservations/today")
-    public ResponseEntity<List<Reservation>> getTodayReservations() {
-        List<Reservation> reservations = waiterService.getTodayReservations();
-        return ResponseEntity.ok(reservations);
-    }
-
-    @GetMapping("/reservations/my-assigned")
-    public ResponseEntity<List<Reservation>> getMyAssignedReservations() {
-        List<Reservation> reservations = waiterService.getMyAssignedReservations();
-        return ResponseEntity.ok(reservations);
-    }
-
+    // Reservation Check-in with Phone Tracking
     @PutMapping("/reservations/{reservationId}/checkin")
-    public ResponseEntity<Reservation> checkInReservation(@PathVariable Integer reservationId,
-                                                          @RequestBody CheckInRequest request) {
-        Reservation reservation = waiterService.checkInReservation(reservationId, request.getTableId());
-        return ResponseEntity.ok(reservation);
+    public ResponseEntity<CheckInResponse> checkInReservation(@PathVariable Integer reservationId,
+                                                              @RequestBody CheckInRequest request) {
+        CheckInResponse response = waiterService.checkInReservation(reservationId, request.getTableId());
+        return ResponseEntity.ok(response);
     }
 
-    // Bill Management
-    @PostMapping("/bills/generate/{orderId}")
-    public ResponseEntity<Bill> generateBill(@PathVariable Integer orderId) {
-        Bill bill = waiterService.generateBill(orderId);
-        return ResponseEntity.status(HttpStatus.CREATED).body(bill);
+    // Complete Payment Flow: Order -> Invoice -> PaymentRecord
+    @PostMapping("/orders/{orderId}/complete-payment")
+    public ResponseEntity<CompletePaymentResponse> processCompletePayment(@PathVariable Integer orderId,
+                                                                          @RequestBody PaymentRequest request) {
+        CompletePaymentResponse response = waiterService.processCompletePayment(orderId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @GetMapping("/bills/{billId}")
-    public ResponseEntity<Bill> getBillById(@PathVariable Integer billId) {
-        Bill bill = waiterService.getBillById(billId);
-        return ResponseEntity.ok(bill);
-    }
-
-    @GetMapping("/bills/table/{tableId}")
-    public ResponseEntity<List<Bill>> getBillsByTable(@PathVariable Integer tableId) {
-        List<Bill> bills = waiterService.getBillsByTable(tableId);
-        return ResponseEntity.ok(bills);
-    }
-
-    @PutMapping("/bills/{billId}/payment")
-    public ResponseEntity<Bill> processPayment(@PathVariable Integer billId,
-                                               @RequestBody PaymentRequest request) {
-        Bill bill = waiterService.processPayment(billId, request);
-        return ResponseEntity.ok(bill);
-    }
-
-    @PutMapping("/bills/{billId}/discount")
-    public ResponseEntity<Bill> applyDiscount(@PathVariable Integer billId,
-                                              @RequestBody DiscountRequest request) {
-        Bill bill = waiterService.applyDiscount(billId, request);
-        return ResponseEntity.ok(bill);
-    }
-
-    // Kitchen Communication
-    @PostMapping("/kitchen/orders/{orderId}/send")
-    public ResponseEntity<Void> sendOrderToKitchen(@PathVariable Integer orderId) {
-        waiterService.sendOrderToKitchen(orderId);
-        return ResponseEntity.ok().build();
-    }
-
-    @GetMapping("/kitchen/orders/ready")
-    public ResponseEntity<List<Order>> getReadyOrders() {
-        List<Order> orders = waiterService.getReadyOrders();
+    // Order Types: DINEIN, TAKEAWAY
+    @GetMapping("/orders/dine-in")
+    public ResponseEntity<List<Order>> getDineInOrders() {
+        List<Order> orders = waiterService.getOrdersByType("DINEIN");
         return ResponseEntity.ok(orders);
     }
 
-    @PostMapping("/kitchen/orders/{orderId}/serve")
-    public ResponseEntity<Order> markOrderAsServed(@PathVariable Integer orderId) {
-        Order order = waiterService.markOrderAsServed(orderId);
-        return ResponseEntity.ok(order);
-    }
-
-    // Shift Management
-    @PostMapping("/shift/start")
-    public ResponseEntity<WaiterShift> startShift() {
-        WaiterShift shift = waiterService.startShift();
-        return ResponseEntity.status(HttpStatus.CREATED).body(shift);
-    }
-
-    @PostMapping("/shift/end")
-    public ResponseEntity<WaiterShift> endShift() {
-        WaiterShift shift = waiterService.endShift();
-        return ResponseEntity.ok(shift);
-    }
-
-    @GetMapping("/shift/current")
-    public ResponseEntity<WaiterShift> getCurrentShift() {
-        WaiterShift shift = waiterService.getCurrentShift();
-        return ResponseEntity.ok(shift);
-    }
-
-    // Reports and Analytics
-    @GetMapping("/reports/orders/today")
-    public ResponseEntity<List<Order>> getTodayOrders() {
-        List<Order> orders = waiterService.getTodayOrders();
+    @GetMapping("/orders/takeaway")
+    public ResponseEntity<List<Order>> getTakeawayOrders() {
+        List<Order> orders = waiterService.getOrdersByType("TAKEAWAY");
         return ResponseEntity.ok(orders);
     }
 
-    @GetMapping("/reports/sales/today")
-    public ResponseEntity<Map<String, Object>> getTodaySales() {
-        Map<String, Object> sales = waiterService.getTodaySalesReport();
-        return ResponseEntity.ok(sales);
+    // Invoice Management
+    @GetMapping("/invoices/order/{orderId}")
+    public ResponseEntity<Invoice> getInvoiceByOrder(@PathVariable Integer orderId) {
+        Invoice invoice = waiterService.getInvoiceByOrder(orderId);
+        return ResponseEntity.ok(invoice);
     }
 
-    @GetMapping("/reports/performance")
-    public ResponseEntity<Map<String, Object>> getPerformanceReport() {
-        Map<String, Object> performance = waiterService.getWaiterPerformanceReport();
-        return ResponseEntity.ok(performance);
+    @GetMapping("/invoices/{invoiceId}")
+    public ResponseEntity<Invoice> getInvoiceById(@PathVariable Integer invoiceId) {
+        Invoice invoice = waiterService.getInvoiceById(invoiceId);
+        return ResponseEntity.ok(invoice);
     }
 
-    // Notifications
-    @GetMapping("/notifications")
-    public ResponseEntity<List<Notification>> getNotifications() {
-        List<Notification> notifications = waiterService.getWaiterNotifications();
-        return ResponseEntity.ok(notifications);
+    // Payment Records
+    @GetMapping("/payments/invoice/{invoiceId}")
+    public ResponseEntity<List<PaymentRecord>> getPaymentRecordsByInvoice(@PathVariable Integer invoiceId) {
+        List<PaymentRecord> records = waiterService.getPaymentRecordsByInvoice(invoiceId);
+        return ResponseEntity.ok(records);
     }
 
-    @PutMapping("/notifications/{notificationId}/read")
-    public ResponseEntity<Void> markNotificationAsRead(@PathVariable Integer notificationId) {
-        waiterService.markNotificationAsRead(notificationId);
-        return ResponseEntity.ok().build();
-    }
-
-    // Special Requests
-    @PostMapping("/orders/{orderId}/special-request")
-    public ResponseEntity<Order> addSpecialRequest(@PathVariable Integer orderId,
-                                                   @RequestBody SpecialRequestRequest request) {
-        Order order = waiterService.addSpecialRequest(orderId, request);
-        return ResponseEntity.ok(order);
-    }
-
-    @GetMapping("/orders/{orderId}/special-requests")
-    public ResponseEntity<List<SpecialRequest>> getSpecialRequests(@PathVariable Integer orderId) {
-        List<SpecialRequest> requests = waiterService.getSpecialRequests(orderId);
-        return ResponseEntity.ok(requests);
+    @GetMapping("/payments/order/{orderId}")
+    public ResponseEntity<List<PaymentRecord>> getPaymentRecordsByOrder(@PathVariable Integer orderId) {
+        List<PaymentRecord> records = waiterService.getPaymentRecordsByOrder(orderId);
+        return ResponseEntity.ok(records);
     }
 }
