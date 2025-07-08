@@ -11,4 +11,6 @@ public interface MenuService {
     List<Combo> getAllCombos();
     Dish getDishById(Integer dishId);
     Combo getComboById(Integer comboId);
+    List<Dish> searchDishes(String name);
+    List<Combo> searchCombos(String name);
 }

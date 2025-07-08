@@ -22,28 +22,38 @@ public class MenuServiceImpl implements MenuService {
 
     @Override
     public List<Dish> getAllDishes() {
-        return dishRepository.findByStatus(true);
+        return dishRepository.findActiveDishes();
     }
 
     @Override
     public List<Dish> getDishesByCategory(Integer categoryId) {
-        return dishRepository.findByCategoryId(categoryId);
+        return dishRepository.findByCategoryIdAndActive(categoryId);
     }
 
     @Override
     public List<Combo> getAllCombos() {
-        return comboRepository.findAll();
+        return comboRepository.findAllOrderByName();
     }
 
     @Override
     public Dish getDishById(Integer dishId) {
         return dishRepository.findById(dishId)
-                .orElseThrow(() -> new ResourceNotFoundException("Dish not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Dish", "dishId", dishId));
     }
 
     @Override
     public Combo getComboById(Integer comboId) {
         return comboRepository.findById(comboId)
-                .orElseThrow(() -> new ResourceNotFoundException("Combo not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Combo", "comboId", comboId));
+    }
+
+    @Override
+    public List<Dish> searchDishes(String name) {
+        return dishRepository.findByDishNameContainingAndActive(name);
+    }
+
+    @Override
+    public List<Combo> searchCombos(String name) {
+        return comboRepository.findByComboNameContaining(name);
     }
 }
