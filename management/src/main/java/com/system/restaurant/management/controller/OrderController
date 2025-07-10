@@ -1,0 +1,25 @@
+package com.system.restaurant.management.controller;
+
+import com.system.restaurant.management.entity.Order;
+import com.system.restaurant.management.service.ReceptionistService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/receptionist/orders")
+public class OrderController {
+
+    private final ReceptionistService receptionistService;
+
+    @Autowired
+    public OrderController(ReceptionistService receptionistService) {
+        this.receptionistService = receptionistService;
+    }
+
+    @PostMapping
+    public ResponseEntity<Order> placeTakeawayOrder(@RequestBody Order order) {
+        Order savedOrder = receptionistService.placeTakeawayOrder(order);
+        return ResponseEntity.ok(savedOrder);
+    }
+}
