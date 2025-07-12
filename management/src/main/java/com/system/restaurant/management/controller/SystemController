@@ -1,0 +1,48 @@
+package com.system.restaurant.management.controller;
+
+import com.system.restaurant.management.entity.*;
+import com.system.restaurant.management.service.SystemService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/system")
+public class SystemController {
+
+    private final SystemService svc;
+    public SystemController(SystemService svc) {
+        this.svc = svc;
+    }
+
+    /** 1. Generate Invoice (→ include Add Customer Points) */
+    @PostMapping("/orders/{orderId}/invoice")
+    public ResponseEntity<Invoice> generateInvoice(@PathVariable Long orderId) {
+        return ResponseEntity.ok(svc.generateInvoice(orderId));
+    }
+
+    /** 2. Send Notification (→ include Confirm/Cancel Reservation, Confirm Order) */
+    @PostMapping("/notifications")
+    public ResponseEntity<Notification> sendNotification(@RequestBody Notification notification) {
+        return ResponseEntity.ok(svc.sendNotification(notification));
+    }
+
+    /** 3. Trigger Kitchen Ticket */
+    @PostMapping("/orders/{orderId}/kitchen-ticket")
+    public ResponseEntity<KitchenTicket> triggerKitchenTicket(@PathVariable Long orderId) {
+        return ResponseEntity.ok(svc.triggerKitchenTicket(orderId));
+    }
+
+    /** 4. Lock Reservation Edit */
+    @PostMapping("/reservations/{resId}/lock")
+    public ResponseEntity<Void> lockReservationEdit(@PathVariable Long resId) {
+        svc.lockReservationEdit(resId);
+        return ResponseEntity.ok().build();
+    }
+
+    /** 5. Lock Order Edit */
+    @PostMapping("/orders/{orderId}/lock")
+    public ResponseEntity<Void> lockOrderEdit(@PathVariable Long orderId) {
+        svc.lockOrderEdit(orderId);
+        return ResponseEntity.ok().build();
+    }
+}

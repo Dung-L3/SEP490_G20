@@ -1,0 +1,13 @@
+package com.system.restaurant.management.repository;
+
+import com.system.restaurant.management.entity.Invoice;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public interface InvoiceRepository extends JpaRepository<Invoice, Integer> {
+    List<Invoice> findByIssuedBy(Integer issuedBy);
+    List<Invoice> findByOrderId(Integer orderId);
+}
