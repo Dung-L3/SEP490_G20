@@ -11,18 +11,20 @@ import java.util.List;
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Integer> {
 
-    @Query("SELECT o FROM Order o WHERE o.statusId IN :statusIds ORDER BY o.createdAt DESC")
+    // Tìm order theo table ID
+    @Query("SELECT o FROM Order o WHERE o.table.tableId = :tableId")
+    List<Order> findByTable_TableId(@Param("tableId") Integer tableId);
+
+    // Tìm order theo nhiều status
+    @Query("SELECT o FROM Order o WHERE o.statusId IN :statusIds")
     List<Order> findByStatusIdIn(@Param("statusIds") List<Integer> statusIds);
 
-    @Query("SELECT o FROM Order o WHERE o.tableId = :tableId ORDER BY o.createdAt DESC")
-    List<Order> findByTableIdOrderByCreatedAtDesc(@Param("tableId") Integer tableId);
+    // Tìm order theo status đơn lẻ
+    List<Order> findByStatusId(Integer statusId);
 
-    @Query("SELECT o FROM Order o WHERE o.phone = :phone ORDER BY o.createdAt DESC")
-    List<Order> findByPhoneOrderByCreatedAtDesc(@Param("phone") String phone);
+    // Tìm order theo số điện thoại khách hàng
+    List<Order> findByPhone(String phone);
 
-    @Query("SELECT o FROM Order o WHERE o.orderType = :orderType ORDER BY o.createdAt DESC")
-    List<Order> findByOrderTypeOrderByCreatedAtDesc(@Param("orderType") String orderType);
-
-    @Query("SELECT o FROM Order o WHERE o.statusId = :statusId ORDER BY o.createdAt DESC")
-    List<Order> findByStatusIdOrderByCreatedAtDesc(@Param("statusId") Integer statusId);
+    // Tìm order theo loại đơn hàng
+    List<Order> findByOrderType(String orderType);
 }

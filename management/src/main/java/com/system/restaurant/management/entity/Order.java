@@ -21,8 +21,8 @@ public class Order {
     @Column(name = "OrderID")
     private Integer orderId;
 
-    @Column(name = "OrderType", nullable = false, length = 20)
-    private String orderType; // DINEIN, TAKEAWAY
+    @Column(name = "OrderType", length = 20, nullable = false)
+    private String orderType;
 
     @Column(name = "CustomerName", length = 200)
     private String customerName;
@@ -30,13 +30,13 @@ public class Order {
     @Column(name = "Phone", length = 20)
     private String phone;
 
-    @Column(name = "SubTotal", nullable = false, precision = 10, scale = 2)
+    @Column(name = "SubTotal", precision = 10, scale = 2, nullable = false)
     private BigDecimal subTotal;
 
-    @Column(name = "DiscountAmount", nullable = false, precision = 10, scale = 2)
-    private BigDecimal discountAmount = BigDecimal.ZERO;
+    @Column(name = "DiscountAmount", precision = 10, scale = 2)
+    private BigDecimal discountAmount;
 
-    @Column(name = "FinalTotal", nullable = false, precision = 10, scale = 2)
+    @Column(name = "FinalTotal", precision = 10, scale = 2, nullable = false)
     private BigDecimal finalTotal;
 
     @Column(name = "TableID")
@@ -49,23 +49,23 @@ public class Order {
     private Integer statusId;
 
     @Column(name = "IsRefunded", nullable = false)
-    private Integer isRefunded = 0;
+    private Integer isRefunded;
 
     @Column(name = "Notes", length = 255)
     private String notes;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "TableID", insertable = false, updatable = false)
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private RestaurantTable table;
 
     @OneToMany(mappedBy = "orderId", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-    private List<OrderDetail> orderDetails;
+    private List<Invoice> invoices;
 
     @OneToMany(mappedBy = "orderId", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-    private List<Invoice> invoices;
+    private List<OrderDetail> orderDetails;
 
     @PrePersist
     protected void onCreate() {
@@ -76,7 +76,7 @@ public class Order {
             statusId = 1; // Pending
         }
         if (isRefunded == null) {
-            isRefunded = 0;
+            isRefunded = 0; // 0 thay vì false
         }
         if (discountAmount == null) {
             discountAmount = BigDecimal.ZERO;

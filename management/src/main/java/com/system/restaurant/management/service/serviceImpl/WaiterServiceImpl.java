@@ -19,12 +19,8 @@ import java.util.Optional;
 public class WaiterServiceImpl implements WaiterService {
 
     private final OrderRepository orderRepository;
-    private final OrderDetailRepository orderDetailRepository;
-    private final ReservationRepository reservationRepository;
     private final RestaurantTableRepository restaurantTableRepository;
-    private final CustomerRepository customerRepository;
-    private final DishRepository dishRepository;
-    private final ComboRepository comboRepository;
+    private final ReservationRepository reservationRepository;
     private final InvoiceRepository invoiceRepository;
     private final PaymentRecordRepository paymentRecordRepository;
 
@@ -33,39 +29,26 @@ public class WaiterServiceImpl implements WaiterService {
         String customerName = request.getCustomerName();
         String phone = request.getCustomerPhone();
 
-        // Tracking từ reservation nếu có reservationId
         if (request.getReservationId() != null) {
             Optional<Reservation> reservation = reservationRepository.findById(request.getReservationId());
             if (reservation.isPresent()) {
                 Reservation res = reservation.get();
                 customerName = res.getCustomerName();
                 phone = res.getPhone();
-
-                // Cập nhật status reservation thành Confirmed
-                res.setStatusId(2);
-                reservationRepository.save(res);
             }
         }
 
-        // Validation: không được để phone trống
         if (phone == null || phone.trim().isEmpty()) {
-            throw new RuntimeException("Số điện thoại không được để trống");
+            throw new IllegalArgumentException("Số điện thoại khách hàng là bắt buộc");
+        }
+        if (customerName == null || customerName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Tên khách hàng là bắt buộc");
         }
 
-        // Tính tổng tiền
         BigDecimal subTotal = calculateSubTotal(request.getItems());
-        BigDecimal discountAmount = request.getDiscountAmount() != null ? request.getDiscountAmount() : BigDecimal.ZERO;
+        BigDecimal discountAmount = BigDecimal.ZERO;
         BigDecimal finalTotal = subTotal.subtract(discountAmount);
 
-        // Cập nhật trạng thái bàn nếu là DINEIN
-        if ("DINEIN".equalsIgnoreCase(request.getOrderType()) && request.getTableId() != null) {
-            RestaurantTable table = restaurantTableRepository.findById(request.getTableId())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy bàn"));
-            table.setStatus("OCCUPIED");
-            restaurantTableRepository.save(table);
-        }
-
-        // Tạo order
         Order order = Order.builder()
                 .orderType(request.getOrderType())
                 .customerName(customerName)
@@ -73,59 +56,56 @@ public class WaiterServiceImpl implements WaiterService {
                 .subTotal(subTotal)
                 .discountAmount(discountAmount)
                 .finalTotal(finalTotal)
-                .tableId(request.getTableId())
                 .statusId(1)
-                .isRefunded(0)
+                .isRefunded(0) // 0 thay vì false
                 .notes(request.getNotes())
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        order = orderRepository.save(order);
-
-        // Tạo order details
-        if (request.getItems() != null) {
-            for (OrderItemRequest item : request.getItems()) {
-                OrderDetail orderDetail = OrderDetail.builder()
-                        .orderId(order.getOrderId())
-                        .dishId(item.getDishId())
-                        .comboId(item.getComboId())
-                        .quantity(item.getQuantity())
-                        .unitPrice(item.getUnitPrice())
-                        .statusId(1)
-                        .isRefunded(0)
-                        .notes(item.getNotes())
-                        .build();
-                orderDetailRepository.save(orderDetail);
+        if (request.getTableId() != null) {
+            Optional<RestaurantTable> table = restaurantTableRepository.findById(request.getTableId());
+            if (table.isPresent()) {
+                order.setTable(table.get());
+                if ("DINEIN".equalsIgnoreCase(request.getOrderType())) {
+                    RestaurantTable tableToUpdate = table.get();
+                    tableToUpdate.setStatus("OCCUPIED");
+                    restaurantTableRepository.save(tableToUpdate);
+                }
             }
         }
 
-        return order;
+        return orderRepository.save(order);
     }
 
     @Override
     public Order createDineInOrder(CreateDineInOrderRequest request) {
-        CreateOrderRequest orderRequest = CreateOrderRequest.builder()
-                .orderType("DINEIN")
-                .customerName(request.getCustomerName())
-                .customerPhone(request.getCustomerPhone())
-                .tableId(request.getTableId())
-                .reservationId(request.getReservationId())
-                .notes(request.getNotes())
-                .items(request.getOrderItems())
-                .build();
+        CreateOrderRequest orderRequest = new CreateOrderRequest();
+        orderRequest.setTableId(request.getTableId());
+        orderRequest.setReservationId(request.getReservationId());
+        orderRequest.setOrderType("DINEIN");
+        orderRequest.setCustomerName(request.getCustomerName());
+        orderRequest.setCustomerPhone(request.getCustomerPhone());
+        orderRequest.setNotes(request.getNotes());
+        orderRequest.setItems(request.getOrderItems());
 
         return createOrderWithReservationTracking(orderRequest);
     }
 
     @Override
     public Order createTakeawayOrder(CreateTakeawayOrderRequest request) {
-        CreateOrderRequest orderRequest = CreateOrderRequest.builder()
-                .orderType("TAKEAWAY")
-                .customerName(request.getCustomerName())
-                .customerPhone(request.getCustomerPhone())
-                .notes(request.getNotes())
-                .items(request.getOrderItems())
-                .build();
+        if (request.getCustomerPhone() == null || request.getCustomerPhone().trim().isEmpty()) {
+            throw new IllegalArgumentException("Số điện thoại khách hàng là bắt buộc cho đơn mang đi");
+        }
+        if (request.getCustomerName() == null || request.getCustomerName().trim().isEmpty()) {
+            throw new IllegalArgumentException("Tên khách hàng là bắt buộc cho đơn mang đi");
+        }
+
+        CreateOrderRequest orderRequest = new CreateOrderRequest();
+        orderRequest.setOrderType("TAKEAWAY");
+        orderRequest.setCustomerName(request.getCustomerName());
+        orderRequest.setCustomerPhone(request.getCustomerPhone());
+        orderRequest.setNotes(request.getNotes());
+        orderRequest.setItems(request.getOrderItems());
 
         return createOrderWithReservationTracking(orderRequest);
     }
@@ -138,17 +118,16 @@ public class WaiterServiceImpl implements WaiterService {
         }
 
         Reservation res = reservation.get();
-        res.setStatusId(2); // Confirmed
+        res.setStatusId(2); // 2 = Confirmed
         reservationRepository.save(res);
 
-        CreateOrderRequest orderRequest = CreateOrderRequest.builder()
-                .orderType("DINEIN")
-                .customerName(res.getCustomerName())
-                .customerPhone(res.getPhone())
-                .tableId(tableId)
-                .reservationId(reservationId)
-                .notes("Check-in từ reservation")
-                .build();
+        CreateOrderRequest orderRequest = new CreateOrderRequest();
+        orderRequest.setReservationId(reservationId);
+        orderRequest.setTableId(tableId);
+        orderRequest.setOrderType("DINEIN");
+        orderRequest.setCustomerName(res.getCustomerName());
+        orderRequest.setCustomerPhone(res.getPhone());
+        orderRequest.setNotes("Check-in từ reservation");
 
         Order order = createOrderWithReservationTracking(orderRequest);
 
@@ -173,7 +152,6 @@ public class WaiterServiceImpl implements WaiterService {
     public CompletePaymentResponse processCompletePayment(Integer orderId, PaymentRequest paymentRequest) {
         Order order = getOrderById(orderId);
 
-        // Tạo invoice
         Invoice invoice = invoiceRepository.findByOrderId(orderId)
                 .orElseGet(() -> {
                     Invoice newInvoice = Invoice.builder()
@@ -186,7 +164,6 @@ public class WaiterServiceImpl implements WaiterService {
                     return invoiceRepository.save(newInvoice);
                 });
 
-        // Tạo payment record
         PaymentRecord paymentRecord = PaymentRecord.builder()
                 .invoiceId(invoice.getInvoiceId())
                 .methodId(paymentRequest.getMethodId())
@@ -196,15 +173,12 @@ public class WaiterServiceImpl implements WaiterService {
 
         paymentRecord = paymentRecordRepository.save(paymentRecord);
 
-        // Cập nhật trạng thái order
-        order.setStatusId(3); // Done
+        order.setStatusId(3); // 3 = Done
         orderRepository.save(order);
 
-        // Cập nhật trạng thái bàn nếu là DINEIN
-        if ("DINEIN".equalsIgnoreCase(order.getOrderType()) && order.getTableId() != null) {
-            RestaurantTable table = restaurantTableRepository.findById(order.getTableId())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy bàn"));
-            table.setStatus("FREE");
+        if ("DINEIN".equalsIgnoreCase(order.getOrderType()) && order.getTable() != null) {
+            RestaurantTable table = order.getTable();
+            table.setStatus("AVAILABLE"); // AVAILABLE thay vì FREE
             restaurantTableRepository.save(table);
         }
 
@@ -222,60 +196,19 @@ public class WaiterServiceImpl implements WaiterService {
     }
 
     @Override
-    public CustomerPurchaseHistoryResponse getCustomerPurchaseHistoryByPhone(String phone) {
-        List<Order> orders = orderRepository.findByPhoneOrderByCreatedAtDesc(phone);
-
-        BigDecimal totalSpent = orders.stream()
-                .filter(o -> o.getStatusId() == 3) // Done orders only
-                .map(Order::getFinalTotal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        // Load invoices và payment records cho từng order
-        for (Order order : orders) {
-            List<Invoice> invoices = invoiceRepository.findByOrderId(order.getOrderId());
-            for (Invoice invoice : invoices) {
-                List<PaymentRecord> paymentRecords = paymentRecordRepository.findByInvoiceId(invoice.getInvoiceId());
-                invoice.setPaymentRecords(paymentRecords);
-            }
-            order.setInvoices(invoices);
-        }
-
-        return CustomerPurchaseHistoryResponse.builder()
-                .phone(phone)
-                .customerName(orders.isEmpty() ? null : orders.get(0).getCustomerName())
-                .orders(orders)
-                .totalSpent(totalSpent)
-                .totalOrders(orders.size())
-                .build();
+    public List<Order> getOrdersByTable(Integer tableId) {
+        return orderRepository.findByTable_TableId(tableId);
     }
 
-    private BigDecimal calculateSubTotal(List<OrderItemRequest> items) {
-        if (items == null || items.isEmpty()) {
-            return BigDecimal.ZERO;
-        }
-
-        BigDecimal subTotal = BigDecimal.ZERO;
-        for (OrderItemRequest item : items) {
-            BigDecimal itemTotal = item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
-            subTotal = subTotal.add(itemTotal);
-        }
-        return subTotal;
+    @Override
+    public List<Order> getActiveOrders() {
+        return orderRepository.findByStatusIdIn(List.of(1, 2, 3));
     }
 
     @Override
     public Order getOrderById(Integer orderId) {
         return orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy order với ID: " + orderId));
-    }
-
-    @Override
-    public List<Order> getActiveOrders() {
-        return orderRepository.findByStatusIdIn(List.of(1, 2)); // Pending, Processing
-    }
-
-    @Override
-    public List<Order> getOrdersByTable(Integer tableId) {
-        return orderRepository.findByTableIdOrderByCreatedAtDesc(tableId);
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng với ID: " + orderId));
     }
 
     @Override
@@ -291,6 +224,66 @@ public class WaiterServiceImpl implements WaiterService {
     }
 
     @Override
+    public RestaurantTable updateTableStatus(Integer tableId, String status) {
+        RestaurantTable table = restaurantTableRepository.findById(tableId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bàn với ID: " + tableId));
+        table.setStatus(status);
+        return restaurantTableRepository.save(table);
+    }
+
+    @Override
+    public CustomerPurchaseHistoryResponse getCustomerPurchaseHistoryByPhone(String phone) {
+        List<Order> orders = orderRepository.findByPhone(phone);
+
+        List<Order> completeOrders = orders.stream()
+                .filter(order -> order.getStatusId() == 4)
+                .toList();
+
+        BigDecimal totalSpent = completeOrders.stream()
+                .map(Order::getFinalTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        CustomerPurchaseHistoryResponse response = new CustomerPurchaseHistoryResponse();
+        response.setPhone(phone);
+        response.setOrders(completeOrders);
+        response.setTotalSpent(totalSpent);
+        response.setTotalOrders(completeOrders.size());
+
+        if (!completeOrders.isEmpty()) {
+            response.setCustomerName(completeOrders.get(0).getCustomerName());
+        }
+
+        return response;
+    }
+
+    @Override
+    public List<Order> getOrdersByType(String orderType) {
+        return orderRepository.findByOrderType(orderType);
+    }
+
+    @Override
+    public Invoice getInvoiceByOrder(Integer orderId) {
+        return invoiceRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn cho đơn hàng: " + orderId));
+    }
+
+    @Override
+    public Invoice getInvoiceById(Integer invoiceId) {
+        return invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn với ID: " + invoiceId));
+    }
+
+    @Override
+    public List<PaymentRecord> getPaymentRecordsByInvoice(Integer invoiceId) {
+        return paymentRecordRepository.findByInvoiceId(invoiceId);
+    }
+
+    @Override
+    public List<PaymentRecord> getPaymentRecordsByOrder(Integer orderId) {
+        return paymentRecordRepository.findByOrderId(orderId);
+    }
+
+    @Override
     public List<RestaurantTable> getTablesByArea(Integer areaId) {
         return restaurantTableRepository.findByAreaId(areaId);
     }
@@ -301,8 +294,37 @@ public class WaiterServiceImpl implements WaiterService {
     }
 
     @Override
-    public Invoice getInvoiceByOrder(Integer orderId) {
-        return invoiceRepository.findByOrderId(orderId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy invoice cho order: " + orderId));
+    public List<RestaurantTable> getWindowTables() {
+        return restaurantTableRepository.findByIsWindow(true);
+    }
+
+    @Override
+    public List<RestaurantTable> getFreeWindowTables() {
+        return restaurantTableRepository.findFreeWindowTables();
+    }
+
+    @Override
+    public List<RestaurantTable> getTablesByType(String tableType) {
+        return restaurantTableRepository.findByTableType(tableType);
+    }
+
+    @Override
+    public RestaurantTable getTableByName(String tableName) {
+        return restaurantTableRepository.findByTableName(tableName)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bàn với tên: " + tableName));
+    }
+
+    private BigDecimal calculateSubTotal(List<OrderItemRequest> items) {
+        if (items == null || items.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+
+        return items.stream()
+                .map(item -> {
+                    BigDecimal price = item.getUnitPrice() != null ? item.getUnitPrice() : BigDecimal.ZERO;
+                    Integer quantity = item.getQuantity() != null ? item.getQuantity() : 0;
+                    return price.multiply(BigDecimal.valueOf(quantity));
+                })
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }

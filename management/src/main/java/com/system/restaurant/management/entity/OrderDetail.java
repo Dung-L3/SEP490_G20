@@ -31,14 +31,14 @@ public class OrderDetail {
     @Column(name = "Quantity", nullable = false)
     private Integer quantity;
 
-    @Column(name = "UnitPrice", nullable = false, precision = 10, scale = 2)
+    @Column(name = "UnitPrice", precision = 10, scale = 2, nullable = false)
     private BigDecimal unitPrice;
 
     @Column(name = "StatusID", nullable = false)
     private Integer statusId;
 
     @Column(name = "IsRefunded", nullable = false)
-    private Integer isRefunded = 0;
+    private Integer isRefunded;
 
     @Column(name = "Notes", length = 255)
     private String notes;
@@ -47,16 +47,6 @@ public class OrderDetail {
     @JoinColumn(name = "OrderID", insertable = false, updatable = false)
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Order order;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "DishID", insertable = false, updatable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-    private Dish dish;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ComboID", insertable = false, updatable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-    private Combo combo;
 
     @PrePersist
     protected void onCreate() {
