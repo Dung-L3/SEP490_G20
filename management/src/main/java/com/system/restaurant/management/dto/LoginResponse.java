@@ -1,14 +1,11 @@
 package com.system.restaurant.management.dto;
 
-import lombok.Builder;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 
 @Data
-@Builder
+@AllArgsConstructor
 public class LoginResponse {
-    private Integer userId;
-    private String username;
-    private String fullName;
-    private String email;
-    private String message;
+    private String mess;
+    private String role;
 }
