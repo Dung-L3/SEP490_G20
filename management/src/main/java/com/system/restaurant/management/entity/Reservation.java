@@ -25,7 +25,7 @@ public class Reservation {
     @Column(name = "CustomerName", length = 255)
     private String customerName;
 
-    @Column(name = "Phone", nullable = false, length = 20)
+    @Column(name = "Phone", length = 20, nullable = false)
     private String phone;
 
     @Column(name = "Email", length = 100)
@@ -38,18 +38,13 @@ public class Reservation {
     private LocalDateTime reservationAt;
 
     @Column(name = "StatusID", nullable = false)
-    private Integer statusId;
+    private Integer statusId; // Thêm field này
 
     @Column(name = "CreatedAt", nullable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "Notes", length = 255)
     private String notes;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "CustomerID", insertable = false, updatable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-    private Customer customer;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "TableID", insertable = false, updatable = false)
@@ -60,6 +55,9 @@ public class Reservation {
     protected void onCreate() {
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
+        }
+        if (statusId == null) {
+            statusId = 1; // Pending
         }
     }
 }

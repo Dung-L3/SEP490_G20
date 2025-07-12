@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Getter
@@ -19,7 +20,7 @@ public class RestaurantTable {
     @Column(name = "TableID")
     private Integer tableId;
 
-    @Column(name = "TableName", nullable = false, length = 50)
+    @Column(name = "TableName", length = 50, nullable = false)
     private String tableName;
 
     @Column(name = "AreaID", nullable = false)
@@ -28,11 +29,11 @@ public class RestaurantTable {
     @Column(name = "TableType", length = 50)
     private String tableType;
 
-    @Column(name = "Status", nullable = false, length = 20)
+    @Column(name = "Status", length = 20, nullable = false)
     private String status;
 
     @Column(name = "IsWindow", nullable = false)
-    private Boolean isWindow = false;
+    private Boolean isWindow;
 
     @Column(name = "Notes", length = 255)
     private String notes;
@@ -40,10 +41,9 @@ public class RestaurantTable {
     @Column(name = "CreatedAt", nullable = false)
     private LocalDateTime createdAt;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "AreaID", insertable = false, updatable = false)
+    @OneToMany(mappedBy = "tableId", fetch = FetchType.LAZY)
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-    private Area area;
+    private List<Order> orders;
 
     @PrePersist
     protected void onCreate() {

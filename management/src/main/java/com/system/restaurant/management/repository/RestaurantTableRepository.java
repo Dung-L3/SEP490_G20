@@ -7,22 +7,25 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface RestaurantTableRepository extends JpaRepository<RestaurantTable, Integer> {
 
-    @Query("SELECT rt FROM RestaurantTable rt WHERE rt.status = :status")
-    List<RestaurantTable> findByStatus(@Param("status") String status);
+    List<RestaurantTable> findByStatus(String status);
 
     @Query("SELECT rt FROM RestaurantTable rt WHERE rt.areaId = :areaId")
     List<RestaurantTable> findByAreaId(@Param("areaId") Integer areaId);
 
-    @Query("SELECT rt FROM RestaurantTable rt WHERE rt.areaId = :areaId AND rt.status = 'FREE'")
+    @Query("SELECT rt FROM RestaurantTable rt WHERE rt.areaId = :areaId AND rt.status = 'AVAILABLE'")
     List<RestaurantTable> findFreeTablesByArea(@Param("areaId") Integer areaId);
 
-    @Query("SELECT rt FROM RestaurantTable rt WHERE rt.status = 'FREE' ORDER BY rt.tableName")
-    List<RestaurantTable> findFreeTables();
+    List<RestaurantTable> findByIsWindow(Boolean isWindow);
 
-    @Query("SELECT rt FROM RestaurantTable rt WHERE rt.isWindow = true AND rt.status = 'FREE'")
+    @Query("SELECT rt FROM RestaurantTable rt WHERE rt.isWindow = true AND rt.status = 'AVAILABLE'")
     List<RestaurantTable> findFreeWindowTables();
+
+    List<RestaurantTable> findByTableType(String tableType);
+
+    Optional<RestaurantTable> findByTableName(String tableName);
 }

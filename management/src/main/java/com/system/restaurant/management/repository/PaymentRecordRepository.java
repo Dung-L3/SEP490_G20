@@ -11,9 +11,9 @@ import java.util.List;
 @Repository
 public interface PaymentRecordRepository extends JpaRepository<PaymentRecord, Integer> {
 
-    @Query("SELECT pr FROM PaymentRecord pr WHERE pr.invoiceId = :invoiceId")
+    @Query("SELECT pr FROM PaymentRecord pr WHERE pr.invoice.invoiceId = :invoiceId")
     List<PaymentRecord> findByInvoiceId(@Param("invoiceId") Integer invoiceId);
 
-    @Query("SELECT pr FROM PaymentRecord pr WHERE pr.methodId = :methodId")
-    List<PaymentRecord> findByMethodId(@Param("methodId") Integer methodId);
+    @Query("SELECT pr FROM PaymentRecord pr WHERE pr.invoice.order.orderId = :orderId")
+    List<PaymentRecord> findByOrderId(@Param("orderId") Integer orderId);
 }
