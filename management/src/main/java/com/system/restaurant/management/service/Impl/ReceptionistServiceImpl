@@ -1,0 +1,151 @@
+package com.system.restaurant.management.service.serviceImpl;
+
+import com.system.restaurant.management.entity.*;
+import com.system.restaurant.management.repository.*;
+import com.system.restaurant.management.service.ReceptionistService;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Service
+@Transactional
+public class ReceptionistServiceImpl implements ReceptionistService {
+
+    private static final int STATUS_PENDING   = 1;
+    private static final int STATUS_CONFIRMED = 2;
+    private static final int STATUS_CANCELLED = 3;
+
+    private final OrderRepository         orderRepo;
+    private final InvoiceRepository       invoiceRepo;
+    private final PaymentRecordRepository paymentRepo;
+    private final ReservationRepository   reservationRepo;
+    private final NotificationRepository  notificationRepo;
+
+    public ReceptionistServiceImpl(
+            OrderRepository orderRepo,
+            InvoiceRepository invoiceRepo,
+            PaymentRecordRepository paymentRepo,
+            ReservationRepository reservationRepo,
+            NotificationRepository notificationRepo
+    ) {
+        this.orderRepo        = orderRepo;
+        this.invoiceRepo      = invoiceRepo;
+        this.paymentRepo      = paymentRepo;
+        this.reservationRepo  = reservationRepo;
+        this.notificationRepo = notificationRepo;
+    }
+
+    @Override
+    public Order placeTakeawayOrder(Order dto) {
+        Order o = Order.builder()
+                .orderType("TAKEAWAY")
+                .customerName(dto.getCustomerName())
+                .phone(dto.getPhone())
+                .subTotal(dto.getSubTotal())
+                .discountAmount(BigDecimal.valueOf(0.0))
+                .finalTotal(dto.getSubTotal())
+                .createdAt(LocalDateTime.now())
+                .statusId(STATUS_PENDING)
+                .notes(dto.getNotes())
+                .build();
+        return orderRepo.save(o);
+    }
+
+    @Override
+    public Invoice generateInvoice(Integer orderId) {
+        Order o = orderRepo.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
+
+        Invoice inv = Invoice.builder()
+                .order(o)
+                .subTotal(o.getSubTotal())
+                .discountAmount(o.getDiscountAmount())
+                .finalTotal(o.getFinalTotal())
+                .issuedBy(null) // TODO: set userID who issues
+                .issuedAt(LocalDateTime.now())
+                .build();
+
+        return invoiceRepo.save(inv);
+    }
+
+    @Override
+    public Invoice applyDiscount(Integer orderId, double amount) {
+        // cập nhật discount trên hóa đơn vừa tạo
+        Invoice inv = (Invoice) invoiceRepo.findByOrderId(orderId);
+        inv.setDiscountAmount(BigDecimal.valueOf(amount));
+        inv.setFinalTotal(inv.getSubTotal().subtract(BigDecimal.valueOf(amount)));
+        return invoiceRepo.save(inv);
+    }
+
+    @Override
+    public PaymentRecord processPayment(Integer orderId, PaymentRecord req) {
+        Invoice inv = (Invoice) invoiceRepo.findByOrderId(orderId);
+        PaymentRecord pr = PaymentRecord.builder()
+                .invoice(inv)
+                .methodId(req.getMethodId())
+                .amount(req.getAmount())
+                .paidAt(LocalDateTime.now())
+                .notes(req.getNotes())
+                .build();
+        return paymentRepo.save(pr);
+    }
+
+    @Override
+    public byte[] exportInvoicePdf(Integer invoiceId) {
+        // TODO: kết nối với thư viện PDF (iText, Apache PDFBox) để render invoice thành PDF
+        // Tạm trả về mảng rỗng
+        return new byte[0];
+    }
+
+    @Override
+    public Reservation createReservation(Reservation dto) {
+        Reservation r = Reservation.builder()
+                .customerId(dto.getCustomerId())
+                .customerName(dto.getCustomerName())
+                .phone(dto.getPhone())
+                .email(dto.getEmail())
+                .tableId(dto.getTableId())
+                .reservationAt(dto.getReservationAt())
+                .statusId(STATUS_PENDING)
+                .createdAt(LocalDateTime.now())
+                .notes(dto.getNotes())
+                .build();
+        return reservationRepo.save(r);
+    }
+
+    @Override
+    public void confirmReservation(Integer reservationId) {
+        reservationRepo.findById(reservationId).ifPresent(r -> {
+            r.setStatusId(STATUS_CONFIRMED);
+            reservationRepo.save(r);
+        });
+    }
+
+    @Override
+    public void cancelReservation(Integer reservationId) {
+        reservationRepo.findById(reservationId).ifPresent(r -> {
+            r.setStatusId(STATUS_CANCELLED);
+            reservationRepo.save(r);
+        });
+    }
+
+    @Override
+    public List<Reservation> viewReservationCalendar() {
+        return reservationRepo.findAll();
+    }
+
+    @Override
+    public Notification sendReservationReminder(Integer reservationId) {
+        Notification n = Notification.builder()
+                .reservationId(reservationId)
+                .sentAt(LocalDateTime.now())
+                .channel("EMAIL")
+                .status("SENT")
+                .notes("Reminder for reservation " + reservationId)
+                .build();
+        return notificationRepo.save(n);
+    }
+}
