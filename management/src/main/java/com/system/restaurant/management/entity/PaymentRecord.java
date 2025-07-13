@@ -35,9 +35,10 @@ public class PaymentRecord {
     @Column(name = "Notes", length = 255)
     private String notes;
 
-    // Thêm fields cho WaiterServiceImpl
-    @Transient
-    private LocalDateTime paymentDate;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "MethodID", insertable = false, updatable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private PaymentMethod paymentMethod;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "InvoiceID", insertable = false, updatable = false)
@@ -49,10 +50,5 @@ public class PaymentRecord {
         if (paidAt == null) {
             paidAt = LocalDateTime.now();
         }
-    }
-
-    // Getter method để map paidAt -> paymentDate
-    public LocalDateTime getPaymentDate() {
-        return this.paidAt;
     }
 }

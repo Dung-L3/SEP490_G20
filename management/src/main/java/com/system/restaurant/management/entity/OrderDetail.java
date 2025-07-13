@@ -48,13 +48,24 @@ public class OrderDetail {
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Order order;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "DishID", insertable = false, updatable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private Dish dish;
+
     @PrePersist
     protected void onCreate() {
         if (statusId == null) {
-            statusId = 1; // Pending
+            statusId = 1;
         }
         if (isRefunded == null) {
             isRefunded = 0;
         }
+    }
+
+    // Method to get dish name
+    @Transient
+    public String getDishName() {
+        return dish != null ? dish.getDishName() : null;
     }
 }

@@ -23,7 +23,7 @@ public interface WaiterService {
     CustomerPurchaseHistoryResponse getCustomerPurchaseHistoryByPhone(String phone);
     List<Order> getOrdersByType(String orderType);
 
-    Invoice getInvoiceByOrder(Integer orderId);
+    InvoiceResponseDTO getInvoiceResponseByOrder(Integer orderId);
     Invoice getInvoiceById(Integer invoiceId);
 
     List<PaymentRecord> getPaymentRecordsByInvoice(Integer invoiceId);

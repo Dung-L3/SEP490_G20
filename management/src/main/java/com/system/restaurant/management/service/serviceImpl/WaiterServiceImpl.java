@@ -12,6 +12,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +24,65 @@ public class WaiterServiceImpl implements WaiterService {
     private final ReservationRepository reservationRepository;
     private final InvoiceRepository invoiceRepository;
     private final PaymentRecordRepository paymentRecordRepository;
+    private final PaymentMethodRepository paymentMethodRepository;
+    private final DishRepository dishRepository;
+    private final OrderDetailRepository orderDetailRepository;
+
+    @Override
+    public InvoiceResponseDTO getInvoiceResponseByOrder(Integer orderId) {
+        Invoice invoice = invoiceRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn cho đơn hàng: " + orderId));
+
+        Order order = invoice.getOrder();
+        List<PaymentRecord> payments = paymentRecordRepository.findByInvoiceId(invoice.getInvoiceId());
+
+        InvoiceResponseDTO response = new InvoiceResponseDTO();
+        response.setInvoiceId(invoice.getInvoiceId());
+        response.setInvoiceNumber("INV" + String.format("%011d", invoice.getInvoiceId()));
+        response.setOrderId(order.getOrderId());
+        response.setCustomerName(order.getCustomerName());
+        response.setCustomerPhone(order.getPhone());
+        response.setSubTotal(invoice.getSubTotal());
+        response.setDiscount(invoice.getDiscountAmount());
+        response.setFinalTotal(invoice.getFinalTotal());
+
+        // Set payment info if available
+        if (!payments.isEmpty()) {
+            PaymentRecord latestPayment = payments.get(0);
+            PaymentMethod paymentMethod = paymentMethodRepository.findById(latestPayment.getMethodId())
+                    .orElseThrow(() -> new RuntimeException("Payment method not found: " + latestPayment.getMethodId()));
+            response.setPaymentMethod(paymentMethod.getMethodName());
+            response.setPaymentDate(latestPayment.getPaidAt());
+        }
+
+        response.setStatus(getOrderStatusName(order.getStatusId()));
+
+        List<InvoiceItemDTO> items = order.getOrderDetails().stream()
+                .map(detail -> {
+                    InvoiceItemDTO item = new InvoiceItemDTO();
+                    item.setDishName(detail.getDishName());
+                    item.setQuantity(detail.getQuantity());
+                    item.setUnitPrice(detail.getUnitPrice());
+                    item.setTotal(detail.getUnitPrice()
+                            .multiply(BigDecimal.valueOf(detail.getQuantity())));
+                    return item;
+                })
+                .collect(Collectors.toList());
+
+        response.setItems(items);
+
+        return response;
+    }
+
+    private String getOrderStatusName(Integer statusId) {
+        return switch (statusId) {
+            case 1 -> "PENDING";
+            case 2 -> "IN_PROGRESS";
+            case 3 -> "COMPLETED";
+            case 4 -> "CANCELLED";
+            default -> "UNKNOWN";
+        };
+    }
 
     @Override
     public Order createOrderWithReservationTracking(CreateOrderRequest request) {
@@ -259,12 +319,6 @@ public class WaiterServiceImpl implements WaiterService {
     @Override
     public List<Order> getOrdersByType(String orderType) {
         return orderRepository.findByOrderType(orderType);
-    }
-
-    @Override
-    public Invoice getInvoiceByOrder(Integer orderId) {
-        return invoiceRepository.findByOrderId(orderId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn cho đơn hàng: " + orderId));
     }
 
     @Override

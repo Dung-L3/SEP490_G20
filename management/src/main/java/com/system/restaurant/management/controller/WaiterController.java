@@ -101,8 +101,8 @@ public class WaiterController {
     }
 
     @GetMapping("/invoices/order/{orderId}")
-    public ResponseEntity<Invoice> getInvoiceByOrder(@PathVariable Integer orderId) {
-        Invoice invoice = waiterService.getInvoiceByOrder(orderId);
-        return ResponseEntity.ok(invoice);
+    public ResponseEntity<InvoiceResponseDTO> getInvoiceByOrder(@PathVariable Integer orderId) {
+        InvoiceResponseDTO response = waiterService.getInvoiceResponseByOrder(orderId);
+        return ResponseEntity.ok(response);
     }
 }
