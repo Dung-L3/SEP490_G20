@@ -32,8 +32,9 @@ public class Invoice {
     @Column(name = "FinalTotal", nullable = false)
     private BigDecimal finalTotal;
 
-    @Column(name = "IssuedBy", nullable = false)
-    private Integer issuedBy;
+    @ManyToOne
+    @JoinColumn(name = "IssuedBy")
+    private User issuedBy;
 
     @Column(name = "IssuedAt", nullable = false)
     private LocalDateTime issuedAt;

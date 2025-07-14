@@ -40,4 +40,8 @@ public class RestaurantTable {
 
     @Column(name = "CreatedAt", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    public RestaurantTable(Integer tableId) {
+        this.tableId = tableId;
+    }
 }
