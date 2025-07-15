@@ -21,11 +21,10 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     public Reservation createReservation(CreateReservationRequest request) {
         Reservation reservation = Reservation.builder()
-                .customerId(request.getCustomerId())
                 .customerName(request.getCustomerName())
                 .phone(request.getPhone())
-                .email(request.getEmail())
-                .tableId(request.getTableId())
+                .email(request.getEmail()) // Có thể null
+                .tableId(request.getTableId()) // Có thể null
                 .reservationAt(request.getReservationAt())
                 .statusId(Reservation.Status.PENDING)
                 .notes(request.getNotes())
