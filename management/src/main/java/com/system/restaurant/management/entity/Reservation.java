@@ -46,16 +46,16 @@ public class Reservation {
     @Column(name = "CustomerID")
     private Integer customerId;
 
-    @Column(name = "CustomerName", length = 255)
+    @Column(name = "CustomerName", length = 255, nullable = false)
     private String customerName;
 
     @Column(name = "Phone", length = 20, nullable = false)
     private String phone;
 
-    @Column(name = "Email", length = 100)
+    @Column(name = "Email", length = 100, nullable = true)
     private String email;
 
-    @Column(name = "TableID", nullable = false)
+    @Column(name = "TableID", nullable = true)
     private Integer tableId;
 
     @Column(name = "ReservationAt", nullable = false)
