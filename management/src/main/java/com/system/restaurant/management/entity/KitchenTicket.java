@@ -26,4 +26,5 @@ public class KitchenTicket {
 
     @Column(name = "PrintedBy")
     private Integer printedBy;
+
 }

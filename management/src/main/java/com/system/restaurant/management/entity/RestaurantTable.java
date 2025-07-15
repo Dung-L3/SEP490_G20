@@ -54,4 +54,7 @@ public class RestaurantTable {
             isWindow = false;
         }
     }
+    public RestaurantTable(Integer tableId) {
+        this.tableId = tableId;
+    }
 }
