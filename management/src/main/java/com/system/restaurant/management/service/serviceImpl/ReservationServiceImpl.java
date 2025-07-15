@@ -5,6 +5,7 @@ import com.system.restaurant.management.entity.Reservation;
 import com.system.restaurant.management.exception.ResourceNotFoundException;
 import com.system.restaurant.management.repository.ReservationRepository;
 import com.system.restaurant.management.service.ReservationService;
+import com.system.restaurant.management.service.ReservationTimeValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,11 +21,14 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Override
     public Reservation createReservation(CreateReservationRequest request) {
+        // Validate reservation time
+        ReservationTimeValidator.validateReservationTime(request.getReservationAt());
+
         Reservation reservation = Reservation.builder()
                 .customerName(request.getCustomerName())
                 .phone(request.getPhone())
-                .email(request.getEmail()) // Có thể null
-                .tableId(request.getTableId()) // Có thể null
+                .email(request.getEmail())
+                .tableId(request.getTableId())
                 .reservationAt(request.getReservationAt())
                 .statusId(Reservation.Status.PENDING)
                 .notes(request.getNotes())

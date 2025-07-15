@@ -11,4 +11,5 @@ public interface ReservationRepository extends JpaRepository<Reservation, Intege
     List<Reservation> findByPhone(String phone);
     List<Reservation> findByStatusId(Integer statusId);
     List<Reservation> findByReservationAtBetween(LocalDateTime start, LocalDateTime end);
+    List<Reservation> findByStatusIdAndReservationAtBefore(Integer statusId, LocalDateTime dateTime);
 }
