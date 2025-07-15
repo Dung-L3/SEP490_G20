@@ -14,6 +14,30 @@ import java.time.LocalDateTime;
 @Table(name = "Reservations")
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Reservation {
+    public static class Status {
+        public static final int PENDING = 1;
+        public static final int CONFIRMED = 2;
+        public static final int CANCELLED = 3;
+
+        public static String getName(int statusId) {
+            return switch (statusId) {
+                case PENDING -> "Pending";
+                case CONFIRMED -> "Confirmed";
+                case CANCELLED -> "Cancelled";
+                default -> throw new IllegalArgumentException("Invalid status ID: " + statusId);
+            };
+        }
+
+        public static int getIdByName(String statusName) {
+            return switch (statusName.toLowerCase()) {
+                case "pending" -> PENDING;
+                case "confirmed" -> CONFIRMED;
+                case "cancelled" -> CANCELLED;
+                default -> throw new IllegalArgumentException("Invalid status name: " + statusName);
+            };
+        }
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "ReservationID")
@@ -38,7 +62,7 @@ public class Reservation {
     private LocalDateTime reservationAt;
 
     @Column(name = "StatusID", nullable = false)
-    private Integer statusId; // Thêm field này
+    private Integer statusId;
 
     @Column(name = "CreatedAt", nullable = false)
     private LocalDateTime createdAt;
@@ -57,7 +81,12 @@ public class Reservation {
             createdAt = LocalDateTime.now();
         }
         if (statusId == null) {
-            statusId = 1; // Pending
+            statusId = Status.PENDING;
         }
+    }
+
+    @Transient
+    public String getStatusName() {
+        return Status.getName(this.statusId);
     }
 }
