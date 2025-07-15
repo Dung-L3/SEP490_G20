@@ -7,6 +7,8 @@ import Footer from '../components/Footer';
 const Booking = () => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [note, setNote] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const navigate = useNavigate();
@@ -19,7 +21,7 @@ const Booking = () => {
       alert('Số điện thoại phải đủ 10 số.');
       return;
     }
-    alert(`Đặt bàn thành công!\nTên: ${name}\nSố điện thoại: ${phone}\nNgày: ${date}\nGiờ: ${time}`);
+    alert(`Đặt bàn thành công!\nTên: ${name}\nSố điện thoại: ${phone}\nEmail: ${email}\nNgày: ${date}\nGiờ: ${time}\nGhi chú: ${note}`);
     navigate('/menu');
   };
 
@@ -40,6 +42,18 @@ const Booking = () => {
                 onChange={(e) => setName(e.target.value)}
                 className="w-full p-3 mt-2 text-lg text-gray-800 rounded-md"
                 placeholder="Nhập họ tên của bạn"
+                required
+              />
+            </div>
+            <div className="mb-4">
+              <label htmlFor="email" className="block text-lg font-medium">Email</label>
+              <input
+                type="email"
+                id="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full p-3 mt-2 text-lg text-gray-800 rounded-md"
+                placeholder="Nhập email của bạn"
                 required
               />
             </div>
@@ -76,6 +90,17 @@ const Booking = () => {
                 onChange={(e) => setTime(e.target.value)}
                 className="w-full p-3 mt-2 text-lg text-gray-800 rounded-md"
                 required
+              />
+            </div>
+            <div className="mb-4">
+              <label htmlFor="note" className="block text-lg font-medium">Ghi chú</label>
+              <textarea
+                id="note"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                className="w-full p-3 mt-2 text-lg text-gray-800 rounded-md"
+                placeholder="Ghi chú thêm (nếu có)"
+                rows={3}
               />
             </div>
             <button
