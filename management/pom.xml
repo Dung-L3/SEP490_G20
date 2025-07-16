@@ -29,7 +29,10 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter</artifactId>
 		</dependency>
-
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
 		<!-- REST API support -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -43,12 +46,6 @@
 		</dependency>
 
 		<!-- SQL Server JDBC Driver -->
-		<dependency>
-			<groupId>com.microsoft.sqlserver</groupId>
-			<artifactId>mssql-jdbc</artifactId>
-			<version>11.2.3.jre17</version>
-		</dependency>
-
 		<!-- Bean Validation (JSR-380) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -75,7 +72,10 @@
 			<artifactId>mssql-jdbc</artifactId>
 			<version>11.2.3.jre17</version>
 		</dependency>
-
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -83,7 +83,6 @@
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
-
 	<build>
 		<plugins>
 			<!-- Spring Boot Maven plugin -->
