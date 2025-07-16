@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTableCart } from '../../contexts/TableCartContext';
-import menuData from '../MenuData';
-import type { MenuItem } from '../MenuData';
+import menuData from '../../data/menuData';
+import type { MenuItem } from '../../data/menuData';
 import tables from '../../data/tables';
 import type { TableInfo } from '../../data/tables';
 import TaskbarWaiter from '../../components/TaskbarWaiter';
