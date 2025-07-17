@@ -1,14 +1,10 @@
 package com.system.restaurant.management.service.serviceImpl;
 
 import com.system.restaurant.management.dto.NotificationRequestDto;
-import com.system.restaurant.management.entity.Invoice;
-import com.system.restaurant.management.entity.KitchenTicket;
-import com.system.restaurant.management.entity.Notification;
-import com.system.restaurant.management.entity.Order;
-import com.system.restaurant.management.repository.InvoiceRepository;
-import com.system.restaurant.management.repository.KitchenTicketRepository;
-import com.system.restaurant.management.repository.NotificationRepository;
+import com.system.restaurant.management.entity.*;
+import com.system.restaurant.management.repository.*;
 import com.system.restaurant.management.service.SystemService;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,15 +19,21 @@ public class SystemServiceImpl implements SystemService {
     //private final CustomerPointsService pointsSvc;
     private final NotificationRepository notifyRepo;
     private final KitchenTicketRepository ticketRepo;
+    private final ReservationRepository reservationRepo;
+    private final OrderRepository orderRepo;
 
     public SystemServiceImpl(InvoiceRepository invoiceRepo,
                              //CustomerPointsService pointsSvc,
                              NotificationRepository notifyRepo,
-                             KitchenTicketRepository ticketRepo) {
+                             KitchenTicketRepository ticketRepo,
+                             ReservationRepository reservationRepo,
+                             OrderRepository orderRepo) {
         this.invoiceRepo = invoiceRepo;
         //this.pointsSvc   = pointsSvc;
         this.notifyRepo  = notifyRepo;
         this.ticketRepo  = ticketRepo;
+        this.reservationRepo = reservationRepo;
+        this.orderRepo = orderRepo;
     }
 
     public Invoice generateInvoice(Long orderId) {
@@ -60,7 +62,7 @@ public class SystemServiceImpl implements SystemService {
         Notification notification = Notification.builder()
                 .reservationId(dto.getRecipientId())
                 .sentAt(LocalDateTime.now())
-                .channel(dto.getChannel()) // ✅ bắt buộc có
+                .channel(dto.getChannel())
                 .status("PENDING")
                 .notes(dto.getMessage())
                 .build();
@@ -81,11 +83,19 @@ public class SystemServiceImpl implements SystemService {
 
     @Override
     public void lockReservationEdit(Long reservationId) {
-        // TODO: implement khi có ReservationRepository hoặc Entity
+        Reservation reservation = reservationRepo.findById(reservationId.intValue())
+                .orElseThrow(() -> new EntityNotFoundException("Reservation not found"));
+
+        reservation.setIsLocked(true);
+        reservationRepo.save(reservation);
     }
 
     @Override
     public void lockOrderEdit(Long orderId) {
-        // TODO: implement khi có OrderRepository hoặc Entity
+        Order order = orderRepo.findById(orderId.intValue())
+                .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+
+        order.setIsLocked(true);
+        orderRepo.save(order);
     }
 }

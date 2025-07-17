@@ -40,4 +40,7 @@ public class Reservation {
 
     @Column(name = "Notes", length = 255)
     private String notes;
+
+    @Column(name = "IsLocked")
+    private Boolean isLocked = false;
 }
