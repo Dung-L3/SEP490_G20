@@ -1,95 +1,190 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import TableMap from '../../components/TableMap';
 import TaskbarManager from '../../components/TaskbarManager';
 
+interface Order {
+  orderId: number;
+  status: string;
+  // add more fields if needed
+}
 
+interface Table {
+  tableId: number;
+  tableName: string;
+  areaId: number;
+  tableType: string;
+  status: string;
+  isWindow: boolean;
+  notes: string;
+  createdAt: string;
+  orders: Order[];
+}
 
-
-// Danh sách bàn mẫu cho TableView
-const sampleTables = [
-  // Floor 1 - Tables 1-20
-  { id: 1, name: 'Bàn 1', x: 0, y: 0, status: 'Trống', capacity: 4 },
-  { id: 2, name: 'Bàn 2', x: 1, y: 0, status: 'Đã đặt', capacity: 2, estimatedTime: '19:30' },
-  { id: 3, name: 'Bàn 3', x: 2, y: 0, status: 'Trống', capacity: 6 },
-  { id: 4, name: 'Bàn 4', x: 3, y: 0, status: 'Đang phục vụ', capacity: 4, estimatedTime: '45 phút' },
-  { id: 5, name: 'Bàn 5', x: 4, y: 0, status: 'Trống', capacity: 2 },
-  { id: 6, name: 'Bàn 6', x: 0, y: 1, status: 'Đã đặt', capacity: 8, estimatedTime: '20:00' },
-  { id: 7, name: 'Bàn 7', x: 1, y: 1, status: 'Trống', capacity: 4 },
-  { id: 8, name: 'Bàn 8', x: 2, y: 1, status: 'Trống', capacity: 2 },
-  { id: 9, name: 'Bàn 9', x: 3, y: 1, status: 'Trống', capacity: 6 },
-  { id: 10, name: 'Bàn 10', x: 4, y: 1, status: 'Bảo trì', capacity: 4 },
-  { id: 11, name: 'Bàn 11', x: 0, y: 2, status: 'Trống', capacity: 2 },
-  { id: 12, name: 'Bàn 12', x: 1, y: 2, status: 'Đã đặt', capacity: 4, estimatedTime: '19:45' },
-  { id: 13, name: 'Bàn 13', x: 2, y: 2, status: 'Trống', capacity: 6 },
-  { id: 14, name: 'Bàn 14', x: 3, y: 2, status: 'Đang phục vụ', capacity: 2, estimatedTime: '30 phút' },
-  { id: 15, name: 'Bàn 15', x: 4, y: 2, status: 'Trống', capacity: 4 },
-  { id: 16, name: 'Bàn 16', x: 0, y: 3, status: 'Trống', capacity: 8 },
-  { id: 17, name: 'Bàn 17', x: 1, y: 3, status: 'Đã đặt', capacity: 2, estimatedTime: '20:15' },
-  { id: 18, name: 'Bàn 18', x: 2, y: 3, status: 'Trống', capacity: 4 },
-  { id: 19, name: 'Bàn 19', x: 3, y: 3, status: 'Trống', capacity: 6 },
-  { id: 20, name: 'Bàn 20', x: 4, y: 3, status: 'Bảo trì', capacity: 4 },
-  
-  // Floor 2 - Tables 21-40
-  { id: 21, name: 'Bàn 21', x: 0, y: 0, status: 'Trống', capacity: 4 },
-  { id: 22, name: 'Bàn 22', x: 1, y: 0, status: 'Đang phục vụ', capacity: 6, estimatedTime: '20 phút' },
-  { id: 23, name: 'Bàn 23', x: 2, y: 0, status: 'Trống', capacity: 2 },
-  { id: 24, name: 'Bàn 24', x: 3, y: 0, status: 'Đã đặt', capacity: 4, estimatedTime: '21:00' },
-  { id: 25, name: 'Bàn 25', x: 4, y: 0, status: 'Trống', capacity: 8 },
-  { id: 26, name: 'Bàn 26', x: 0, y: 1, status: 'Trống', capacity: 2 },
-  { id: 27, name: 'Bàn 27', x: 1, y: 1, status: 'Đã đặt', capacity: 4, estimatedTime: '19:30' },
-  { id: 28, name: 'Bàn 28', x: 2, y: 1, status: 'Đang phục vụ', capacity: 6, estimatedTime: '35 phút' },
-  { id: 29, name: 'Bàn 29', x: 3, y: 1, status: 'Trống', capacity: 2 },
-  { id: 30, name: 'Bàn 30', x: 4, y: 1, status: 'Trống', capacity: 4 },
-  { id: 31, name: 'Bàn 31', x: 0, y: 2, status: 'Bảo trì', capacity: 8 },
-  { id: 32, name: 'Bàn 32', x: 1, y: 2, status: 'Trống', capacity: 4 },
-  { id: 33, name: 'Bàn 33', x: 2, y: 2, status: 'Đã đặt', capacity: 2, estimatedTime: '20:30' },
-  { id: 34, name: 'Bàn 34', x: 3, y: 2, status: 'Trống', capacity: 6 },
-  { id: 35, name: 'Bàn 35', x: 4, y: 2, status: 'Đang phục vụ', capacity: 4, estimatedTime: '15 phút' },
-  { id: 36, name: 'Bàn 36', x: 0, y: 3, status: 'Trống', capacity: 2 },
-  { id: 37, name: 'Bàn 37', x: 1, y: 3, status: 'Trống', capacity: 4 },
-  { id: 38, name: 'Bàn 38', x: 2, y: 3, status: 'Đã đặt', capacity: 8, estimatedTime: '21:15' },
-  { id: 39, name: 'Bàn 39', x: 3, y: 3, status: 'Trống', capacity: 6 },
-  { id: 40, name: 'Bàn 40', x: 4, y: 3, status: 'Bảo trì', capacity: 4 },
-
-  // Floor 3 - Tables 41-60
-  { id: 41, name: 'Bàn 41', x: 0, y: 0, status: 'Trống', capacity: 4 },
-  { id: 42, name: 'Bàn 42', x: 1, y: 0, status: 'Trống', capacity: 2 },
-  { id: 43, name: 'Bàn 43', x: 2, y: 0, status: 'Đã đặt', capacity: 6, estimatedTime: '19:45' },
-  { id: 44, name: 'Bàn 44', x: 3, y: 0, status: 'Trống', capacity: 4 },
-  { id: 45, name: 'Bàn 45', x: 4, y: 0, status: 'Đang phục vụ', capacity: 8, estimatedTime: '25 phút' },
-  { id: 46, name: 'Bàn 46', x: 0, y: 1, status: 'Trống', capacity: 2 },
-  { id: 47, name: 'Bàn 47', x: 1, y: 1, status: 'Bảo trì', capacity: 4 },
-  { id: 48, name: 'Bàn 48', x: 2, y: 1, status: 'Trống', capacity: 6 },
-  { id: 49, name: 'Bàn 49', x: 3, y: 1, status: 'Đã đặt', capacity: 2, estimatedTime: '20:45' },
-  { id: 50, name: 'Bàn 50', x: 4, y: 1, status: 'Trống', capacity: 4 },
-  { id: 51, name: 'Bàn 51', x: 0, y: 2, status: 'Đang phục vụ', capacity: 8, estimatedTime: '40 phút' },
-  { id: 52, name: 'Bàn 52', x: 1, y: 2, status: 'Trống', capacity: 4 },
-  { id: 53, name: 'Bàn 53', x: 2, y: 2, status: 'Trống', capacity: 2 },
-  { id: 54, name: 'Bàn 54', x: 3, y: 2, status: 'Đã đặt', capacity: 6, estimatedTime: '21:30' },
-  { id: 55, name: 'Bàn 55', x: 4, y: 2, status: 'Trống', capacity: 4 },
-  { id: 56, name: 'Bàn 56', x: 0, y: 3, status: 'Trống', capacity: 2 },
-  { id: 57, name: 'Bàn 57', x: 1, y: 3, status: 'Đang phục vụ', capacity: 4, estimatedTime: '55 phút' },
-  { id: 58, name: 'Bàn 58', x: 2, y: 3, status: 'Trống', capacity: 8 },
-  { id: 59, name: 'Bàn 59', x: 3, y: 3, status: 'Bảo trì', capacity: 6 },
-  { id: 60, name: 'Bàn 60', x: 4, y: 3, status: 'Trống', capacity: 4 },
+const sampleTables: Table[] = [
+  {
+    tableId: 1,
+    tableName: 'Bàn 1',
+    areaId: 1,
+    tableType: '4 người',
+    status: 'Trống',
+    isWindow: false,
+    notes: '',
+    createdAt: new Date().toISOString(),
+    orders: [],
+  },
+  {
+    tableId: 2,
+    tableName: 'Bàn 2',
+    areaId: 1,
+    tableType: '4 người',
+    status: 'Đã đặt',
+    isWindow: false,
+    notes: 'Khách đến lúc 19:30',
+    createdAt: new Date().toISOString(),
+    orders: [],
+  },
+  // ...thêm dữ liệu mẫu khác nếu cần
 ];
 
-const TableManager = () => {
-  const [tables] = useState(sampleTables);
+const TableManager: React.FC = () => {
+  const [tables, setTables] = useState<Table[]>(sampleTables);
+  const [filteredTables, setFilteredTables] = useState<Table[]>(sampleTables);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [newTable, setNewTable] = useState<Table>({
+    tableId: 0,
+    tableName: '',
+    areaId: 1,
+    tableType: '4 người',
+    status: 'Trống',
+    isWindow: false,
+    notes: '',
+    createdAt: new Date().toISOString(),
+    orders: [],
+  });
+  const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
 
-  const handleTableClick = (table) => {
-    alert(`Bàn: ${table.name}\nTrạng thái: ${table.status}`);
+  useEffect(() => {
+    const filtered = tables.filter((table) =>
+      table.tableName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      table.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      table.tableType.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    setFilteredTables(filtered);
+  }, [searchQuery, tables]);
+
+  const handleTableClick = (table: Table) => {
+    alert(`Bàn: ${table.tableName}\nLoại: ${table.tableType}\nTrạng thái: ${table.status}\nVị trí cửa sổ: ${table.isWindow ? 'Có' : 'Không'}\nGhi chú: ${table.notes}`);
+  };
+
+  const handleCreateTable = () => {
+    const newId = tables.length > 0 ? Math.max(...tables.map(t => t.tableId)) + 1 : 1;
+    setTables([...tables, { ...newTable, tableId: newId }]);
+    setShowCreateModal(false);
+    setNewTable({
+      tableId: 0,
+      tableName: '',
+      areaId: 1,
+      tableType: '4 người',
+      status: 'Trống',
+      isWindow: false,
+      notes: '',
+      createdAt: new Date().toISOString(),
+      orders: [],
+    });
   };
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#f8fafc' }}>
-      {/* Taskbar cố định trái */}
-      <div style={{ width: 220, minHeight: '100vh', position: 'sticky', top: 0, zIndex: 10 }}>
+    <div className="flex min-h-screen bg-gray-100">
+      <div className="w-56 sticky top-0 h-screen">
         <TaskbarManager />
       </div>
-      {/* TableMap chiếm phần còn lại */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <TableMap tables={tables} onTableClick={handleTableClick} />
+      <div className="flex-1">
+        <div className="p-4 bg-white shadow-sm flex justify-between items-center">
+          <input
+            type="text"
+            placeholder="Tìm kiếm bàn..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-1/3 px-4 py-2 border rounded-lg focus:outline-none"
+          />
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            + Thêm bàn mới
+          </button>
+        </div>
+        <TableMap tables={filteredTables} onTableClick={handleTableClick} />
+        {showCreateModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+            <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-md">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-semibold">Thêm bàn mới</h3>
+                <button onClick={() => setShowCreateModal(false)} className="text-gray-500 hover:text-gray-700 text-2xl">×</button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Tên bàn</label>
+                  <input
+                    type="text"
+                    value={newTable.tableName}
+                    onChange={(e) => setNewTable({ ...newTable, tableName: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Loại bàn</label>
+                  <select
+                    value={newTable.tableType}
+                    onChange={(e) => setNewTable({ ...newTable, tableType: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none"
+                  >
+                    <option>2 người</option>
+                    <option>4 người</option>
+                    <option>6 người</option>
+                    <option>8 người</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Status</label>
+                  <select
+                    value={newTable.status}
+                    onChange={(e) => setNewTable({ ...newTable, status: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none"
+                  >
+                    <option>Trống</option>
+                    <option>Đã đặt</option>
+                    <option>Đang phục vụ</option>
+                    <option>Bảo trì</option>
+                  </select>
+                </div>
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={newTable.isWindow}
+                    onChange={(e) => setNewTable({ ...newTable, isWindow: e.target.checked })}
+                    className="mr-2"
+                  />
+                  <label>Gần cửa sổ</label>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Ghi chú</label>
+                  <textarea
+                    value={newTable.notes}
+                    onChange={(e) => setNewTable({ ...newTable, notes: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none"
+                  />
+                </div>
+                <div className="pt-4 border-t">
+                  <button onClick={handleCreateTable}
+                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                    Tạo bàn mới
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
