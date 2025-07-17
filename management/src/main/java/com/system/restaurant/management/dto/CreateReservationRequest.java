@@ -1,25 +1,24 @@
 package com.system.restaurant.management.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
-
 import java.time.LocalDateTime;
 
 @Data
 public class CreateReservationRequest {
-    @NotBlank(message = "Customer name is required")
+    @NotBlank
     private String customerName;
 
-    @NotBlank(message = "Phone number is required")
-    @Pattern(regexp = "^\\d{10}$", message = "Phone number must be 10 digits")
+    @NotBlank
     private String phone;
 
-    private String email; // Optional
+    private String email;
 
-    private Integer tableId; // Optional
-
+    @NotNull
     private LocalDateTime reservationAt;
+
+    private Integer tableId;
 
     private String notes;
 }

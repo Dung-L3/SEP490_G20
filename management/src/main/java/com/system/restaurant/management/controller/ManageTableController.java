@@ -110,4 +110,30 @@ public class ManageTableController {
         List<RestaurantTable> tables = service.getTablesInGroup(groupId);
         return ResponseEntity.ok(tables);
     }
+    @PostMapping("/initialize-reserved")
+    public ResponseEntity<Void> initializeReservedTables() {
+        service.initializeReservedTables();
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/check-availability")
+    public ResponseEntity<Boolean> checkTableAvailability(
+            @RequestParam LocalDateTime reservationTime) {
+        boolean isAvailable = service.hasAvailableReservedTables(reservationTime);
+        return ResponseEntity.ok(isAvailable);
+    }
+
+    @GetMapping("/assign-reservation")
+    public ResponseEntity<RestaurantTable> assignTableForReservation(
+            @RequestParam LocalDateTime reservationTime) {
+        RestaurantTable table = service.assignTableForReservation(reservationTime);
+        return ResponseEntity.ok(table);
+    }
+
+    @PostMapping("/confirm-reservation/{reservationId}")
+    public ResponseEntity<RestaurantTable> confirmReservation(
+            @PathVariable Integer reservationId) {
+        RestaurantTable table = service.assignTableForConfirmation(reservationId);
+        return ResponseEntity.ok(table);
+    }
 }

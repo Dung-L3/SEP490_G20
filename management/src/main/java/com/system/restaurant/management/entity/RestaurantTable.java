@@ -15,6 +15,11 @@ import java.util.List;
 @Table(name = "RestaurantTables")
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class RestaurantTable {
+    public static class Status {
+        public static final String AVAILABLE = "Available";
+        public static final String RESERVED = "Reserved";
+        public static final String OCCUPIED = "Occupied";
+    }
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "TableID")

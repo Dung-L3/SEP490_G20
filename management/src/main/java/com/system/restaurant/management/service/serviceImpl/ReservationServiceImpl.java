@@ -2,8 +2,10 @@ package com.system.restaurant.management.service.serviceImpl;
 
 import com.system.restaurant.management.dto.CreateReservationRequest;
 import com.system.restaurant.management.entity.Reservation;
+import com.system.restaurant.management.entity.RestaurantTable;
 import com.system.restaurant.management.exception.ResourceNotFoundException;
 import com.system.restaurant.management.repository.ReservationRepository;
+import com.system.restaurant.management.service.ManageTableService;
 import com.system.restaurant.management.service.ReservationService;
 import com.system.restaurant.management.service.ReservationTimeValidator;
 import lombok.RequiredArgsConstructor;
@@ -18,17 +20,26 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ReservationServiceImpl implements ReservationService {
     private final ReservationRepository reservationRepository;
+    private final ManageTableService manageTableService;
 
     @Override
     public Reservation createReservation(CreateReservationRequest request) {
         // Validate reservation time
         ReservationTimeValidator.validateReservationTime(request.getReservationAt());
 
+        // Check table availability
+        if (!manageTableService.hasAvailableReservedTables(request.getReservationAt())) {
+            throw new IllegalStateException("No tables available for this time slot");
+        }
+
+        // Get reserved table
+        RestaurantTable table = manageTableService.assignTableForReservation(request.getReservationAt());
+
         Reservation reservation = Reservation.builder()
                 .customerName(request.getCustomerName())
                 .phone(request.getPhone())
                 .email(request.getEmail())
-                .tableId(request.getTableId())
+                .tableId(table.getTableId())
                 .reservationAt(request.getReservationAt())
                 .statusId(Reservation.Status.PENDING)
                 .notes(request.getNotes())
