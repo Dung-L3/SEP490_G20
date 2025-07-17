@@ -9,11 +9,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import java.time.LocalDateTime;
 import java.util.List;
+import org.springframework.format.annotation.DateTimeFormat;
+
 
 @RestController
-@RequestMapping("/api/tables")
+@RequestMapping("/api/v1/tables")
 @RequiredArgsConstructor
 public class ManageTableController {
     private final ManageTableService service;
@@ -118,7 +120,8 @@ public class ManageTableController {
 
     @GetMapping("/check-availability")
     public ResponseEntity<Boolean> checkTableAvailability(
-            @RequestParam LocalDateTime reservationTime) {
+            @RequestParam("reservationTime") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime reservationTime) {
         boolean isAvailable = service.hasAvailableReservedTables(reservationTime);
         return ResponseEntity.ok(isAvailable);
     }
