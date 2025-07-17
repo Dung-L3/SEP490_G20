@@ -1,6 +1,7 @@
 package com.system.restaurant.management.entity;
 
 import jakarta.persistence.*;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
@@ -12,6 +13,7 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class KitchenTicket {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

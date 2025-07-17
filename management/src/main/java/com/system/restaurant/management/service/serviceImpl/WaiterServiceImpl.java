@@ -5,7 +5,11 @@ import com.system.restaurant.management.entity.*;
 import com.system.restaurant.management.exception.ResourceNotFoundException;
 import com.system.restaurant.management.repository.*;
 import com.system.restaurant.management.service.WaiterService;
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -132,6 +136,8 @@ public class WaiterServiceImpl implements WaiterService {
     public List<RestaurantTable> getTablesByType(String tableType) {
         return restaurantTableRepository.findByTableType(tableType);
     }
+    @Autowired
+    private HttpServletRequest request;
 
     @Override
     public InvoiceResponseDTO getInvoiceResponseByOrder(Integer orderId) {
@@ -300,47 +306,75 @@ public class WaiterServiceImpl implements WaiterService {
     }
 
     @Override
-    public CompletePaymentResponse processCompletePayment(Integer orderId, PaymentRequest paymentRequest) {
-        Order order = getOrderById(orderId);
+    @Transactional
+    public CompletePaymentResponse processCompletePayment(Integer orderId,
+                                                          PaymentRequest paymentRequest) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new EntityNotFoundException("Order not found: " + orderId));
+
+        Integer issuedBy = (Integer) request.getSession().getAttribute("userId");
+        if (issuedBy == null) {
+            throw new AccessDeniedException("Chưa đăng nhập hoặc session hết hạn");
+        }
+
+        String pmName = paymentRequest.getPaymentMethod().trim();
+        PaymentMethod pmEntity = paymentMethodRepository
+                .findByMethodName(pmName)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Payment method not found: " + pmName));
+        Integer methodId = pmEntity.getMethodId();
 
         Invoice invoice = invoiceRepository.findByOrderId(orderId)
                 .orElseGet(() -> {
-                    Invoice newInvoice = Invoice.builder()
+                    Invoice inv = Invoice.builder()
                             .orderId(orderId)
                             .subTotal(order.getSubTotal())
                             .discountAmount(order.getDiscountAmount())
                             .finalTotal(order.getFinalTotal())
-                            .issuedBy(paymentRequest.getIssuedBy())
+                            .issuedBy(issuedBy)
                             .build();
-                    return invoiceRepository.save(newInvoice);
+                    return invoiceRepository.save(inv);
                 });
 
-        PaymentRecord paymentRecord = PaymentRecord.builder()
+        PaymentRecord pr = PaymentRecord.builder()
                 .invoiceId(invoice.getInvoiceId())
-                .methodId(paymentRequest.getMethodId())
-                .amount(paymentRequest.getAmount())
-                .notes(paymentRequest.getNotes())
+                .methodId(methodId)
+                .amount(order.getFinalTotal())
+                .notes("Paid via " + pmEntity.getMethodName())
+                .paidAt(LocalDateTime.now())
                 .build();
+        pr = paymentRecordRepository.save(pr);
 
-        paymentRecord = paymentRecordRepository.save(paymentRecord);
-
-        order.setStatusId(3); // 3 = Done
-        orderRepository.save(order);
-
-        if ("DINEIN".equalsIgnoreCase(order.getOrderType()) && order.getTable() != null) {
-            RestaurantTable table = order.getTable();
-            table.setStatus("AVAILABLE"); // AVAILABLE thay vì FREE
-            restaurantTableRepository.save(table);
-        }
-
+//        // 6. Cập nhật Order → Done
+//        OrderStatus done = orderStatusRepository.findByStatusName("Done")
+//                .orElseThrow(() -> new EntityNotFoundException("Status 'Done' not found"));
+//        order.setStatusId(done.getStatusID());
+//        orderRepository.save(order);
+//
+//        // 7. Cập nhật bàn (nếu DINEIN)
+//        if ("DINEIN".equalsIgnoreCase(order.getOrderType()) && order.getTable() != null) {
+//            RestaurantTable table = order.getTable();
+//            table.setStatus("AVAILABLE");
+//            restaurantTableRepository.save(table);
+//        }
+//
+//        // 8. Ghi InvoicePrint
+//        InvoicePrint ip = InvoicePrint.builder()
+//                .invoiceId(invoice.getInvoiceId())
+//                .printedBy(issuedBy)
+//                .printedAt(LocalDateTime.now())
+//                .build();
+//        invoicePrintRepository.save(ip);
+//
+        // 9. Trả về response
         return CompletePaymentResponse.builder()
                 .orderId(orderId)
-                .paymentRecordId(paymentRecord.getPaymentId())
-                .invoiceNumber("INV-" + orderId + "-" + System.currentTimeMillis())
-                .paidAmount(paymentRequest.getAmount())
-                .totalAmount(order.getFinalTotal())
-                .paymentDate(paymentRecord.getPaidAt())
-                .paymentMethod(paymentRequest.getPaymentMethod())
+                .invoiceNumber("INV-" + invoice.getInvoiceId())
+                .paymentRecordId(pr.getPaymentId())
+                .paidAmount(pr.getAmount())
+                .totalAmount(invoice.getFinalTotal())
+                .paymentMethod(pmEntity.getMethodName())
+                .paymentDate(pr.getPaidAt())
                 .status("COMPLETED")
                 .message("Thanh toán thành công")
                 .build();
