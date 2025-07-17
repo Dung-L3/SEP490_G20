@@ -13,7 +13,8 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@Builder // builder
+
 public class KitchenTicket {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -28,4 +29,5 @@ public class KitchenTicket {
 
     @Column(name = "PrintedBy")
     private Integer printedBy;
+
 }
