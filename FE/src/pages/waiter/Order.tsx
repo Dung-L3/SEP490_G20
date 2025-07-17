@@ -1,17 +1,71 @@
 import React, { useState, useEffect } from 'react';
 import { useTableCart } from '../../contexts/TableCartContext';
-import menuData from '../../data/menuData';
-import type { MenuItem } from '../../data/menuData';
-import tables from '../../data/tables';
-import type { TableInfo } from '../../data/tables';
+import { tableApi } from '../../api/tableApi';
+import { type UiTable } from '../../utils/tableMapping';
 import TaskbarWaiter from '../../components/TaskbarWaiter';
 
-const menuItems: MenuItem[] = menuData;
+export interface MenuItem {
+  id: number;
+  name: string;
+  price: number;
+  description: string;
+  image: string;
+}
+
+const API_URL = 'http://localhost:8080/api/menu';
+
+const fetchMenuItems = async (): Promise<MenuItem[]> => {
+  try {
+    const response = await fetch(`${API_URL}/getAll`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching menu items:', error);
+    throw error;
+  }
+};
 
 const Order: React.FC = () => {
   const { tableCarts, setTable, currentTable, addToCart, updateQuantity, removeFromCart, clearCart } = useTableCart();
   const [search, setSearch] = useState('');
-  const [tableList] = useState<TableInfo[]>(tables);
+  const [tableList, setTableList] = useState<UiTable[]>([]);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const [tablesResponse, menuResponse] = await Promise.all([
+          tableApi.getAll(),
+          fetchMenuItems()
+        ]);
+        
+        setTableList(tablesResponse.map(table => ({
+          id: table.tableId,
+          name: table.tableName,
+          x: 0,
+          y: 0,
+          status: table.status,
+          areaId: table.areaId,
+          isWindow: table.isWindow,
+          notes: table.notes || '',
+          type: table.tableType
+        })));
+        
+        setMenuItems(menuResponse);
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'Failed to fetch data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, []);
 
   // Lấy bàn từ query string nếu có
   useEffect(() => {
@@ -26,6 +80,22 @@ const Order: React.FC = () => {
     item.name.toLowerCase().includes(search.toLowerCase())
   );
   const cart = tableCarts[currentTable] || [];
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 to-blue-50">
+        <div className="text-xl">Loading...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 to-blue-50">
+        <div className="text-xl text-red-500">{error}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
