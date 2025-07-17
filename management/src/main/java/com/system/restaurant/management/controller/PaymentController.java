@@ -23,5 +23,4 @@ public class PaymentController {
 
         return ResponseEntity.ok(Map.of("qrContent", payload));
     }
-
 }
