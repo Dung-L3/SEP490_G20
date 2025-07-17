@@ -35,7 +35,7 @@ public class User {
     private String phone;
 
     @Column(name = "Status", nullable = false)
-    private Boolean status;
+    private Boolean status = true;
 
     @Column(name = "CreatedAt", nullable = false)
     private LocalDateTime createdAt;
@@ -48,4 +48,8 @@ public class User {
     )
     @Builder.Default
     private Set<Role> roles = new HashSet<>();
+
+    public String getPasswordHash() {
+        return passwordHash;
+    }
 }

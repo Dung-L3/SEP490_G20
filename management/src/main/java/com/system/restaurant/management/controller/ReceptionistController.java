@@ -1,7 +1,7 @@
 package com.system.restaurant.management.controller;
 
 import com.system.restaurant.management.dto.OrderRequestDto;
-import com.system.restaurant.management.dto.PaymentRequestDto;
+import com.system.restaurant.management.dto.PaymentRequest;
 import com.system.restaurant.management.dto.ReservationRequestDto;
 import com.system.restaurant.management.entity.*;
 import com.system.restaurant.management.service.ReceptionistService;
@@ -34,7 +34,7 @@ public class ReceptionistController {
     }
 
     @PostMapping("/orders/{orderId}/payment")
-    public PaymentRecord processPayment(@PathVariable Integer orderId, @RequestBody PaymentRequestDto req) {
+    public PaymentRecord processPayment(@PathVariable Integer orderId, @RequestBody PaymentRequest req) {
         return receptionistService.processPayment(orderId, req);
     }
 

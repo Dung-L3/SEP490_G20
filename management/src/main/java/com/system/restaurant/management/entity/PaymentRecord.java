@@ -1,30 +1,32 @@
 package com.system.restaurant.management.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 @Table(name = "PaymentRecords")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class PaymentRecord {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "PaymentID")
     private Integer paymentId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "InvoiceID", nullable = false)
-    @JsonIgnore
-    private Invoice invoice;
+    @Column(name = "InvoiceID", nullable = false)
+    private Integer invoiceId;
 
-    @Column(name = "MethodID", insertable = false, updatable = false)
+    @Column(name = "MethodID", nullable = false)
     private Integer methodId;
 
-    @Column(name = "Amount", nullable = false)
+    @Column(name = "Amount", precision = 10, scale = 2, nullable = false)
     private BigDecimal amount;
 
     @Column(name = "PaidAt", nullable = false)
@@ -33,7 +35,20 @@ public class PaymentRecord {
     @Column(name = "Notes", length = 255)
     private String notes;
 
-    @ManyToOne
-    @JoinColumn(name = "MethodID", nullable = false)
-    private PaymentMethod method;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "MethodID", insertable = false, updatable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private PaymentMethod paymentMethod;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "InvoiceID", insertable = false, updatable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private Invoice invoice;
+
+    @PrePersist
+    protected void onCreate() {
+        if (paidAt == null) {
+            paidAt = LocalDateTime.now();
+        }
+    }
 }

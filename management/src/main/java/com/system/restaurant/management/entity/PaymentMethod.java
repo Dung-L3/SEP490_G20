@@ -4,20 +4,18 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "PaymentMethods")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Table(name = "PaymentMethods")
 public class PaymentMethod {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "MethodID")
     private Integer methodId;
 
-    @Column(name = "MethodName", nullable = false, length = 20, unique = true)
+    @Column(name = "MethodName", length = 50, nullable = false)
     private String methodName;
 }
-

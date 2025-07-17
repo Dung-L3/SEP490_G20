@@ -8,14 +8,13 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-
-@AllArgsConstructor
 @Data
-@NoArgsConstructor
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class PurchaseHistoryDto {
     private Integer orderId;
-    private LocalDateTime orderDate;
+    private LocalDateTime createdAt;
     private String customerName;
     private String phone;
     private String orderType;

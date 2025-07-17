@@ -1,4 +1,4 @@
-package com.system.restaurant.management.service.serviceImpl;//package com.system.restaurant.management.service.serviceImpl;
+//package com.system.restaurant.management.service.serviceImpl;
 //
 //import com.system.restaurant.management.entity.Order;
 //import com.system.restaurant.management.entity.User;

@@ -1,4 +1,5 @@
 import Header from '../components/Header';
+import { loginApi } from '../api/authApi';
 import Footer from '../components/Footer';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -9,18 +10,23 @@ const Login = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Demo: chỉ kiểm tra không rỗng, không thực hiện xác thực thực tế
     if (!username || !password) {
       setError('Vui lòng nhập đầy đủ thông tin.');
       return;
     }
     setError('');
-    localStorage.setItem('currentUser', username);
-    alert('Đăng nhập thành công!');
-    navigate('/');
-    // Có thể chuyển hướng hoặc lưu trạng thái đăng nhập ở đây
+    try {
+      const res = await loginApi({ username, password });
+      alert(res.message || 'Đăng nhập thành công!');
+      if (res.role === 'ROLE_MANAGER' || res.role === 'manager') navigate('/manager');
+      else if (res.role === 'ROLE_WAITER') navigate('/waiter/orders');
+      else if (res.role === 'ROLE_CHEF') navigate('/chef');
+      else navigate('/');
+    } catch (err) {
+      setError('Sai tài khoản hoặc mật khẩu');
+    }
   };
 
   return (

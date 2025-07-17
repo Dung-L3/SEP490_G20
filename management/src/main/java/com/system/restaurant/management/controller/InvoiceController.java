@@ -1,5 +1,6 @@
 package com.system.restaurant.management.controller;
 
+import com.system.restaurant.management.dto.PaymentRequest;
 import com.system.restaurant.management.dto.PaymentRequestDto;
 import com.system.restaurant.management.entity.Invoice;
 import com.system.restaurant.management.entity.PaymentRecord;
@@ -27,7 +28,7 @@ public class InvoiceController {
     }
 
     @PostMapping("/{orderId}/pay")
-    public PaymentRecord processPayment(@PathVariable Integer orderId, @RequestBody PaymentRequestDto req) {
+    public PaymentRecord processPayment(@PathVariable Integer orderId, @RequestBody PaymentRequest req) {
         return receptionistService.processPayment(orderId, req);
     }
 
@@ -35,4 +36,5 @@ public class InvoiceController {
     public byte[] exportInvoicePdf(@PathVariable Integer invoiceId) {
         return receptionistService.exportInvoicePdf(invoiceId);
     }
+
 }

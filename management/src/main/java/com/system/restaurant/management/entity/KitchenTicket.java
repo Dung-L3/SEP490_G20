@@ -13,8 +13,7 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder // builder
-
+@Builder
 public class KitchenTicket {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -153,7 +153,10 @@ const TaskbarManager = () => {
         }}
         onMouseOver={e => (e.currentTarget.style.background = '#dc2626')}
         onMouseOut={e => (e.currentTarget.style.background = '#ef4444')}
-        onClick={() => {/* Xử lý đăng xuất tại đây */}}
+        onClick={() => {
+          // Gọi API logout nếu cần
+          navigate('/');
+        }}
       >Đăng xuất</button>
     </div>
   );

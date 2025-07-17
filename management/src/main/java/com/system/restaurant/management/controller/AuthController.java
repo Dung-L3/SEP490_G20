@@ -38,11 +38,8 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request, HttpSession session) {
         User user = authService.validateLogin(request);
-        String role = user.getRoles().iterator().next().getRoleName();
         session.setAttribute("userId", user.getId());
-        session.setAttribute("role", role); // giả sử 1 role
-
-        return ResponseEntity.ok(new LoginResponse("Đăng nhập thành công", role));
+        return ResponseEntity.ok(new LoginResponse("Đăng nhập thành công", user.getId()));
     }
 
     @PostMapping("/logout")

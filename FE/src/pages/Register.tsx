@@ -1,4 +1,5 @@
 import Header from '../components/Header';
+import { registerCustomerApi } from '../api/registerApi';
 import Footer from '../components/Footer';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -9,13 +10,18 @@ const Register = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username || !password || !confirmPassword || !fullName || !phone) {
+    if (!username || !password || !confirmPassword || !fullName || !phone || !email) {
       setError('Vui lòng nhập đầy đủ thông tin.');
+      return;
+    }
+    if (!/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email)) {
+      setError('Email không hợp lệ.');
       return;
     }
     if (!/^\d{10}$/.test(phone)) {
@@ -27,8 +33,14 @@ const Register = () => {
       return;
     }
     setError('');
-    alert('Đăng ký thành công! (Demo)');
-    navigate('/login');
+    registerCustomerApi({ username, password, fullName, email, phone })
+      .then(() => {
+        alert('Đăng ký thành công!');
+        navigate('/login');
+      })
+      .catch(err => {
+        setError(err.message || 'Đăng ký thất bại');
+      });
   };
 
   return (
@@ -46,6 +58,16 @@ const Register = () => {
               value={fullName}
               onChange={e => setFullName(e.target.value)}
               autoFocus
+            />
+          </div>
+          <div className="mb-4">
+            <label className="block text-gray-300 mb-1">Email</label>
+            <input
+              type="email"
+              className="w-full px-4 py-2 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="Nhập email của bạn"
             />
           </div>
           <div className="mb-4">

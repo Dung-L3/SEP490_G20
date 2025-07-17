@@ -13,4 +13,3 @@ public class NotificationRequestDto {
     private Integer recipientId;
     private String channel;
 }
-

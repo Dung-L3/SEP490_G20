@@ -14,5 +14,5 @@ public class StaffRequestDto {
     private String email;
     private String phone;
     private Boolean status;
-    private String username; // <- Cái này phải có!
+    private String username;
 }

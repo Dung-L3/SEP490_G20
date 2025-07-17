@@ -1,7 +1,7 @@
 package com.system.restaurant.management.service.serviceImpl;
 
 import com.system.restaurant.management.dto.OrderRequestDto;
-import com.system.restaurant.management.dto.PaymentRequestDto;
+import com.system.restaurant.management.dto.PaymentRequest;
 import com.system.restaurant.management.dto.ReservationRequestDto;
 import com.system.restaurant.management.entity.*;
 import com.system.restaurant.management.repository.*;
@@ -46,7 +46,7 @@ public class ReceptionistServiceImpl implements ReceptionistService {
                 .table(dto.getTableId() != null ? new RestaurantTable(dto.getTableId()) : null)
                 .statusId(1) // Pending
                 .createdAt(LocalDateTime.now())
-                .isRefunded(false)
+                .isRefunded(0)
                 .notes(dto.getNotes())
                 .build();
         return orderRepo.save(order);
@@ -75,7 +75,7 @@ public class ReceptionistServiceImpl implements ReceptionistService {
                 .subTotal(order.getSubTotal())
                 .discountAmount(order.getDiscountAmount())
                 .finalTotal(order.getFinalTotal())
-                .issuedBy(user)
+                .issuedBy(user.getId())
                 .issuedAt(LocalDateTime.now())
                 .build();
 
@@ -92,7 +92,7 @@ public class ReceptionistServiceImpl implements ReceptionistService {
         order.setFinalTotal(order.getSubTotal().subtract(order.getDiscountAmount()));
         orderRepo.save(order);
 
-        Invoice invoice = invoiceRepo.findByOrder_OrderId(orderId)
+        Invoice invoice = invoiceRepo.findByOrderId(orderId)
                 .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
         invoice.setDiscountAmount(order.getDiscountAmount());
         invoice.setFinalTotal(order.getFinalTotal());
@@ -100,8 +100,8 @@ public class ReceptionistServiceImpl implements ReceptionistService {
     }
 
     @Override
-    public PaymentRecord processPayment(Integer orderId, PaymentRequestDto req) {
-        Invoice invoice = invoiceRepo.findByOrder_OrderId(orderId)
+    public PaymentRecord processPayment(Integer orderId, PaymentRequest req) {
+        Invoice invoice = invoiceRepo.findByOrderId(orderId)
                 .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
 
         PaymentMethod method = new PaymentMethod();
@@ -109,7 +109,7 @@ public class ReceptionistServiceImpl implements ReceptionistService {
 
         PaymentRecord record = PaymentRecord.builder()
                 .invoice(invoice)
-                .method(method) // Gán PaymentMethod thay vì methodId
+                .methodId(method.getMethodId())
                 .amount(req.getAmount())
                 .paidAt(LocalDateTime.now())
                 .notes(req.getNotes())
@@ -120,6 +120,7 @@ public class ReceptionistServiceImpl implements ReceptionistService {
 
     @Override
     public byte[] exportInvoicePdf(Integer invoiceId) {
+        // TODO: implement PDF generation with iText or PDFBox
         return new byte[0];
     }
 
