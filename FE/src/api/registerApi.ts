@@ -6,7 +6,7 @@ export async function registerCustomerApi(data: {
   phone: string;
   roleName: string;
 }) {
-  const res = await fetch('/api/auth/register/customer', {
+  const res = await fetch('http://localhost:8080/api/auth/register/customer', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
