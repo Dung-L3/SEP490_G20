@@ -22,12 +22,6 @@ public class WaiterController {
         return ResponseEntity.ok(order);
     }
 
-    @PostMapping("/orders/dine-in")
-    public ResponseEntity<Order> createDineInOrder(@RequestBody CreateDineInOrderRequest request) {
-        Order order = waiterService.createDineInOrder(request);
-        return ResponseEntity.ok(order);
-    }
-
     @PostMapping("/orders/takeaway")
     public ResponseEntity<Order> createTakeawayOrder(@RequestBody CreateTakeawayOrderRequest request) {
         Order order = waiterService.createTakeawayOrder(request);

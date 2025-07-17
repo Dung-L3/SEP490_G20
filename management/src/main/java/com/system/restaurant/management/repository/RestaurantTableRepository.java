@@ -22,20 +22,15 @@ public interface RestaurantTableRepository extends JpaRepository<RestaurantTable
     @Query("SELECT rt FROM RestaurantTable rt WHERE rt.areaId = :areaId AND rt.status = 'AVAILABLE'")
     List<RestaurantTable> findFreeTablesByArea(@Param("areaId") Integer areaId);
 
-    List<RestaurantTable> findByIsWindow(Boolean isWindow);
-
-    @Query("SELECT rt FROM RestaurantTable rt WHERE rt.isWindow = true AND rt.status = 'AVAILABLE'")
-    List<RestaurantTable> findFreeWindowTables();
+    Optional<RestaurantTable> findByTableName(String tableName);
 
     List<RestaurantTable> findByTableType(String tableType);
 
-    Optional<RestaurantTable> findByTableName(String tableName);
+    @Query("SELECT t FROM RestaurantTable t WHERE t.isWindow = true")
+    List<RestaurantTable> findWindowTables();
 
-    @Query("SELECT COUNT(t) FROM RestaurantTable t")
-    long getTotalTableCount();
-
-    @Query("SELECT COUNT(t) FROM RestaurantTable t WHERE t.status = :status")
-    long countByStatus(String status);
+    @Query("SELECT t FROM RestaurantTable t WHERE t.isWindow = true AND t.status = 'AVAILABLE'")
+    List<RestaurantTable> getFreeWindowTables();
 
     @Query("SELECT t FROM RestaurantTable t WHERE t.status = 'RESERVED' " +
             "AND (SELECT COUNT(r) FROM Reservation r " +
@@ -47,10 +42,4 @@ public interface RestaurantTableRepository extends JpaRepository<RestaurantTable
             @Param("startTime") LocalDateTime startTime,
             @Param("endTime") LocalDateTime endTime);
 
-    @Query("UPDATE RestaurantTable t SET t.status = 'RESERVED' " +
-            "WHERE t.status = 'AVAILABLE' AND t.tableId IN " +
-            "(SELECT t2.tableId FROM RestaurantTable t2 WHERE t2.status = 'AVAILABLE' " +
-            "ORDER BY t2.tableId LIMIT :count)")
-    @Modifying
-    void convertAvailableToReserved(@Param("count") long count);
 }

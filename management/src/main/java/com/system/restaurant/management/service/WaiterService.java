@@ -6,6 +6,9 @@ import com.system.restaurant.management.entity.*;
 import java.util.List;
 
 public interface WaiterService {
+    boolean isTableOccupied(Integer tableId);
+    List<Order> getActiveOrdersByTable(Integer tableId);
+
     Order createOrderWithReservationTracking(CreateOrderRequest request);
     Order createDineInOrder(CreateDineInOrderRequest request);
     Order createTakeawayOrder(CreateTakeawayOrderRequest request);
