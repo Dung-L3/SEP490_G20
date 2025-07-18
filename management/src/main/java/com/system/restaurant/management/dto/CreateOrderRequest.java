@@ -1,5 +1,7 @@
 package com.system.restaurant.management.dto;
 
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.Data;
 import java.util.List;
 
@@ -7,9 +9,11 @@ import java.util.List;
 public class CreateOrderRequest {
     private String orderType;
     private String customerName;
-    private String customerPhone; // Thêm field này
+    private String customerPhone;
     private Integer tableId;
-    private Integer reservationId; // Thêm field này
+    private Integer reservationId;
     private String notes;
-    private List<OrderItemRequest> items; // Thêm field này
+
+    @NotEmpty(message = "Order items cannot be empty")
+    private List<OrderItemRequest> items;
 }
