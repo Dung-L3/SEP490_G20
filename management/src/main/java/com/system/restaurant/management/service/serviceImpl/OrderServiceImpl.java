@@ -72,7 +72,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public List<Order> getOrdersByTable(Integer tableId) {
-        return orderRepository.findByTableId(tableId);
+        return orderRepository.findByTable_TableId(tableId);
     }
 
     @Override
