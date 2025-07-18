@@ -9,11 +9,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import java.time.LocalDateTime;
 import java.util.List;
+import org.springframework.format.annotation.DateTimeFormat;
+
 
 @RestController
-@RequestMapping("/api/tables")
+@RequestMapping("/api/v1/tables")
 @RequiredArgsConstructor
 public class ManageTableController {
     private final ManageTableService service;
@@ -109,5 +111,32 @@ public class ManageTableController {
     public ResponseEntity<List<RestaurantTable>> getTablesInGroup(@PathVariable Integer groupId) {
         List<RestaurantTable> tables = service.getTablesInGroup(groupId);
         return ResponseEntity.ok(tables);
+    }
+    @PostMapping("/initialize-reserved")
+    public ResponseEntity<Void> initializeReservedTables() {
+        service.initializeReservedTables();
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/check-availability")
+    public ResponseEntity<Boolean> checkTableAvailability(
+            @RequestParam("reservationTime") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime reservationTime) {
+        boolean isAvailable = service.hasAvailableReservedTables(reservationTime);
+        return ResponseEntity.ok(isAvailable);
+    }
+
+    @GetMapping("/assign-reservation")
+    public ResponseEntity<RestaurantTable> assignTableForReservation(
+            @RequestParam LocalDateTime reservationTime) {
+        RestaurantTable table = service.assignTableForReservation(reservationTime);
+        return ResponseEntity.ok(table);
+    }
+
+    @PostMapping("/confirm-reservation/{reservationId}")
+    public ResponseEntity<RestaurantTable> confirmReservation(
+            @PathVariable Integer reservationId) {
+        RestaurantTable table = service.assignTableForConfirmation(reservationId);
+        return ResponseEntity.ok(table);
     }
 }

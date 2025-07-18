@@ -1,14 +1,13 @@
 package com.system.restaurant.management.dto;
 
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import java.util.List;
 
 @Data
 public class CreateDineInOrderRequest {
-    private String customerName;
-    private String customerPhone;
+    @NotNull(message = "Table ID is required")
     private Integer tableId;
-    private Integer reservationId;
+    private List<OrderItemRequest> items;
     private String notes;
-    private List<OrderItemRequest> orderItems;
 }

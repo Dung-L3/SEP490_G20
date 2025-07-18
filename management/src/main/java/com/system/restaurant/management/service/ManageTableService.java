@@ -3,6 +3,7 @@ package com.system.restaurant.management.service;
 import com.system.restaurant.management.entity.RestaurantTable;
 import com.system.restaurant.management.entity.TableGroup;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface ManageTableService {
@@ -26,6 +27,12 @@ public interface ManageTableService {
     List<RestaurantTable> getTablesInGroup(Integer groupId);
     List<String> getAllTableTypes();
     List<RestaurantTable> getByTableType(String tableType);
+
+    //Reservation
+    void initializeReservedTables();
+    RestaurantTable assignTableForReservation(LocalDateTime reservationTime);
+    RestaurantTable assignTableForConfirmation(Integer reservationId);
+    boolean hasAvailableReservedTables(LocalDateTime reservationTime);
 }
 
 

@@ -2,6 +2,7 @@ package com.system.restaurant.management.service.serviceImpl;
 
 import com.system.restaurant.management.dto.*;
 import com.system.restaurant.management.entity.*;
+import com.system.restaurant.management.exception.ResourceNotFoundException;
 import com.system.restaurant.management.repository.*;
 import com.system.restaurant.management.service.WaiterService;
 import jakarta.persistence.EntityNotFoundException;
@@ -31,6 +32,110 @@ public class WaiterServiceImpl implements WaiterService {
     private final PaymentMethodRepository paymentMethodRepository;
     private final DishRepository dishRepository;
     private final OrderDetailRepository orderDetailRepository;
+    private final ComboRepository comboRepository;
+
+    @Override
+    public boolean isTableOccupied(Integer tableId) {
+        return restaurantTableRepository.findById(tableId)
+                .map(table -> "OCCUPIED".equals(table.getStatus()))
+                .orElse(false);
+    }
+
+    @Override
+    public Order createDineInOrder(CreateDineInOrderRequest request) {
+        RestaurantTable table = restaurantTableRepository.findById(request.getTableId())
+                .orElseThrow(() -> new ResourceNotFoundException("Table not found"));
+
+        if (!"OCCUPIED".equals(table.getStatus())) {
+            throw new IllegalStateException("Table must be OCCUPIED to place an order");
+        }
+
+        Order order = Order.builder()
+                .orderType("DINE_IN")
+                .tableId(request.getTableId())
+                .statusId(1) // Pending
+                .subTotal(BigDecimal.ZERO)
+                .discountAmount(BigDecimal.ZERO)
+                .finalTotal(BigDecimal.ZERO)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        order = orderRepository.save(order);
+
+        List<OrderDetail> details = createOrderDetails(request.getItems(), order);
+        BigDecimal subTotal = calculateOrderSubTotal(details);
+        order.setSubTotal(subTotal);
+        order.setFinalTotal(subTotal);
+
+        return orderRepository.save(order);
+    }
+
+    @Override
+    public List<Order> getActiveOrdersByTable(Integer tableId) {
+        return orderRepository.findByTableIdAndStatusIdIn(tableId, List.of(1, 2)); // Pending and Processing
+    }
+
+    private List<OrderDetail> createOrderDetails(List<OrderItemRequest> items, Order order) {
+        if (items == null || items.isEmpty()) {
+            throw new IllegalArgumentException("Order must have at least one item");
+        }
+
+        return items.stream()
+                .map(item -> {
+                    OrderDetail detail = OrderDetail.builder()
+                            .orderId(order.getOrderId())
+                            .quantity(item.getQuantity())
+                            .statusId(1) // Pending
+                            .isRefunded(0)
+                            .notes(item.getNotes())
+                            .build();
+
+                    if (item.getDishId() != null) {
+                        Dish dish = dishRepository.findById(item.getDishId())
+                                .orElseThrow(() -> new ResourceNotFoundException("Dish not found: " + item.getDishId()));
+                        detail.setDishId(dish.getDishId());
+                        detail.setUnitPrice(dish.getPrice());
+                    } else if (item.getComboId() != null) {
+                        Combo combo = comboRepository.findById(item.getComboId())
+                                .orElseThrow(() -> new ResourceNotFoundException("Combo not found: " + item.getComboId()));
+                        detail.setComboId(combo.getComboId());
+                        detail.setUnitPrice(combo.getPrice());
+                    } else {
+                        throw new IllegalArgumentException("Either dishId or comboId must be provided");
+                    }
+
+                    return orderDetailRepository.save(detail);
+                })
+                .collect(Collectors.toList());
+    }
+
+    private BigDecimal calculateOrderSubTotal(List<OrderDetail> details) {
+        return details.stream()
+                .map(detail -> detail.getUnitPrice()
+                        .multiply(BigDecimal.valueOf(detail.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    @Override
+    public RestaurantTable getTableByName(String tableName) {
+        return restaurantTableRepository.findByTableName(tableName)
+                .orElseThrow(() -> new ResourceNotFoundException("Table not found with name: " + tableName));
+    }
+
+    @Override
+    public List<RestaurantTable> getWindowTables() {
+        return restaurantTableRepository.findWindowTables();
+    }
+
+    @Override
+    public List<RestaurantTable> getFreeWindowTables() {
+        return restaurantTableRepository.getFreeWindowTables();
+    }
+
+    @Override
+    public List<RestaurantTable> getTablesByType(String tableType) {
+        return restaurantTableRepository.findByTableType(tableType);
+    }
     @Autowired
     private HttpServletRequest request;
 
@@ -141,20 +246,6 @@ public class WaiterServiceImpl implements WaiterService {
         }
 
         return orderRepository.save(order);
-    }
-
-    @Override
-    public Order createDineInOrder(CreateDineInOrderRequest request) {
-        CreateOrderRequest orderRequest = new CreateOrderRequest();
-        orderRequest.setTableId(request.getTableId());
-        orderRequest.setReservationId(request.getReservationId());
-        orderRequest.setOrderType("DINEIN");
-        orderRequest.setCustomerName(request.getCustomerName());
-        orderRequest.setCustomerPhone(request.getCustomerPhone());
-        orderRequest.setNotes(request.getNotes());
-        orderRequest.setItems(request.getOrderItems());
-
-        return createOrderWithReservationTracking(orderRequest);
     }
 
     @Override
@@ -379,27 +470,6 @@ public class WaiterServiceImpl implements WaiterService {
     @Override
     public List<RestaurantTable> getFreeTablesByArea(Integer areaId) {
         return restaurantTableRepository.findFreeTablesByArea(areaId);
-    }
-
-    @Override
-    public List<RestaurantTable> getWindowTables() {
-        return restaurantTableRepository.findByIsWindow(true);
-    }
-
-    @Override
-    public List<RestaurantTable> getFreeWindowTables() {
-        return restaurantTableRepository.findFreeWindowTables();
-    }
-
-    @Override
-    public List<RestaurantTable> getTablesByType(String tableType) {
-        return restaurantTableRepository.findByTableType(tableType);
-    }
-
-    @Override
-    public RestaurantTable getTableByName(String tableName) {
-        return restaurantTableRepository.findByTableName(tableName)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy bàn với tên: " + tableName));
     }
 
     private BigDecimal calculateSubTotal(List<OrderItemRequest> items) {
