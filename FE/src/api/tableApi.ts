@@ -1,6 +1,6 @@
 import { Table } from '../types/Table';
 
-const API_URL = 'http://localhost:8080/api/tables';
+const API_URL = 'http://localhost:8080/api/v1/tables';
 
 export const tableApi = {
   getAll: async (): Promise<Table[]> => {

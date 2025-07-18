@@ -12,11 +12,11 @@ export interface MenuItem {
   image: string;
 }
 
-const API_URL = 'http://localhost:8080/api/menu';
+const API_URL = 'http://localhost:8080/api/v1/menu';
 
 const fetchMenuItems = async (): Promise<MenuItem[]> => {
   try {
-    const response = await fetch(`${API_URL}/getAll`);
+    const response = await fetch(`${API_URL}/all`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
