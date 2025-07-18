@@ -17,7 +17,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class TableOrderController {
     private final OrderService orderService;
-
+    // get all orders
     @GetMapping("/{tableId}/active-orders")
     public ResponseEntity<List<Order>> getActiveOrdersByTable(@PathVariable Integer tableId) {
         // Status 1 = Pending, 2 = Processing
@@ -25,7 +25,7 @@ public class TableOrderController {
         List<Order> activeOrders = orderService.getOrdersByTableAndStatuses(tableId, activeStatuses);
         return ResponseEntity.ok(activeOrders);
     }
-
+    // get all orders
     @PostMapping("/{tableId}/orders")
     public ResponseEntity<TableOrderResponse> addTableOrderItem(
             @PathVariable Integer tableId,
@@ -33,7 +33,7 @@ public class TableOrderController {
         request.setTableId(tableId);
         return ResponseEntity.ok(orderService.addTableOrderItem(request));
     }
-
+    //update an existing order item
     @PutMapping("/{tableId}/orders/items/{dishId}")
     public ResponseEntity<TableOrderResponse> updateTableOrderItem(
             @PathVariable Integer tableId,
@@ -41,14 +41,14 @@ public class TableOrderController {
             @RequestParam Integer quantity) {
         return ResponseEntity.ok(orderService.updateTableOrderItem(tableId, dishId, quantity));
     }
-
+    //remove an order item
     @DeleteMapping("/{tableId}/orders/items/{dishId}")
     public ResponseEntity<TableOrderResponse> removeTableOrderItem(
             @PathVariable Integer tableId,
             @PathVariable Integer dishId) {
         return ResponseEntity.ok(orderService.removeTableOrderItem(tableId, dishId));
     }
-
+    // cancel all orders
     @DeleteMapping("/{tableId}/orders")
     public ResponseEntity<Void> cancelTableOrder(@PathVariable Integer tableId) {
         orderService.cancelTableOrder(tableId);
