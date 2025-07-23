@@ -37,31 +37,16 @@ const Order: React.FC = () => {
             throw new Error(`Server error: ${res.status} ${res.statusText}`);
           }
 
-          // Try to parse the JSON
-          let data;
-          try {
-            data = JSON.parse(text);
-          } catch (parseError) {
-            console.error('JSON Parse Error:', parseError);
-            // Try to extract the first part of the response that might be valid
-            const truncatedText = text.substring(0, text.indexOf('"orders":') + 9) + '[]}}';
-            try {
-              data = JSON.parse(truncatedText);
-            } catch (e) {
-              console.error('Failed to parse truncated JSON:', e);
-              throw new Error('Invalid JSON response from server');
-            }
-          }
-
-          // Extract table information
+          const data = JSON.parse(text);
           console.log('Parsed table data:', data);
+          
           if (Array.isArray(data)) {
-            // Map the response to just the table information we need
+            // Map BE response to FE TableInfo interface
             const tables = data.map(item => ({
               id: item.tableId,
               name: item.tableName,
-              status: item.status,
-              capacity: Number(item.tableType?.replace(/[^0-9]/g, '') || 4)
+              status: item.status === 'OCCUPIED' ? 'Đang phục vụ' : item.status,
+              capacity: parseInt(item.tableType) || 4
             }));
             setTableList(tables);
           } else {
@@ -105,27 +90,17 @@ const Order: React.FC = () => {
         const response = await res.json();
         console.log('Menu response:', response);
 
-        // Extract menu items from response based on structure
-        let menuData: MenuItem[] = [];
-        if (response?.data?.content) {
-          menuData = response.data.content.filter((item: any): item is MenuItem => 
-            item && typeof item === 'object' && 'id' in item && 'status' in item);
-        } else if (response?.content) {
-          menuData = response.content.filter((item: any): item is MenuItem => 
-            item && typeof item === 'object' && 'id' in item && 'status' in item);
-        } else if (Array.isArray(response)) {
-          menuData = response.filter((item: any): item is MenuItem => 
-            item && typeof item === 'object' && 'id' in item && 'status' in item);
-        }
+        // Map BE Dish response to FE MenuItem interface
+        const menuData = Array.isArray(response) ? response.map(item => ({
+          id: item.dishId,
+          name: item.dishName,
+          price: Number(item.price),
+          image: item.imageUrl || '/placeholder-dish.jpg',
+          status: item.status
+        })) : [];
 
-        // Filter active items and ensure they match MenuItem interface
-        const activeItems = menuData
-          .filter((item): item is MenuItem => 
-            item !== null && 
-            typeof item === 'object' && 
-            'status' in item && 
-            item.status === true
-          );
+        // Filter active items
+        const activeItems = menuData.filter(item => item.status === true);
 
         console.log('Active menu items:', activeItems);
         setMenuItems(activeItems);
