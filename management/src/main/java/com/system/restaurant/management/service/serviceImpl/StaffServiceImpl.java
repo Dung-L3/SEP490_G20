@@ -44,6 +44,7 @@ public class StaffServiceImpl implements StaffService {
         staff.setEmail(dto.getEmail());
         staff.setPhone(dto.getPhone());
         staff.setStatus(dto.getStatus());
+        staff.setRole(dto.getRole());
         staff.setUsername(dto.getUsername());
 
         return staffRepository.save(staff);
