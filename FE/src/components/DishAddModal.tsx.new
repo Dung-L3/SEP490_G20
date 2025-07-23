@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import type { DishModalProps } from '../types/DishModalProps';
+import type { ModalProps } from '../interfaces/ModalProps';
 
-const DishAddModal: React.FC<DishModalProps> = ({ dish, onChange, onImageUrl, onCancel, onSave }) => {
+const DishAddModal: React.FC<ModalProps> = ({ dish, onChange, onImageUrl, onCancel, onSave }) => {
   const [imageUrl, setImageUrl] = useState(dish.image || '');
 
   return (

@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import type { DishModalProps } from '../types/DishModalProps';
+import type { ModalProps } from '../interfaces/ModalProps';
 
-const DishAddModal: React.FC<DishModalProps> = ({ dish, onChange, onImageUrl, onCancel, onSave }) => {
+const DishEditModal: React.FC<ModalProps> = ({ dish, onChange, onImageUrl, onCancel, onSave }) => {
   const [imageUrl, setImageUrl] = useState(dish.image || '');
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg w-full max-w-md p-6">
-        <h2 className="text-xl font-bold mb-4">Thêm món ăn mới</h2>
+        <h2 className="text-xl font-bold mb-4">Chỉnh sửa món ăn</h2>
         
         <div className="space-y-4">
           <div>
@@ -89,7 +89,7 @@ const DishAddModal: React.FC<DishModalProps> = ({ dish, onChange, onImageUrl, on
             onClick={onSave}
             className="px-4 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700"
           >
-            Thêm
+            Lưu
           </button>
         </div>
       </div>
@@ -97,4 +97,4 @@ const DishAddModal: React.FC<DishModalProps> = ({ dish, onChange, onImageUrl, on
   );
 };
 
-export default DishAddModal;
+export default DishEditModal;

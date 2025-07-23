@@ -70,20 +70,20 @@ export const dishApi: DishApi = {
 
   create: async (dish) => {
     try {
-      // Log request data for debugging
-      console.log('Creating dish with data:', JSON.stringify(dish, null, 2));
+      // Chỉ cho phép thêm ảnh bằng URL, không xử lý base64 hay upload file
+      if (!dish.imageUrl || !/^https?:\/\//.test(dish.imageUrl)) {
+        throw new Error('Vui lòng nhập đúng đường dẫn URL cho ảnh món ăn!');
+      }
 
-      // Ensure data is in correct format
       const formattedDish = {
         ...dish,
         dishName: dish.dishName.trim(),
         price: Number(dish.price),
         status: Boolean(dish.status),
         categoryId: Number(dish.categoryId) || 1,
-        unit: dish.unit?.trim() || 'Phần'
+        unit: dish.unit?.trim() || 'Phần',
+        imageUrl: dish.imageUrl.trim()
       };
-
-      console.log('Formatted dish data:', JSON.stringify(formattedDish, null, 2));
 
       const response = await fetch(API_URL, {
         method: 'POST',
