@@ -1,7 +1,6 @@
 package com.system.restaurant.management.repository;
 
 import com.system.restaurant.management.entity.Invoice;
-import com.system.restaurant.management.entity.Staff;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
