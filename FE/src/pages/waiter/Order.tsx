@@ -21,54 +21,124 @@ const Order: React.FC = () => {
 
   // Fetch tables
   useEffect(() => {
-    fetch('http://localhost:8080/api/waiter/tables?status=Occupied')
-      .then(res => {
-        if (!res.ok) {
-          throw new Error('Failed to fetch tables');
+    fetch('http://localhost:8080/api/waiter/tables?status=Occupied', {
+      credentials: 'include',
+      headers: {
+        'Accept': 'application/json'
+      }
+    })
+      .then(async res => {
+        const text = await res.text();
+        console.log('Raw table response:', text);
+        
+        try {
+          // Check if response is ok before parsing
+          if (!res.ok) {
+            throw new Error(`Server error: ${res.status} ${res.statusText}`);
+          }
+
+          // Try to parse the JSON
+          let data;
+          try {
+            data = JSON.parse(text);
+          } catch (parseError) {
+            console.error('JSON Parse Error:', parseError);
+            // Try to extract the first part of the response that might be valid
+            const truncatedText = text.substring(0, text.indexOf('"orders":') + 9) + '[]}}';
+            try {
+              data = JSON.parse(truncatedText);
+            } catch (e) {
+              console.error('Failed to parse truncated JSON:', e);
+              throw new Error('Invalid JSON response from server');
+            }
+          }
+
+          // Extract table information
+          console.log('Parsed table data:', data);
+          if (Array.isArray(data)) {
+            // Map the response to just the table information we need
+            const tables = data.map(item => ({
+              id: item.tableId,
+              name: item.tableName,
+              status: item.status,
+              capacity: Number(item.tableType?.replace(/[^0-9]/g, '') || 4)
+            }));
+            setTableList(tables);
+          } else {
+            console.warn('Unexpected data structure:', data);
+            setTableList([]);
+          }
+        } catch (e) {
+          console.error('Error processing response:', e);
+          setTableList([]);
         }
-        return res.json();
-      })
-      .then(data => {
-        console.log('Fetched tables:', data);
-        setTableList(data);
       })
       .catch(error => {
         console.error('Error fetching tables:', error);
-        // Set default tables in case of error
-        setTableList([
-          { id: 1, name: 'A1', status: 'Available', capacity: 4 },
-          { id: 2, name: 'A2', status: 'Available', capacity: 4 },
-          // Add more default tables as needed
-        ]);
+        setTableList([]); // Clear tables on error
+        alert('Không thể lấy danh sách bàn. Vui lòng thử lại sau.');
       });
   }, []);
 
-  // Fetch menu items khi component mount hoặc khi search thay đổi
-  useEffect(() => {
-    setLoading(true);
-    const endpoint = search.trim() 
-      ? `http://localhost:8080/api/dishes/search?name=${encodeURIComponent(search)}`
-      : 'http://localhost:8080/api/dishes/active';
 
-    fetch(endpoint)
-      .then(res => {
+
+  // Fetch menu items
+  useEffect(() => {
+    const fetchMenuItems = async () => {
+      setLoading(true);
+      try {
+        const endpoint = search.trim() 
+          ? `http://localhost:8080/api/dishes/search?name=${encodeURIComponent(search)}`
+          : 'http://localhost:8080/api/dishes';
+
+        const res = await fetch(endpoint, {
+          credentials: 'include',
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+
         if (!res.ok) {
-          throw new Error('Failed to fetch menu items');
+          throw new Error(`Failed to fetch menu items: ${res.status} ${res.statusText}`);
         }
-        return res.json();
-      })
-      .then(data => {
-        console.log('Fetched menu items:', data);
-        // Lọc chỉ lấy các món active
-        const activeItems = data.filter((item: MenuItem) => item.status);
+
+        const response = await res.json();
+        console.log('Menu response:', response);
+
+        // Extract menu items from response based on structure
+        let menuData: MenuItem[] = [];
+        if (response?.data?.content) {
+          menuData = response.data.content.filter((item: any): item is MenuItem => 
+            item && typeof item === 'object' && 'id' in item && 'status' in item);
+        } else if (response?.content) {
+          menuData = response.content.filter((item: any): item is MenuItem => 
+            item && typeof item === 'object' && 'id' in item && 'status' in item);
+        } else if (Array.isArray(response)) {
+          menuData = response.filter((item: any): item is MenuItem => 
+            item && typeof item === 'object' && 'id' in item && 'status' in item);
+        }
+
+        // Filter active items and ensure they match MenuItem interface
+        const activeItems = menuData
+          .filter((item): item is MenuItem => 
+            item !== null && 
+            typeof item === 'object' && 
+            'status' in item && 
+            item.status === true
+          );
+
+        console.log('Active menu items:', activeItems);
         setMenuItems(activeItems);
-        setLoading(false);
-      })
-      .catch(error => {
+      } catch (error) {
         console.error('Error fetching menu items:', error);
-        setMenuItems([]); // Set empty array on error
+        setMenuItems([]);
+        alert('Không thể lấy danh sách món. Vui lòng thử lại sau.');
+      } finally {
         setLoading(false);
-      });
+      }
+    };
+
+    fetchMenuItems();
   }, [search]);
 
   // Lấy bàn từ query string nếu có
@@ -288,7 +358,7 @@ const Order: React.FC = () => {
                     disabled={cart.length === 0}
                     onClick={() => {
                       const orderData = {
-                        tableId: parseInt(currentTable),
+                        tableId: Number(currentTable.replace(/\D/g, '')),
                         orderDetails: cart.map(item => ({
                           dishId: item.id,
                           quantity: item.quantity,
@@ -300,7 +370,9 @@ const Order: React.FC = () => {
                         method: 'POST',
                         headers: {
                           'Content-Type': 'application/json',
+                          'Accept': 'application/json'
                         },
+                        credentials: 'include',
                         body: JSON.stringify(orderData)
                       })
                       .then(async (res) => {
