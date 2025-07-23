@@ -1,17 +1,50 @@
 import React, { useState, useEffect } from 'react';
 import { useTableCart } from '../../contexts/TableCartContext';
-import menuData from '../../data/menuData';
-import type { MenuItem } from '../../data/menuData';
-import tables from '../../data/tables';
 import type { TableInfo } from '../../data/tables';
 import TaskbarWaiter from '../../components/TaskbarWaiter';
 
-const menuItems: MenuItem[] = menuData;
+interface MenuItem {
+  id: number;
+  name: string;
+  price: number;
+  image: string;
+  status: boolean;
+  quantity?: number;
+}
 
 const Order: React.FC = () => {
   const { tableCarts, setTable, currentTable, addToCart, updateQuantity, removeFromCart, clearCart } = useTableCart();
   const [search, setSearch] = useState('');
-  const [tableList] = useState<TableInfo[]>(tables);
+  const [tableList, setTableList] = useState<TableInfo[]>([]);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch tables
+  useEffect(() => {
+    fetch('http://localhost:8080/api/waiter/tables')
+      .then(res => res.json())
+      .then(data => setTableList(data))
+      .catch(error => console.error('Error fetching tables:', error));
+  }, []);
+
+  // Fetch menu items khi component mount hoặc khi search thay đổi
+  useEffect(() => {
+    setLoading(true);
+    const endpoint = search.trim() 
+      ? `http://localhost:8080/api/dishes/search?name=${encodeURIComponent(search)}`
+      : 'http://localhost:8080/api/dishes/active';
+
+    fetch(endpoint)
+      .then(res => res.json())
+      .then(data => {
+        setMenuItems(data);
+        setLoading(false);
+      })
+      .catch(error => {
+        console.error('Error fetching menu items:', error);
+        setLoading(false);
+      });
+  }, [search]);
 
   // Lấy bàn từ query string nếu có
   useEffect(() => {
@@ -82,7 +115,11 @@ const Order: React.FC = () => {
 
         {/* Menu món ăn với grid responsive */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
-          {filteredMenu.map(item => (
+          {loading ? (
+            <div className="col-span-full flex justify-center items-center py-8">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+            </div>
+          ) : filteredMenu.map(item => (
             <div key={item.name} className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden">
               <div className="relative">
                 <img 
@@ -220,7 +257,42 @@ const Order: React.FC = () => {
                   <button
                     className="flex-1 py-3 px-6 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                     disabled={cart.length === 0}
-                    onClick={() => alert('Đã gửi đơn hàng!')}
+                    onClick={() => {
+                      const orderData = {
+                        tableId: currentTable,
+                        items: cart.map(item => ({
+                          dishId: item.id,
+                          quantity: item.quantity
+                        }))
+                      };
+                      
+                      fetch('http://localhost:8080/api/waiter/orders', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(orderData)
+                      })
+                      .then(async (res) => {
+                        if (res.ok) {
+                          await res.json(); // Wait for response but we don't need the result
+                          alert('Đơn hàng đã được gửi thành công!');
+                          clearCart();
+                          // Refresh tables after submitting order
+                          fetch('http://localhost:8080/api/waiter/tables')
+                            .then(res => res.json())
+                            .then(data => setTableList(data))
+                            .catch(error => console.error('Error refreshing tables:', error));
+                        } else {
+                          const errorText = await res.text();
+                          throw new Error(errorText || 'Failed to submit order');
+                        }
+                      })
+                      .catch(error => {
+                        console.error('Error submitting order:', error);
+                        alert('Có lỗi xảy ra khi gửi đơn hàng!');
+                      });
+                    }}
                   >
                     <span className="flex items-center justify-center">
                       <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
