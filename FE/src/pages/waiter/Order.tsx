@@ -2,15 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useTableCart } from '../../contexts/TableCartContext';
 import type { TableInfo } from '../../data/tables';
 import TaskbarWaiter from '../../components/TaskbarWaiter';
-
-interface MenuItem {
-  id: number;
-  name: string;
-  price: number;
-  image: string;
-  status: boolean;
-  quantity?: number;
-}
+import type { MenuItem } from '../../api/orderApi.ts';
+import { fetchOccupiedTables, fetchMenuItems, createOrder } from '../../api/orderApi.ts';
 
 const Order: React.FC = () => {
   const { tableCarts, setTable, currentTable, addToCart, updateQuantity, removeFromCart, clearCart } = useTableCart();
@@ -21,89 +14,30 @@ const Order: React.FC = () => {
 
   // Fetch tables
   useEffect(() => {
-    fetch('http://localhost:8080/api/waiter/tables?status=Occupied', {
-      credentials: 'include',
-      headers: {
-        'Accept': 'application/json'
-      }
-    })
-      .then(async res => {
-        const text = await res.text();
-        console.log('Raw table response:', text);
-        
-        try {
-          // Check if response is ok before parsing
-          if (!res.ok) {
-            throw new Error(`Server error: ${res.status} ${res.statusText}`);
-          }
-
-          const data = JSON.parse(text);
-          console.log('Parsed table data:', data);
-          
-          if (Array.isArray(data)) {
-            // Map BE response to FE TableInfo interface
-            const tables = data.map(item => ({
-              id: item.tableId,
-              name: item.tableName,
-              status: item.status === 'OCCUPIED' ? 'Đang phục vụ' : item.status,
-              capacity: parseInt(item.tableType) || 4
-            }));
-            setTableList(tables);
-          } else {
-            console.warn('Unexpected data structure:', data);
-            setTableList([]);
-          }
-        } catch (e) {
-          console.error('Error processing response:', e);
-          setTableList([]);
-        }
-      })
-      .catch(error => {
+    const fetchTables = async () => {
+      try {
+        const tables = await fetchOccupiedTables();
+        setTableList(tables);
+      } catch (error) {
         console.error('Error fetching tables:', error);
-        setTableList([]); // Clear tables on error
+        setTableList([]);
         alert('Không thể lấy danh sách bàn. Vui lòng thử lại sau.');
-      });
+      }
+    };
+
+    fetchTables();
   }, []);
 
 
 
   // Fetch menu items
   useEffect(() => {
-    const fetchMenuItems = async () => {
+    const loadMenu = async () => {
       setLoading(true);
       try {
-        const endpoint = search.trim() 
-          ? `http://localhost:8080/api/dishes/search?name=${encodeURIComponent(search)}`
-          : 'http://localhost:8080/api/dishes';
-
-        const res = await fetch(endpoint, {
-          credentials: 'include',
-          headers: {
-            'Accept': 'application/json'
-          }
-        });
-
-        if (!res.ok) {
-          throw new Error(`Failed to fetch menu items: ${res.status} ${res.statusText}`);
-        }
-
-        const response = await res.json();
-        console.log('Menu response:', response);
-
-        // Map BE Dish response to FE MenuItem interface
-        const menuData = Array.isArray(response) ? response.map(item => ({
-          id: item.dishId,
-          name: item.dishName,
-          price: Number(item.price),
-          image: item.imageUrl || '/placeholder-dish.jpg',
-          status: item.status
-        })) : [];
-
-        // Filter active items
-        const activeItems = menuData.filter(item => item.status === true);
-
-        console.log('Active menu items:', activeItems);
-        setMenuItems(activeItems);
+        const items = await fetchMenuItems(search);
+        console.log('Menu items:', items);
+        setMenuItems(items);
       } catch (error) {
         console.error('Error fetching menu items:', error);
         setMenuItems([]);
@@ -113,7 +47,7 @@ const Order: React.FC = () => {
       }
     };
 
-    fetchMenuItems();
+    loadMenu();
   }, [search]);
 
   // Lấy bàn từ query string nếu có
@@ -331,7 +265,7 @@ const Order: React.FC = () => {
                   <button
                     className="flex-1 py-3 px-6 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                     disabled={cart.length === 0}
-                    onClick={() => {
+                    onClick={async () => {
                       const orderData = {
                         tableId: Number(currentTable.replace(/\D/g, '')),
                         orderDetails: cart.map(item => ({
@@ -341,34 +275,16 @@ const Order: React.FC = () => {
                         }))
                       };
                       
-                      fetch('http://localhost:8080/api/waiter/orders/dine-in', {
-                        method: 'POST',
-                        headers: {
-                          'Content-Type': 'application/json',
-                          'Accept': 'application/json'
-                        },
-                        credentials: 'include',
-                        body: JSON.stringify(orderData)
-                      })
-                      .then(async (res) => {
-                        if (res.ok) {
-                          await res.json(); // Wait for response but we don't need the result
-                          alert('Đơn hàng đã được gửi thành công!');
-                          clearCart();
-                          // Refresh tables after submitting order
-                          fetch('http://localhost:8080/api/waiter/tables?status=Occupied')
-                            .then(res => res.json())
-                            .then(data => setTableList(data))
-                            .catch(error => console.error('Error refreshing tables:', error));
-                        } else {
-                          const errorText = await res.text();
-                          throw new Error(errorText || 'Failed to submit order');
-                        }
-                      })
-                      .catch(error => {
+                      try {
+                        const response = await createOrder(orderData);
+                        alert(response.message || 'Đơn hàng đã được gửi thành công!');
+                        clearCart();
+                        const tables = await fetchOccupiedTables();
+                        setTableList(tables);
+                      } catch (error) {
                         console.error('Error submitting order:', error);
                         alert('Có lỗi xảy ra khi gửi đơn hàng!');
-                      });
+                      }
                     }}
                   >
                     <span className="flex items-center justify-center">
