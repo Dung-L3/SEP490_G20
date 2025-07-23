@@ -282,14 +282,15 @@ const Order: React.FC = () => {
                     disabled={cart.length === 0}
                     onClick={() => {
                       const orderData = {
-                        tableId: currentTable,
+                        tableName: currentTable,
                         items: cart.map(item => ({
                           dishId: item.id,
-                          quantity: item.quantity
+                          quantity: item.quantity,
+                          note: ""
                         }))
                       };
                       
-                      fetch('http://localhost:8080/api/waiter/orders', {
+                      fetch('http://localhost:8080/api/waiter/orders/dine-in', {
                         method: 'POST',
                         headers: {
                           'Content-Type': 'application/json',
@@ -302,7 +303,7 @@ const Order: React.FC = () => {
                           alert('Đơn hàng đã được gửi thành công!');
                           clearCart();
                           // Refresh tables after submitting order
-                          fetch('http://localhost:8080/api/waiter/tables')
+                          fetch('http://localhost:8080/api/waiter/tables?status=Available')
                             .then(res => res.json())
                             .then(data => setTableList(data))
                             .catch(error => console.error('Error refreshing tables:', error));
