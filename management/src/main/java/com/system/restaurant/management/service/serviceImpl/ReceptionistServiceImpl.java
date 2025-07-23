@@ -120,7 +120,6 @@ public class ReceptionistServiceImpl implements ReceptionistService {
 
     @Override
     public byte[] exportInvoicePdf(Integer invoiceId) {
-        // TODO: implement PDF generation with iText or PDFBox
         return new byte[0];
     }
 

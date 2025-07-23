@@ -13,7 +13,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/staffs")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
+
 public class StaffController {
 
     private final StaffService staffService;

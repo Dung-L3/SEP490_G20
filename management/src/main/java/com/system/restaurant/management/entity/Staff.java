@@ -34,6 +34,9 @@ public class Staff {
     @Column(name = "Status")
     private Boolean status;
 
+    @Column(name = "role")
+    private String role;
+
     @Column(name = "CreatedAt", nullable = false)
     private LocalDateTime createdAt;
 }
