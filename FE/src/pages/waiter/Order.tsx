@@ -21,7 +21,7 @@ const Order: React.FC = () => {
 
   // Fetch tables
   useEffect(() => {
-    fetch('http://localhost:8080/api/waiter/tables?status=Available')
+    fetch('http://localhost:8080/api/waiter/tables?status=Occupied')
       .then(res => {
         if (!res.ok) {
           throw new Error('Failed to fetch tables');
@@ -59,7 +59,9 @@ const Order: React.FC = () => {
       })
       .then(data => {
         console.log('Fetched menu items:', data);
-        setMenuItems(data);
+        // Lọc chỉ lấy các món active
+        const activeItems = data.filter((item: MenuItem) => item.status);
+        setMenuItems(activeItems);
         setLoading(false);
       })
       .catch(error => {
@@ -79,7 +81,7 @@ const Order: React.FC = () => {
   }, [currentTable, setTable]);
 
   const filteredMenu = menuItems.filter(item =>
-    item.name.toLowerCase().includes(search.toLowerCase())
+    item && item.name && item.name.toLowerCase().includes(search.toLowerCase())
   );
   const cart = tableCarts[currentTable] || [];
 
@@ -111,11 +113,15 @@ const Order: React.FC = () => {
               value={currentTable}
               onChange={e => setTable(e.target.value)}
             >
-              {tableList.map(table => (
-                <option key={table.id} value={table.name} className="py-2">
-                  {table.name} ({table.status})
-                </option>
-              ))}
+              {tableList && tableList.length > 0 ? (
+                tableList.map(table => (
+                  <option key={table.id} value={table.name}>
+                    Bàn {table.name}
+                  </option>
+                ))
+              ) : (
+                <option value="">Không có bàn đang phục vụ</option>
+              )}
             </select>
           </div>
         </div>
@@ -282,8 +288,8 @@ const Order: React.FC = () => {
                     disabled={cart.length === 0}
                     onClick={() => {
                       const orderData = {
-                        tableName: currentTable,
-                        items: cart.map(item => ({
+                        tableId: parseInt(currentTable),
+                        orderDetails: cart.map(item => ({
                           dishId: item.id,
                           quantity: item.quantity,
                           note: ""
@@ -303,7 +309,7 @@ const Order: React.FC = () => {
                           alert('Đơn hàng đã được gửi thành công!');
                           clearCart();
                           // Refresh tables after submitting order
-                          fetch('http://localhost:8080/api/waiter/tables?status=Available')
+                          fetch('http://localhost:8080/api/waiter/tables?status=Occupied')
                             .then(res => res.json())
                             .then(data => setTableList(data))
                             .catch(error => console.error('Error refreshing tables:', error));
