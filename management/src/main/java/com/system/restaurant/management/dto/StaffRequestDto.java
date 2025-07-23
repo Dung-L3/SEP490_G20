@@ -14,5 +14,6 @@ public class StaffRequestDto {
     private String email;
     private String phone;
     private Boolean status;
+    private String role;
     private String username;
 }
