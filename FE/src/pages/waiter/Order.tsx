@@ -21,10 +21,26 @@ const Order: React.FC = () => {
 
   // Fetch tables
   useEffect(() => {
-    fetch('http://localhost:8080/api/waiter/tables')
-      .then(res => res.json())
-      .then(data => setTableList(data))
-      .catch(error => console.error('Error fetching tables:', error));
+    fetch('http://localhost:8080/api/waiter/tables?status=Available')
+      .then(res => {
+        if (!res.ok) {
+          throw new Error('Failed to fetch tables');
+        }
+        return res.json();
+      })
+      .then(data => {
+        console.log('Fetched tables:', data);
+        setTableList(data);
+      })
+      .catch(error => {
+        console.error('Error fetching tables:', error);
+        // Set default tables in case of error
+        setTableList([
+          { id: 1, name: 'A1', status: 'Available', capacity: 4 },
+          { id: 2, name: 'A2', status: 'Available', capacity: 4 },
+          // Add more default tables as needed
+        ]);
+      });
   }, []);
 
   // Fetch menu items khi component mount hoặc khi search thay đổi
@@ -35,13 +51,20 @@ const Order: React.FC = () => {
       : 'http://localhost:8080/api/dishes/active';
 
     fetch(endpoint)
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) {
+          throw new Error('Failed to fetch menu items');
+        }
+        return res.json();
+      })
       .then(data => {
+        console.log('Fetched menu items:', data);
         setMenuItems(data);
         setLoading(false);
       })
       .catch(error => {
         console.error('Error fetching menu items:', error);
+        setMenuItems([]); // Set empty array on error
         setLoading(false);
       });
   }, [search]);
