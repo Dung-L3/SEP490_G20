@@ -96,7 +96,12 @@ export const createOrder = async (orderData: CreateOrderRequest): Promise<OrderR
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || 'Failed to submit order');
+    try {
+      const errorJson = JSON.parse(errorText);
+      throw new Error(errorJson.message || errorJson.error || 'Có lỗi xảy ra khi gửi đơn hàng');
+    } catch (e) {
+      throw new Error(errorText || 'Có lỗi xảy ra khi gửi đơn hàng');
+    }
   }
 
   const result = await response.json();

@@ -281,9 +281,10 @@ const Order: React.FC = () => {
                         clearCart();
                         const tables = await fetchOccupiedTables();
                         setTableList(tables);
-                      } catch (error) {
+                      } catch (error: any) {
                         console.error('Error submitting order:', error);
-                        alert('Có lỗi xảy ra khi gửi đơn hàng!');
+                        const errorMessage = error.message || 'Có lỗi xảy ra khi gửi đơn hàng!';
+                        alert(errorMessage);
                       }
                     }}
                   >
