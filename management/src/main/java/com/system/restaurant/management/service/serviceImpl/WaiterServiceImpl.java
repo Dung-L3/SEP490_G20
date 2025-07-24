@@ -32,7 +32,6 @@ public class WaiterServiceImpl implements WaiterService {
     private final PaymentMethodRepository paymentMethodRepository;
     private final DishRepository dishRepository;
     private final OrderDetailRepository orderDetailRepository;
-    private final OrderStatusRepository orderStatusRepository;
     private final ComboRepository comboRepository;
 
     @Override
@@ -346,11 +345,11 @@ public class WaiterServiceImpl implements WaiterService {
                 .build();
         pr = paymentRecordRepository.save(pr);
 
-        // 6. Cập nhật Order → Done
-        OrderStatus done = orderStatusRepository.findByStatusName("Done")
-                .orElseThrow(() -> new EntityNotFoundException("Status 'Done' not found"));
-        order.setStatusId(done.getStatusId());
-        orderRepository.save(order);
+//        // 6. Cập nhật Order → Done
+//        OrderStatus done = orderStatusRepository.findByStatusName("Done")
+//                .orElseThrow(() -> new EntityNotFoundException("Status 'Done' not found"));
+//        order.setStatusId(done.getStatusID());
+//        orderRepository.save(order);
 //
 //        // 7. Cập nhật bàn (nếu DINEIN)
 //        if ("DINEIN".equalsIgnoreCase(order.getOrderType()) && order.getTable() != null) {
