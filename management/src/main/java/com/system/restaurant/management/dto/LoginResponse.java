@@ -7,5 +7,5 @@ import lombok.Data;
 @AllArgsConstructor
 public class LoginResponse {
     private String mess;
-    private Integer id;
+    private String role;
 }

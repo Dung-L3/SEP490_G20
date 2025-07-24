@@ -65,6 +65,8 @@ public class AuthServiceImpl implements AuthService {
         if (custRepo.existsByPhone(req.getPhone())) {
             throw new IllegalArgumentException("Số điện thoại đã tồn tại");
         }
+        Role role = roleRepo.findByRoleName("customer")
+                .orElseThrow();
         User u = User.builder()
                 .username(req.getUsername())
                 .passwordHash(passwordEncoder.encode(req.getPassword()))
@@ -74,6 +76,7 @@ public class AuthServiceImpl implements AuthService {
                 .status(true)
                 .createdAt(LocalDateTime.now())
                 .build();
+        u.getRoles().add(role);
         userRepo.save(u);
 
         Customer c = Customer.builder()

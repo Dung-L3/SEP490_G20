@@ -23,6 +23,8 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
     @Query("SELECT o FROM Order o WHERE o.statusId IN :statusIds")
     List<Order> findByStatusIdIn(@Param("statusIds") List<Integer> statusIds);
 
+    List<Order> findByStatusId(Integer statusId);
+
     // Find orders by customer phone
     List<Order> findByPhone(String phone);
 
