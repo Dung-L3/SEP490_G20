@@ -13,6 +13,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/staffs")
 @RequiredArgsConstructor
+
 public class StaffController {
 
     private final StaffService staffService;
@@ -90,5 +91,4 @@ public class StaffController {
     public ResponseEntity<Staff> updateStatus(@PathVariable Integer id, @RequestParam boolean status) {
         return ResponseEntity.ok(staffService.updateStatus(id, status));
     }
-
 }

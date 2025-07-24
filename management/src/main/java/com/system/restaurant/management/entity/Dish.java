@@ -30,6 +30,7 @@ public class Dish {
     @Column(name = "Price", nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 
+    @Builder.Default
     @Column(name = "Status", nullable = false)
     private Boolean status = true;
 
