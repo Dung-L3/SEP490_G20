@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Integer> {
@@ -27,4 +28,11 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 
     // Find orders by order type
     List<Order> findByOrderType(String orderType);
+
+    // table ordering
+    @Query("SELECT o FROM Order o WHERE o.tableId = :tableId AND o.statusId = 1")
+    Optional<Order> findPendingOrderByTableId(@Param("tableId") Integer tableId);
+
+    @Query("SELECT o FROM Order o WHERE o.tableId = :tableId AND o.statusId IN (1, 2)")
+    Optional<Order> findActiveOrderByTableId(@Param("tableId") Integer tableId);
 }
