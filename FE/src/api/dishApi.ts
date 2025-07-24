@@ -24,12 +24,12 @@ const handleResponse = async (response: Response) => {
     }
     
     return data;
-  } catch (e) {
+  } catch (error) {
     // If parsing failed or response was not OK, throw error with raw response
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}, details: ${text}`);
     }
-    throw new Error(`Invalid JSON response: ${text}`);
+    throw new Error(`Invalid JSON response: ${text} (${error}`);
   }
 };
 
