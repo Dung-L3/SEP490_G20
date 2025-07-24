@@ -1,6 +1,11 @@
-import type { TableInfo } from '../data/tables';
+export interface TableInfo {
+  id: number;
+  name: string;
+  status: string;
+  capacity: number;
+  estimatedTime?: string;
+}
 
-// Interfaces
 export interface MenuItem {
   id: number;
   name: string;
