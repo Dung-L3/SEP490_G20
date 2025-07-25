@@ -17,9 +17,7 @@ import OrderManager from './pages/manager/OrderManager'; // Import trang Quản 
 import ReportManager from './pages/manager/ReportManager'; // Import trang Báo cáo
 import { CartProvider } from './contexts/CartContext';
 import { TableCartProvider } from './contexts/TableCartContext';
-
-
-
+import { AuthProvider } from './contexts/AuthContext';
 import Chef from './pages/chef/Chef';
 
 function App() {
@@ -27,7 +25,8 @@ function App() {
     <CartProvider>
       <TableCartProvider>
         <Router>
-          <Routes>
+          <AuthProvider>
+            <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/booking" element={<Booking />} />
             <Route path="/menu" element={<Menu />} />  {/* Route cho trang Thực Đơn */}
@@ -46,8 +45,8 @@ function App() {
           <Route path="/waiter/orders" element={<WaiterOrder />} /> {/* Route cho waiter đặt món */}
           <Route path="/waiter/tables" element={<WaiterTableView />} /> {/* Route cho waiter xem bàn */}
           <Route path="/chef" element={<Chef />} /> {/* Route cho trang Chef (bếp trưởng) */}
-
-          </Routes>
+            </Routes>
+          </AuthProvider>
         </Router>
       </TableCartProvider>
     </CartProvider>
