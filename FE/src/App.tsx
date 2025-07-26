@@ -18,6 +18,9 @@ import ReportManager from './pages/manager/ReportManager'; // Import trang Báo 
 import { CartProvider } from './contexts/CartContext';
 import { TableCartProvider } from './contexts/TableCartContext';
 import { AuthProvider } from './contexts/AuthContext';
+import OrderList from './pages/receptionist/OrderList';
+import OrderPayment from './pages/receptionist/OrderPayment';
+import ReceptionistHome from './pages/receptionist/ReceptionistHome';
 import Chef from './pages/chef/Chef';
 
 function App() {
@@ -41,11 +44,13 @@ function App() {
             <Route path="/manager/dish" element={<DishManager />} /> {/* Route cho trang Quản lý món ăn */}
             <Route path="/manager/order" element={<OrderManager />} /> {/* Route cho trang Quản lý đơn hàng */}
             <Route path="/manager/report" element={<ReportManager />} /> {/* Route cho trang Báo cáo */}
-
-          <Route path="/waiter/orders" element={<WaiterOrder />} /> {/* Route cho waiter đặt món */}
-          <Route path="/waiter/tables" element={<WaiterTableView />} /> {/* Route cho waiter xem bàn */}
-          <Route path="/chef" element={<Chef />} /> {/* Route cho trang Chef (bếp trưởng) */}
-            </Routes>
+            <Route path="/waiter/orders" element={<WaiterOrder />} /> {/* Route cho waiter đặt món */}
+            <Route path="/waiter/tables" element={<WaiterTableView />} /> {/* Route cho waiter xem bàn */}
+            <Route path="/chef" element={<Chef />} /> {/* Route cho trang Chef (bếp trưởng) */}
+            <Route path="/receptionist/orders/uppaid" element={<OrderList />} /> {/* Route cho trang xử lý thanh toán của order */}
+            <Route path="/receptionist/:orderId/payment" element={<OrderPayment />} />
+            <Route path="/receptionist"element={<ReceptionistHome/>} />
+          </Routes>
           </AuthProvider>
         </Router>
       </TableCartProvider>

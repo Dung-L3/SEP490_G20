@@ -32,7 +32,10 @@ public class WaiterServiceImpl implements WaiterService {
     private final PaymentMethodRepository paymentMethodRepository;
     private final DishRepository dishRepository;
     private final OrderDetailRepository orderDetailRepository;
+    private final OrderStatusRepository orderStatusRepository;
     private final ComboRepository comboRepository;
+    private final InvoicePrintRepository invoicePrintRepository;
+
 
     @Override
     public boolean isTableOccupied(Integer tableId) {
@@ -345,28 +348,24 @@ public class WaiterServiceImpl implements WaiterService {
                 .build();
         pr = paymentRecordRepository.save(pr);
 
-//        // 6. Cập nhật Order → Done
-//        OrderStatus done = orderStatusRepository.findByStatusName("Done")
-//                .orElseThrow(() -> new EntityNotFoundException("Status 'Done' not found"));
-//        order.setStatusId(done.getStatusID());
-//        orderRepository.save(order);
-//
-//        // 7. Cập nhật bàn (nếu DINEIN)
-//        if ("DINEIN".equalsIgnoreCase(order.getOrderType()) && order.getTable() != null) {
-//            RestaurantTable table = order.getTable();
-//            table.setStatus("AVAILABLE");
-//            restaurantTableRepository.save(table);
-//        }
-//
-//        // 8. Ghi InvoicePrint
-//        InvoicePrint ip = InvoicePrint.builder()
-//                .invoiceId(invoice.getInvoiceId())
-//                .printedBy(issuedBy)
-//                .printedAt(LocalDateTime.now())
-//                .build();
-//        invoicePrintRepository.save(ip);
-//
-        // 9. Trả về response
+        OrderStatus done = orderStatusRepository.findByStatusName("Done")
+                .orElseThrow(() -> new EntityNotFoundException("Status 'Done' not found"));
+        order.setStatusId(done.getStatusId());
+        orderRepository.save(order);
+
+        if ("DINEIN".equalsIgnoreCase(order.getOrderType()) && order.getTable() != null) {
+            RestaurantTable table = order.getTable();
+            table.setStatus("FREE");
+            restaurantTableRepository.save(table);
+        }
+
+        InvoicePrint ip = InvoicePrint.builder()
+                .invoiceId(invoice.getInvoiceId())
+                .printedBy(issuedBy)
+                .printedAt(LocalDateTime.now())
+                .build();
+        invoicePrintRepository.save(ip);
+
         return CompletePaymentResponse.builder()
                 .orderId(orderId)
                 .invoiceNumber("INV-" + invoice.getInvoiceId())

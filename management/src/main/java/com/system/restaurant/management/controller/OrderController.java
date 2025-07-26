@@ -35,4 +35,8 @@ public class OrderController {
         return orderService.getUnpaidOrders();
     }
 
+    @GetMapping("{id}")
+    public ResponseEntity<OrderDto> getOrder(@PathVariable Integer id) {
+        return ResponseEntity.ok(orderService.findById(id));
+    }
 }

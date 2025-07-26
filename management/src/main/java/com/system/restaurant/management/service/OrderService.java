@@ -9,6 +9,7 @@ import com.system.restaurant.management.entity.OrderDetail;
 import java.util.List;
 
 public interface OrderService {
+    OrderDto findById(Integer id);
     Order createOrder(Order order);
     Order updateOrder(Order order);
     OrderDetail addOrderDetail(OrderDetail orderDetail);

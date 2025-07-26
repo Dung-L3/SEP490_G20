@@ -33,6 +33,12 @@ public class OrderServiceImpl implements OrderService {
     private final OrderStatusRepository statusRepo;
 
     @Override
+    public OrderDto findById(Integer id) {
+         Order order = orderRepository.findById(id).orElseThrow();
+                 return mapToDto(order);
+    }
+
+    @Override
     public Order createOrder(Order order) {
         return orderRepository.save(order);
     }
