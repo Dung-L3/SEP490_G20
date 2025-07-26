@@ -12,7 +12,7 @@ export interface MenuItem {
   image: string;
 }
 
-const API_URL = 'http://localhost:8080/api/v1/menu';
+const API_URL = '/api/v1/menu';
 
 const fetchMenuItems = async (): Promise<MenuItem[]> => {
   try {

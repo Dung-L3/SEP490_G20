@@ -9,7 +9,7 @@ export interface Dish {
   createdAt: string;
 }
 
-const API_URL = 'http://localhost:8080/api/dishes';
+const API_URL = '/api/dishes';
 
 const handleResponse = async (response: Response) => {
   const text = await response.text();

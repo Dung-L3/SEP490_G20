@@ -13,7 +13,7 @@ interface UserResponse {
   }[];
 }
 
-const BASE_URL = 'http://localhost:8080/api/users';
+const BASE_URL = '/api/users';
 
 // axios instance with common config
 const api = axios.create({
