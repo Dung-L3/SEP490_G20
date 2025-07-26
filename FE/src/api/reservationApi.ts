@@ -1,4 +1,4 @@
-import { Table } from '../types/Table';
+
 
 interface Reservation {
   id?: number;

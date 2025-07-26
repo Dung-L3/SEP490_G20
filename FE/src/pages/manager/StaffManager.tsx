@@ -1,108 +1,167 @@
-import React, { useState } from 'react';
-import { Search, Plus, Edit2, Trash2, Users, UserCheck, UserX, Eye, EyeOff } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Search, Plus, Edit2, Trash2, Users } from 'lucide-react';
 import TaskbarManager from '../../components/TaskbarManager';
+import { staffApi } from '../../api/staffApi';
+import type { Staff, StaffRequest } from '../../types/Staff';
 
-// Sample staff data
-const initialStaff = [
-  { id: 1, name: 'Nguyễn Văn A', role: 'Quản lý', phone: '0901234567', username: 'admin', password: '123456', status: 'Đang làm', avatar: '👨‍💼' },
-  { id: 2, name: 'Trần Thị B', role: 'Phục vụ', phone: '0902345678', username: 'buser', password: '123456', status: 'Đang làm', avatar: '👩‍💼' },
-  { id: 3, name: 'Lê Văn C', role: 'Bếp', phone: '0903456789', username: 'cook', password: '123456', status: 'Nghỉ việc', avatar: '👨‍🍳' },
-  { id: 4, name: 'Phạm Thị D', role: 'Thu ngân', phone: '0904567890', username: 'cashier', password: '123456', status: 'Đang làm', avatar: '👩‍💻' },
-  { id: 5, name: 'Võ Văn E', role: 'Phục vụ', phone: '0905678901', username: 'waiter', password: '123456', status: 'Đang làm', avatar: '👨‍🍽️' },
-];
+interface StaffDisplay extends Staff {
+  avatar: string;
+}
 
 const StaffManager = () => {
-  const [staff, setStaff] = useState(initialStaff);
+  const [staff, setStaff] = useState<StaffDisplay[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
-  const [editIdx, setEditIdx] = useState(null);
-  const [editStaff, setEditStaff] = useState(null);
+  const [editStaff, setEditStaff] = useState<StaffDisplay | null>(null);
   const [addOpen, setAddOpen] = useState(false);
-  const [showPassword, setShowPassword] = useState({});
-  const [newStaff, setNewStaff] = useState({
-    name: '', role: '', phone: '', username: '', password: '', status: 'Đang làm', avatar: '👤'
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string>('');
+
+  const [newStaff, setNewStaff] = useState<StaffRequest>({
+    username: '',
+    fullName: '',
+    email: '',
+    phone: '',
+    status: true,
+    roleNames: []
   });
 
-  // Filter staff based on search and status
-  const filteredStaff = staff.filter(s => {
-    const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         s.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         s.phone.includes(searchTerm);
-    const matchesStatus = !filterStatus || s.status === filterStatus;
-    return matchesSearch && matchesStatus;
-  });
+  // Convert API Staff to display format
+  const mapStaffToDisplay = useCallback((apiStaff: Staff): StaffDisplay => {
+    return {
+      ...apiStaff,
+      avatar: getAvatarForRole(apiStaff.roleNames[0] || ''), // Use first role or empty string
+    };
+  }, []);
 
-  // Toggle work status
-  const handleToggleStatus = (idx) => {
-    const staffIndex = staff.findIndex(s => s.id === filteredStaff[idx].id);
-    setStaff(staff => staff.map((s, i) =>
-      i === staffIndex ? { ...s, status: s.status === 'Đang làm' ? 'Nghỉ việc' : 'Đang làm' } : s
-    ));
-  };
-
-  // Open edit modal
-  const handleEdit = (idx) => {
-    setEditIdx(idx);
-    setEditStaff({ ...filteredStaff[idx] });
-  };
-
-  // Handle edit field changes
-  const handleEditChange = (e) => {
-    const { name, value } = e.target;
-    setEditStaff(prev => ({ ...prev, [name]: value }));
-  };
-
-  // Save edit
-  const handleEditSave = () => {
-    if (editIdx !== null && editStaff) {
-      const staffIndex = staff.findIndex(s => s.id === editStaff.id);
-      setStaff(staff => staff.map((s, i) => i === staffIndex ? editStaff : s));
-    }
-    setEditIdx(null);
-    setEditStaff(null);
-  };
-
-  // Cancel edit
-  const handleEditCancel = () => {
-    setEditIdx(null);
-    setEditStaff(null);
-  };
-
-  // Handle add field changes
-  const handleAddChange = (e) => {
-    const { name, value } = e.target;
-    setNewStaff(prev => ({ ...prev, [name]: value }));
-  };
-
-  // Save new staff
-  const handleAddSave = () => {
-    if (!newStaff.name.trim() || !newStaff.role.trim() || !newStaff.phone.trim() || !newStaff.username.trim() || !newStaff.password.trim()) return;
-    setStaff(prev => [...prev, { ...newStaff, id: Date.now() }]);
-    setAddOpen(false);
-    setNewStaff({ name: '', role: '', phone: '', username: '', password: '', status: 'Đang làm', avatar: '👤' });
-  };
-
-  // Cancel add
-  const handleAddCancel = () => {
-    setAddOpen(false);
-    setNewStaff({ name: '', role: '', phone: '', username: '', password: '', status: 'Đang làm', avatar: '👤' });
-  };
-
-  // Delete staff
-  const handleDelete = (idx) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa nhân viên này?')) {
-      const staffToDelete = filteredStaff[idx];
-      setStaff(staff => staff.filter(s => s.id !== staffToDelete.id));
+  const getAvatarForRole = (role: string): string => {
+    if (!role) return '👤'; // Default avatar if no role
+    switch (role.toLowerCase()) {
+      case 'manager': return '👨‍💼';
+      case 'waiter': return '👨‍🍽️';
+      case 'chef': return '👨‍🍳';
+      case 'thu ngân': return '👩‍💻';
+      default: return '👤';
     }
   };
 
-  // Toggle password visibility
-  const togglePasswordVisibility = (id) => {
-    setShowPassword(prev => ({ ...prev, [id]: !prev[id] }));
+  useEffect(() => {
+    const fetchStaff = async () => {
+      try {
+        setLoading(true);
+        const response = await staffApi.getAll();
+        setStaff(response.map(mapStaffToDisplay));
+        setError('');
+      } catch (err) {
+        setError('Không thể tải danh sách nhân viên');
+        console.error('Error fetching staff:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchStaff();
+  }, [mapStaffToDisplay]);
+
+  const filteredStaff = staff.filter(s => 
+    s.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    s.roleNames.some(role => role.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    s.phone.includes(searchTerm)
+  );
+
+
+
+  const handleEdit = (idx: number) => {
+    const staffToEdit = filteredStaff[idx];
+    setEditStaff(staffToEdit);
   };
 
-  const activeStaff = staff.filter(s => s.status === 'Đang làm').length;
-  const inactiveStaff = staff.filter(s => s.status === 'Nghỉ việc').length;
+
+
+  const handleEditSave = async () => {
+    if (!editStaff) return;
+
+    try {
+      setLoading(true);
+      const staffRequest: StaffRequest = {
+        username: editStaff.username,
+        fullName: editStaff.fullName,
+        email: editStaff.email,
+        phone: editStaff.phone,
+        status: editStaff.status,
+        roleNames: editStaff.roleNames
+      };
+
+      const updated = await staffApi.update(editStaff.id, staffRequest);
+      setStaff(staff => staff.map(s => 
+        s.id === editStaff.id ? mapStaffToDisplay(updated) : s
+      ));
+      setEditStaff(null);
+      setError('');
+    } catch (err) {
+      setError('Không thể cập nhật thông tin nhân viên');
+      console.error('Error updating staff:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddSave = async () => {
+    if (!newStaff.fullName.trim() || newStaff.roleNames.length === 0 || !newStaff.phone.trim() || 
+        !newStaff.username.trim() || !newStaff.email.trim()) {
+      setError('Vui lòng điền đầy đủ thông tin');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const created = await staffApi.create(newStaff);
+      setStaff(prev => [...prev, mapStaffToDisplay(created)]);
+      setAddOpen(false);
+      setNewStaff({
+        username: '',
+        fullName: '',
+        email: '',
+        phone: '',
+        status: true,
+        roleNames: []
+      });
+      setError('');
+    } catch (err) {
+      setError('Không thể thêm nhân viên mới');
+      console.error('Error creating staff:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa nhân viên này?')) return;
+
+    try {
+      setLoading(true);
+      await staffApi.delete(id);
+      setStaff(staff => staff.filter(s => s.id !== id));
+      setError('');
+    } catch (err) {
+      setError('Không thể xóa nhân viên');
+      console.error('Error deleting staff:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Đang tải...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -111,19 +170,15 @@ const StaffManager = () => {
       </div>
       
       <div className="flex-1 min-w-0 p-8">
+        {error && (
+          <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+            {error}
+          </div>
+        )}
+
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Quản lý nhân sự</h1>
-          <div className="flex gap-6 text-sm">
-            <div className="flex items-center gap-2">
-              <UserCheck className="w-5 h-5 text-green-600" />
-              <span className="text-gray-600">Đang làm việc: <strong className="text-green-600">{activeStaff}</strong></span>
-            </div>
-            <div className="flex items-center gap-2">
-              <UserX className="w-5 h-5 text-red-600" />
-              <span className="text-gray-600">Nghỉ việc: <strong className="text-red-600">{inactiveStaff}</strong></span>
-            </div>
-          </div>
         </div>
 
         {/* Controls */}
@@ -138,15 +193,7 @@ const StaffManager = () => {
               className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
             />
           </div>
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-          >
-            <option value="">Tất cả trạng thái</option>
-            <option value="Đang làm">Đang làm</option>
-            <option value="Nghỉ việc">Nghỉ việc</option>
-          </select>
+
           <button
             onClick={() => setAddOpen(true)}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
@@ -164,9 +211,9 @@ const StaffManager = () => {
                 <tr>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Nhân viên</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Chức vụ</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Liên hệ</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Email</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Số điện thoại</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Tài khoản</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Trạng thái</th>
                   <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Hành động</th>
                 </tr>
               </thead>
@@ -179,44 +226,22 @@ const StaffManager = () => {
                           {s.avatar}
                         </div>
                         <div>
-                          <div className="font-semibold text-gray-900">{s.name}</div>
+                          <div className="font-semibold text-gray-900">{s.fullName}</div>
                           <div className="text-sm text-gray-500">ID: {s.id}</div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                        {s.role}
+                        {s.roleNames.join(', ')}
                       </span>
                     </td>
+                    <td className="px-6 py-4 text-gray-900">{s.email}</td>
                     <td className="px-6 py-4 text-gray-900">{s.phone}</td>
                     <td className="px-6 py-4">
                       <div className="text-sm">
                         <div className="font-medium text-gray-900">{s.username}</div>
-                        <div className="flex items-center gap-2 text-gray-500">
-                          <span>{showPassword[s.id] ? s.password : '••••••'}</span>
-                          <button
-                            onClick={() => togglePasswordVisibility(s.id)}
-                            className="p-1 hover:bg-gray-100 rounded"
-                          >
-                            {showPassword[s.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          </button>
-                        </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <button
-                        onClick={() => handleToggleStatus(idx)}
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold transition-colors ${
-                          s.status === 'Đang làm'
-                            ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                            : 'bg-red-100 text-red-800 hover:bg-red-200'
-                        }`}
-                        title="Nhấn để chuyển trạng thái"
-                      >
-                        {s.status === 'Đang làm' ? <UserCheck className="w-4 h-4 mr-1" /> : <UserX className="w-4 h-4 mr-1" />}
-                        {s.status}
-                      </button>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-center gap-2">
@@ -228,7 +253,7 @@ const StaffManager = () => {
                           Sửa
                         </button>
                         <button
-                          onClick={() => handleDelete(idx)}
+                          onClick={() => handleDelete(s.id)}
                           className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-red-700 bg-red-100 hover:bg-red-200 rounded-lg transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -259,60 +284,24 @@ const StaffManager = () => {
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Thêm nhân viên mới</h2>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Avatar</label>
-                    <div className="flex gap-2 flex-wrap">
-                      {['👤', '👨‍💼', '👩‍💼', '👨‍🍳', '👩‍🍳', '👨‍🍽️', '👩‍🍽️', '👩‍💻'].map(avatar => (
-                        <button
-                          key={avatar}
-                          type="button"
-                          onClick={() => setNewStaff(prev => ({ ...prev, avatar }))}
-                          className={`w-12 h-12 rounded-full flex items-center justify-center text-xl border-2 transition-colors ${
-                            newStaff.avatar === avatar ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
-                          }`}
-                        >
-                          {avatar}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Họ tên</label>
                     <input
-                      name="name"
-                      value={newStaff.name}
-                      onChange={handleAddChange}
+                      name="fullName"
+                      value={newStaff.fullName}
+                      onChange={(e) => setNewStaff(prev => ({ ...prev, fullName: e.target.value }))}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                       placeholder="Nhập họ tên"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Chức vụ</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
                     <input
-                      name="role"
-                      value={newStaff.role}
-                      onChange={handleAddChange}
+                      name="email"
+                      type="email"
+                      value={newStaff.email}
+                      onChange={(e) => setNewStaff(prev => ({ ...prev, email: e.target.value }))}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                      placeholder="Nhập chức vụ"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Số điện thoại</label>
-                    <input
-                      name="phone"
-                      value={newStaff.phone}
-                      onChange={handleAddChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                      placeholder="Nhập số điện thoại"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Tài khoản</label>
-                    <input
-                      name="username"
-                      value={newStaff.username}
-                      onChange={handleAddChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                      placeholder="Nhập tên tài khoản"
+                      placeholder="Nhập email"
                     />
                   </div>
                   <div>
@@ -320,28 +309,62 @@ const StaffManager = () => {
                     <input
                       name="password"
                       type="password"
-                      value={newStaff.password}
-                      onChange={handleAddChange}
+                      value={newStaff.passwordHash || ''}
+                      onChange={(e) => setNewStaff(prev => ({ ...prev, passwordHash: e.target.value }))}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                       placeholder="Nhập mật khẩu"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Trạng thái</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Chức vụ</label>
                     <select
-                      name="status"
-                      value={newStaff.status}
-                      onChange={handleAddChange}
+                      name="role"
+                      value={newStaff.roleNames[0] || ''}
+                      onChange={(e) => setNewStaff(prev => ({ ...prev, roleNames: [e.target.value] }))}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                     >
-                      <option value="Đang làm">Đang làm</option>
-                      <option value="Nghỉ việc">Nghỉ việc</option>
+                      <option value="">Chọn chức vụ</option>
+                      <option value="manager">Quản lý</option>
+                      <option value="waiter">Phục vụ</option>
+                      <option value="chef">Bếp</option>
+                      <option value="cashier">Thu ngân</option>
                     </select>
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Số điện thoại</label>
+                    <input
+                      name="phone"
+                      value={newStaff.phone}
+                      onChange={(e) => setNewStaff(prev => ({ ...prev, phone: e.target.value }))}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                      placeholder="Nhập số điện thoại"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Tên đăng nhập</label>
+                    <input
+                      name="username"
+                      value={newStaff.username}
+                      onChange={(e) => setNewStaff(prev => ({ ...prev, username: e.target.value }))}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                      placeholder="Nhập tên đăng nhập"
+                    />
+                  </div>
+
                 </div>
                 <div className="flex gap-3 mt-8">
                   <button
-                    onClick={handleAddCancel}
+                    onClick={() => {
+                      setAddOpen(false);
+                      setNewStaff({
+                        username: '',
+                        fullName: '',
+                        email: '',
+                        phone: '',
+                        status: true,
+                        roleNames: []
+                      });
+                    }}
                     className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
                   >
                     Huỷ
@@ -359,91 +382,70 @@ const StaffManager = () => {
         )}
 
         {/* Edit Staff Modal */}
-        {editIdx !== null && editStaff && (
+        {editStaff && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Chỉnh sửa thông tin</h2>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Avatar</label>
-                    <div className="flex gap-2 flex-wrap">
-                      {['👤', '👨‍💼', '👩‍💼', '👨‍🍳', '👩‍🍳', '👨‍🍽️', '👩‍🍽️', '👩‍💻'].map(avatar => (
-                        <button
-                          key={avatar}
-                          type="button"
-                          onClick={() => setEditStaff(prev => ({ ...prev, avatar }))}
-                          className={`w-12 h-12 rounded-full flex items-center justify-center text-xl border-2 transition-colors ${
-                            editStaff.avatar === avatar ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
-                          }`}
-                        >
-                          {avatar}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Họ tên</label>
                     <input
-                      name="name"
-                      value={editStaff.name}
-                      onChange={handleEditChange}
+                      name="fullName"
+                      value={editStaff.fullName}
+                      onChange={(e) => setEditStaff(prev => ({ ...prev!, fullName: e.target.value }))}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                    <input
+                      name="email"
+                      type="email"
+                      value={editStaff.email}
+                      onChange={(e) => setEditStaff(prev => ({ ...prev!, email: e.target.value }))}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Chức vụ</label>
-                    <input
+                    <select
                       name="role"
-                      value={editStaff.role}
-                      onChange={handleEditChange}
+                      value={editStaff.roleNames[0] || ''}
+                      onChange={(e) => setEditStaff(prev => ({ ...prev!, roleNames: [e.target.value] }))}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                    />
+                    >
+                      <option value="">Chọn chức vụ</option>
+                      <option value="manager">Quản lý</option>
+                      <option value="waiter">Phục vụ</option>
+                      <option value="chef">Bếp</option>
+                      <option value="cashier">Thu ngân</option>
+                    </select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Số điện thoại</label>
                     <input
                       name="phone"
                       value={editStaff.phone}
-                      onChange={handleEditChange}
+                      onChange={(e) => setEditStaff(prev => ({ ...prev!, phone: e.target.value }))}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Tài khoản</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Tên đăng nhập</label>
                     <input
                       name="username"
                       value={editStaff.username}
-                      onChange={handleEditChange}
+                      onChange={(e) => setEditStaff(prev => ({ ...prev!, username: e.target.value }))}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                     />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Mật khẩu</label>
-                    <input
-                      name="password"
-                      type="password"
-                      value={editStaff.password}
-                      onChange={handleEditChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Trạng thái</label>
-                    <select
-                      name="status"
-                      value={editStaff.status}
-                      onChange={handleEditChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                    >
-                      <option value="Đang làm">Đang làm</option>
-                      <option value="Nghỉ việc">Nghỉ việc</option>
-                    </select>
                   </div>
                 </div>
                 <div className="flex gap-3 mt-8">
                   <button
-                    onClick={handleEditCancel}
+                    onClick={() => {
+                      setEditStaff(null);
+                    }}
                     className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
                   >
                     Huỷ
