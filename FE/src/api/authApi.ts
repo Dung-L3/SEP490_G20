@@ -1,8 +1,12 @@
 export async function loginApi(data: { username: string; password: string }) {
   console.log('Login request data:', data);
-  const res = await fetch('http://localhost:8080/api/auth/login', {
+  const res = await fetch('/api/auth/login', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    credentials: 'include',
     body: JSON.stringify(data),
   });
   let result = null;

@@ -46,6 +46,10 @@ const Login = () => {
         case 'CHEF':
           navigate('/chef');
           break;
+        case 'ROLE_RECEPTIONIST':
+        case 'RECEPTIONIST':
+          navigate('/receptionist');
+          break;
         case 'ROLE_CUSTOMER':
         case 'CUSTOMER':
           navigate('/');

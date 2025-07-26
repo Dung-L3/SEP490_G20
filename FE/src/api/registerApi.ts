@@ -37,7 +37,7 @@ export async function registerEmployeeApi(data: RegisterRequest) {
     roleName: data.roleName?.toUpperCase()
   };
 
-  const res = await fetch('http://localhost:8080/api/auth/register/employee', {
+  const res = await fetch('/api/auth/register/employee', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(requestData),
@@ -52,7 +52,7 @@ export async function registerCustomerApi(data: RegisterRequest) {
     roleName: 'CUSTOMER'  // Backend sẽ thêm prefix ROLE_ nếu cần
   };
 
-  const res = await fetch('http://localhost:8080/api/auth/register/customer', {
+  const res = await fetch('/api/auth/register/customer', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(requestData),
