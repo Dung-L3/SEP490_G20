@@ -82,29 +82,23 @@ public class ReceptionistController {
 
     @GetMapping("/{orderId}/invoice.pdf")
     public ResponseEntity<byte[]> downloadInvoice(@PathVariable Integer orderId) throws Exception {
-        // 1. Lấy Invoice theo orderId
         Invoice inv = invoiceRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new EntityNotFoundException("Invoice không tồn tại cho order " + orderId));
 
-        // 2. Lấy chi tiết món
         List<OrderDetail> items = orderDetailRepository.findByOrderId(orderId);
 
-        // 3. Lấy PaymentRecord mới nhất qua invoiceId
         PaymentRecord pr = paymentRecordRepository
                 .findTopByInvoiceIdOrderByPaidAtDesc(inv.getInvoiceId())
                 .orElseThrow(() -> new EntityNotFoundException(
                         "PaymentRecord không tồn tại cho invoice " + inv.getInvoiceId()));
 
-        // 4. Chuẩn bị dữ liệu cho PDF
         double discount = inv.getDiscountAmount().doubleValue();
         double total    = inv.getFinalTotal().doubleValue();
         String customer = inv.getOrder().getCustomerName();
 
-        // 5. Sinh PDF
         byte[] pdfBytes = invoicePdfService.generateInvoicePdf(
                 orderId, customer, items, pr, discount, total);
 
-        // 6. Trả về response
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename=\"invoice-" + orderId + ".pdf\"")
