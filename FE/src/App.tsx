@@ -2,6 +2,7 @@ import WaiterOrder from './pages/waiter/Order';
 import WaiterTableView from './pages/waiter/TableView';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
+import WorkshiftManager from './pages/manager/WorkshiftManager';
 import Booking from './pages/Booking';
 import Menu from './pages/Menu';  // Import trang Menu
 import Cart from './pages/Cart';  // Import trang Giỏ hàng
@@ -38,6 +39,7 @@ function App() {
             <Route path="/manager/revenue" element={<RevenueManager />} /> {/* Route cho trang Quản lý doanh thu */}
             <Route path="/manager/table" element={<TableManager />} /> {/* Route cho trang Quản lý bàn */}
             <Route path="/manager/staff" element={<StaffManager />} /> {/* Route cho trang Quản lý nhân sự */}
+            <Route path="/manager/workshift" element={<WorkshiftManager />} /> {/* Route cho trang Quản lý ca làm việc */}
             <Route path="/manager/dish" element={<DishManager />} /> {/* Route cho trang Quản lý món ăn */}
             <Route path="/manager/order" element={<OrderManager />} /> {/* Route cho trang Quản lý đơn hàng */}
             <Route path="/manager/report" element={<ReportManager />} /> {/* Route cho trang Báo cáo */}
