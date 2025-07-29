@@ -1,5 +1,6 @@
 import WaiterOrder from './pages/waiter/Order';
 import WaiterTableView from './pages/waiter/TableView';
+import PurchaseHistoryManager from './pages/manager/PurchaseHistoryManager';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import WorkshiftManager from './pages/manager/WorkshiftManager';
@@ -43,6 +44,7 @@ function App() {
             <Route path="/manager/dish" element={<DishManager />} /> {/* Route cho trang Quản lý món ăn */}
             <Route path="/manager/order" element={<OrderManager />} /> {/* Route cho trang Quản lý đơn hàng */}
             <Route path="/manager/report" element={<ReportManager />} /> {/* Route cho trang Báo cáo */}
+            <Route path="/manager/purchase-history" element={<PurchaseHistoryManager />} /> {/* Route cho trang Lịch sử mua hàng */}
 
           <Route path="/waiter/orders" element={<WaiterOrder />} /> {/* Route cho waiter đặt món */}
           <Route path="/waiter/tables" element={<WaiterTableView />} /> {/* Route cho waiter xem bàn */}
