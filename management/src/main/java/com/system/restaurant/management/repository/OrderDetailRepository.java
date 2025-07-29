@@ -2,6 +2,7 @@ package com.system.restaurant.management.repository;
 
 import com.system.restaurant.management.entity.OrderDetail;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -9,6 +10,7 @@ import java.util.Optional;
 
 @Repository
 public interface OrderDetailRepository extends JpaRepository<OrderDetail, Integer> {
+    @Query("SELECT od FROM OrderDetail od JOIN FETCH od.order o JOIN FETCH o.table WHERE od.statusId = :statusId")
     List<OrderDetail> findByStatusId(Integer statusId);
     List<OrderDetail> findByOrderId(Integer orderId);
     Optional<OrderDetail> findByOrderIdAndDishId(Integer orderId, Integer dishId);

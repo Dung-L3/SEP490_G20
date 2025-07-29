@@ -58,8 +58,15 @@ public class ChefServiceImpl implements ChefService {
         dto.setDishName(orderDetail.getDishName());
         dto.setQuantity(orderDetail.getQuantity());
         dto.setStatus(getStatusText(orderDetail.getStatusId()));
-        dto.setTableNumber(orderDetail.getOrder().getTable().getTableName());
-        dto.setOrderTime(orderDetail.getOrder().getCreatedAt());
+
+        // Safely get table name and order time
+        if (orderDetail.getOrder() != null) {
+            if (orderDetail.getOrder().getTable() != null) {
+                dto.setTableNumber(orderDetail.getOrder().getTable().getTableName());
+            }
+            dto.setOrderTime(orderDetail.getOrder().getCreatedAt());
+        }
+
         dto.setNotes(orderDetail.getNotes());
         return dto;
     }
@@ -74,4 +81,3 @@ public class ChefServiceImpl implements ChefService {
         };
     }
 }
-
