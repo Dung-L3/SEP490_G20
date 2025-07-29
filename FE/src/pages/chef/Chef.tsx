@@ -10,7 +10,8 @@ interface OrderCardProps {
 }
 
 const Chef = () => {
-  const [orders, setOrders] = useState<KitchenOrderItem[]>([]);
+  const [pendingOrders, setPendingOrders] = useState<KitchenOrderItem[]>([]);
+  const [cookingOrders, setCookingOrders] = useState<KitchenOrderItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -19,9 +20,10 @@ const Chef = () => {
       try {
         setLoading(true);
         setErrorMessage(null);
-        const pendingOrders = await fetchPendingOrders();
-        const cookingOrders = await fetchCookingOrders();
-        setOrders([...pendingOrders, ...cookingOrders]);
+        const pending = await fetchPendingOrders();
+        const cooking = await fetchCookingOrders();
+        setPendingOrders(pending);
+        setCookingOrders(cooking);
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to fetch orders';
         setErrorMessage(message);
@@ -36,7 +38,7 @@ const Chef = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const totalOrders = orders.length;
+  const totalOrders = pendingOrders.length + cookingOrders.length;
   const [currentTime, setCurrentTime] = useState(new Date());
 
   React.useEffect(() => {
@@ -98,15 +100,36 @@ const Chef = () => {
             <p className="text-slate-500">Các đơn hàng mới sẽ xuất hiện ở đây</p>
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {orders.map((order, idx) => (
-              <OrderCard 
-                key={order.orderDetailId} 
-                orderIdx={idx}
-                order={order}
-                onStatusChange={updateOrderStatus}
-              />
-            ))}
+          <div className="space-y-8">
+            {/* Pending Orders */}
+            <div>
+              <h2 className="text-xl font-semibold text-slate-800 mb-4">Đơn chờ xử lý ({pendingOrders.length})</h2>
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {pendingOrders.map((order: KitchenOrderItem, idx: number) => (
+                  <OrderCard 
+                    key={order.orderDetailId} 
+                    orderIdx={idx}
+                    order={order}
+                    onStatusChange={updateOrderStatus}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Cooking Orders */}
+            <div>
+              <h2 className="text-xl font-semibold text-slate-800 mb-4">Đơn đang chế biến ({cookingOrders.length})</h2>
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {cookingOrders.map((order: KitchenOrderItem, idx: number) => (
+                  <OrderCard 
+                    key={order.orderDetailId} 
+                    orderIdx={idx}
+                    order={order}
+                    onStatusChange={updateOrderStatus}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -176,9 +199,15 @@ function OrderCard({ orderIdx, order, onStatusChange }: OrderCardProps) {
           value={status}
           onChange={e => handleStatusChange(e.target.value)}
         >
-          {statusList.map((s: OrderStatus) => (
-            <option key={s.value} value={s.value}>{s.label}</option>
-          ))}
+          {statusList
+            .filter((s: OrderStatus) => {
+              if (status === 'pending') return ['pending', 'cooking'].includes(s.value);
+              if (status === 'cooking') return ['cooking', 'completed'].includes(s.value);
+              return false;
+            })
+            .map((s: OrderStatus) => (
+              <option key={s.value} value={s.value}>{s.label}</option>
+            ))}
         </select>
       </div>
 
