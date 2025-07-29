@@ -1,103 +1,96 @@
+export const BASE_URL = 'http://localhost:8080/api';
+
 export interface KitchenOrderItem {
-    orderDetailId: number;
-    orderId: number;
-    dishName: string;
-    quantity: number;
-    status: string;
-    tableNumber: string;
-    orderTime: string;
-    notes?: string;
+  orderDetailId: number;
+  orderId: number;
+  dishName: string;
+  quantity: number;
+  status: string;
+  notes?: string;
+  tableNumber: string;
+  orderTime: string;
 }
 
-import type { LucideIcon } from 'lucide-react';
-import { AlertCircle, ChefHat, CheckCircle } from 'lucide-react';
-
-export type OrderStatus = {
-    value: string;
-    label: string;
-    color: string;
-    bgColor: string;
-    icon: LucideIcon;
+export interface OrderStatus {
+  value: string;
+  label: string;
+  icon: React.FC<any>;
+  color: string;
+  bgColor: string;
 }
 
-export const statusList = [
-    {
-        value: 'pending',
-        label: 'Chờ xử lý',
-        icon: AlertCircle,
-        color: 'border-yellow-500 text-yellow-600',
-        bgColor: 'hover:bg-yellow-50'
-    },
-    {
-        value: 'cooking',
-        label: 'Đang chế biến',
-        icon: ChefHat,
-        color: 'border-blue-500 text-blue-600',
-        bgColor: 'hover:bg-blue-50'
-    },
-    {
-        value: 'completed',
-        label: 'Hoàn thành',
-        icon: CheckCircle,
-        color: 'border-green-500 text-green-600',
-        bgColor: 'hover:bg-green-50'
-    }
+import { Clock, Flame, CheckCircle } from 'lucide-react';
+
+export const statusList: OrderStatus[] = [
+  {
+    value: 'pending',
+    label: 'Đơn chờ',
+    icon: Clock,
+    color: 'border-yellow-400 text-yellow-600',
+    bgColor: 'bg-yellow-50',
+  },
+  {
+    value: 'cooking',
+    label: 'Đang nấu',
+    icon: Flame,
+    color: 'border-blue-500 text-blue-600',
+    bgColor: 'bg-blue-50',
+  },
+  {
+    value: 'completed',
+    label: 'Hoàn thành',
+    icon: CheckCircle,
+    color: 'border-green-500 text-green-600',
+    bgColor: 'bg-green-50',
+  },
 ];
 
-const BASE_URL = 'http://localhost:8080/api/chef';
+const parseJsonSafe = async (res: Response) => {
+  const contentType = res.headers.get('content-type') || '';
+  if (!res.ok || !contentType.includes('application/json')) {
+    const text = await res.text();
+    throw new Error(`Server returned non-JSON response: ${text.substring(0, 100)}...`);
+  }
+  return await res.json();
+};
+
+const enrichOrders = (data: any[]): KitchenOrderItem[] => {
+  return data.map((item, idx) => ({
+    ...item,
+    tableNumber: item.tableNumber || 'Không rõ bàn',
+    orderTime: item.orderTime || new Date(Date.now() - idx * 60000).toISOString(),
+  }));
+};
 
 export const fetchPendingOrders = async (): Promise<KitchenOrderItem[]> => {
-    const response = await fetch(`${BASE_URL}/orders`, {
-        credentials: 'include',
-        headers: {
-            'Accept': 'application/json'
-        }
-    });
-    
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || 'Failed to fetch pending orders');
-    }
-
-    return response.json();
+  const res = await fetch(`${BASE_URL}/chef/orders/pending`);
+  const data = await parseJsonSafe(res);
+  return enrichOrders(data);
 };
 
 export const fetchCookingOrders = async (): Promise<KitchenOrderItem[]> => {
-    const response = await fetch(`${BASE_URL}/orders/cooking`, {
-        credentials: 'include',
-        headers: {
-            'Accept': 'application/json'
-        }
-    });
-    
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || 'Failed to fetch cooking orders');
-    }
-
-    return response.json();
+  const res = await fetch(`${BASE_URL}/chef/orders/cooking`);
+  const data = await parseJsonSafe(res);
+  return enrichOrders(data);
 };
 
-export const updateOrderStatus = async (orderDetailId: number, status: string): Promise<KitchenOrderItem> => {
-    const endpoint = status === 'cooking' ? 'accept' : 'complete';
-    const response = await fetch(`${BASE_URL}/orders/${orderDetailId}/${endpoint}`, {
-        method: 'PUT',
-        credentials: 'include',
-        headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        }
-    });
+export const updateOrderStatus = async (
+  orderDetailId: number,
+  newStatus: string
+): Promise<KitchenOrderItem> => {
+  let endpoint = '';
+  if (newStatus === 'cooking') {
+    endpoint = `${BASE_URL}/chef/orders/${orderDetailId}/processing`;
+  } else if (newStatus === 'completed') {
+    endpoint = `${BASE_URL}/chef/orders/${orderDetailId}/completed`;
+  } else {
+    throw new Error('Trạng thái không hợp lệ');
+  }
 
-    if (!response.ok) {
-        const errorText = await response.text();
-        try {
-            const errorJson = JSON.parse(errorText);
-            throw new Error(errorJson.message || errorJson.error || `Failed to update order status to ${status}`);
-        } catch (e) {
-            throw new Error(errorText || `Failed to update order status to ${status}`);
-        }
-    }
+  const res = await fetch(endpoint, {
+    method: 'PUT',
+  });
 
-    return response.json();
+  const data = await parseJsonSafe(res);
+  return enrichOrders([data])[0];
 };

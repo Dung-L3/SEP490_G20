@@ -10,8 +10,16 @@ import java.util.Optional;
 
 @Repository
 public interface OrderDetailRepository extends JpaRepository<OrderDetail, Integer> {
-    @Query("SELECT od FROM OrderDetail od JOIN FETCH od.order o JOIN FETCH o.table WHERE od.statusId = :statusId")
+    @Query("SELECT od FROM OrderDetail od LEFT JOIN FETCH od.dish WHERE od.statusId = :statusId")
     List<OrderDetail> findByStatusId(Integer statusId);
+
+    @Query("SELECT DISTINCT od FROM OrderDetail od " +
+           "LEFT JOIN FETCH od.order o " +
+           "LEFT JOIN FETCH o.table t " +
+           "LEFT JOIN FETCH od.dish d " +
+           "WHERE od.orderDetailId = :id")
+    Optional<OrderDetail> findByIdWithDetails(Integer id);
+
     List<OrderDetail> findByOrderId(Integer orderId);
     Optional<OrderDetail> findByOrderIdAndDishId(Integer orderId, Integer dishId);
 }

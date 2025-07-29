@@ -18,7 +18,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/waiter")
 @RequiredArgsConstructor
-@CrossOrigin
 public class WaiterController {
 
     private final WaiterService waiterService;
