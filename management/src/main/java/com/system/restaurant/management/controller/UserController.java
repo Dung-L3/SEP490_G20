@@ -1,6 +1,7 @@
 package com.system.restaurant.management.controller;
 
 import com.system.restaurant.management.dto.UserRequestDto;
+import com.system.restaurant.management.dto.UserResponseDTO;
 import com.system.restaurant.management.entity.User;
 import com.system.restaurant.management.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,11 @@ public class UserController {
     @GetMapping
     public ResponseEntity<List<User>> getAllUsers() {
         return ResponseEntity.ok(userService.findAll());
+    }
+
+    @GetMapping("/getAllStaffs")
+    public ResponseEntity<List<UserResponseDTO>> getAllStaffs() {
+        return ResponseEntity.ok(userService.findAllStaffs());
     }
 
     @GetMapping("/{id}")
