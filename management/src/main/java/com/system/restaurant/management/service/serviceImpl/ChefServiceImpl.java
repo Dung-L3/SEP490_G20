@@ -35,19 +35,10 @@ public class ChefServiceImpl implements ChefService {
 
     @Override
     @Transactional
-    public KitchenOrderDTO acceptOrder(Integer orderDetailId) {
+    public KitchenOrderDTO updateOrderStatus(Integer orderDetailId, Integer statusId) {
         OrderDetail orderDetail = orderDetailRepository.findById(orderDetailId)
                 .orElseThrow(() -> new RuntimeException("Order detail not found"));
-        orderDetail.setStatusId(2); // Cooking
-        return convertToDTO(orderDetailRepository.save(orderDetail));
-    }
-
-    @Override
-    @Transactional
-    public KitchenOrderDTO completeOrder(Integer orderDetailId) {
-        OrderDetail orderDetail = orderDetailRepository.findById(orderDetailId)
-                .orElseThrow(() -> new RuntimeException("Order detail not found"));
-        orderDetail.setStatusId(3); // Completed
+        orderDetail.setStatusId(statusId);
         return convertToDTO(orderDetailRepository.save(orderDetail));
     }
 
