@@ -25,13 +25,10 @@ public class ChefController {
         return ResponseEntity.ok(chefService.getCookingOrders());
     }
 
-    @PutMapping("/orders/{orderDetailId}/accept")
-    public ResponseEntity<KitchenOrderDTO> acceptOrder(@PathVariable Integer orderDetailId) {
-        return ResponseEntity.ok(chefService.acceptOrder(orderDetailId));
-    }
-
-    @PutMapping("/orders/{orderDetailId}/complete")
-    public ResponseEntity<KitchenOrderDTO> completeOrder(@PathVariable Integer orderDetailId) {
-        return ResponseEntity.ok(chefService.completeOrder(orderDetailId));
+    @PutMapping("/orders/{orderDetailId}/status")
+    public ResponseEntity<KitchenOrderDTO> updateOrderStatus(
+            @PathVariable Integer orderDetailId,
+            @RequestParam Integer statusId) {
+        return ResponseEntity.ok(chefService.updateOrderStatus(orderDetailId, statusId));
     }
 }

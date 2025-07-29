@@ -485,4 +485,14 @@ public class WaiterServiceImpl implements WaiterService {
                 })
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
+
+    @Override
+    public OrderDetail getOrderDetailById(Integer orderDetailId) {
+        return orderDetailRepository.findById(orderDetailId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                    "OrderDetail",
+                    "orderDetailId",
+                    orderDetailId
+                ));
+    }
 }

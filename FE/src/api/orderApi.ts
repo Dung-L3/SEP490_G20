@@ -13,6 +13,8 @@ export interface MenuItem {
   image: string;
   status: boolean;
   quantity?: number;
+  orderStatus?: 'pending' | 'cooking' | 'completed';
+  orderDetailId?: number;
 }
 
 const BASE_URL = 'http://localhost:8080/api';
@@ -33,7 +35,7 @@ export const fetchOccupiedTables = async (): Promise<TableInfo[]> => {
   return data.map((item: any) => ({
     id: item.tableId,
     name: item.tableName,
-    status: item.status === 'OCCUPIED' ? 'Đang phục vụ' : item.status,
+    status: item.status,
     capacity: parseInt(item.tableType) || 4
   }));
 };
@@ -66,15 +68,14 @@ export const fetchMenuItems = async (search?: string): Promise<MenuItem[]> => {
   return menuData.filter(item => item.status === true);
 };
 
-interface OrderDetails {
-  dishId: number;
-  quantity: number;
-  note: string;
-}
-
 interface CreateOrderRequest {
   tableId: number;
-  orderDetails: OrderDetails[];
+  items: {
+    dishId: number;
+    quantity: number;
+    notes: string;
+    unitPrice: number;
+  }[];
 }
 
 interface OrderResponse {
@@ -106,4 +107,67 @@ export const createOrder = async (orderData: CreateOrderRequest): Promise<OrderR
 
   const result = await response.json();
   return result;
+};
+
+export const updateTableStatus = async (tableId: number, status: string): Promise<TableInfo> => {
+  const response = await fetch(`${BASE_URL}/waiter/tables/${tableId}/status?status=${status}`, {
+    method: 'PUT',
+    headers: {
+      'Accept': 'application/json'
+    },
+    credentials: 'include'
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    try {
+      const errorJson = JSON.parse(errorText);
+      throw new Error(errorJson.message || `Failed to update table status: ${response.status}`);
+    } catch (e) {
+      throw new Error(errorText || `Failed to update table status: ${response.status}`);
+    }
+  }
+
+  return response.json();
+};
+
+
+
+export const fetchOrderStatus = async (orderDetailId: number): Promise<string> => {
+  const response = await fetch(`${BASE_URL}/waiter/orders/detail/${orderDetailId}/status`, {
+    credentials: 'include',
+    headers: {
+      'Accept': 'application/json'
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch order status: ${response.status}`);
+  }
+
+  return response.text();
+};
+
+export const fetchOrderItems = async (orderId: number): Promise<MenuItem[]> => {
+  const response = await fetch(`${BASE_URL}/waiter/orders/${orderId}/items`, {
+    credentials: 'include',
+    headers: {
+      'Accept': 'application/json'
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch order items: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.map((item: any) => ({
+    id: item.dishId,
+    name: item.dishName,
+    price: Number(item.unitPrice),
+    image: item.imageUrl || '/placeholder-dish.jpg',
+    quantity: item.quantity,
+    orderStatus: item.status.toLowerCase(),
+    orderDetailId: item.orderDetailId
+  }));
 };
