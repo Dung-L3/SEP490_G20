@@ -46,6 +46,8 @@ const WorkshiftManager = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedWorkshift, setSelectedWorkshift] = useState<Workshift | null>(null);
   const [filter, setFilter] = useState<FilterOptions>({
     department: '',
     employeeName: '',
@@ -89,6 +91,26 @@ const WorkshiftManager = () => {
       console.error('Error loading workshifts:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEditWorkshift = async (workshift: Workshift) => {
+    setSelectedWorkshift(workshift);
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateWorkshift = async () => {
+    if (!selectedWorkshift) return;
+    
+    try {
+      await workshiftApi.update(selectedWorkshift.id, selectedWorkshift);
+      setIsEditModalOpen(false);
+      setSelectedWorkshift(null);
+      loadWorkshifts();
+      setError(null);
+    } catch (err) {
+      setError('Không thể cập nhật ca làm việc');
+      console.error('Error updating workshift:', err);
     }
   };
 
@@ -311,6 +333,7 @@ const WorkshiftManager = () => {
                     Xóa
                   </button>
                   <button
+                    onClick={() => handleEditWorkshift(shift)}
                     className="text-blue-600 hover:text-blue-900"
                   >
                     Sửa
@@ -326,6 +349,125 @@ const WorkshiftManager = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Modal sửa ca làm việc */}
+      {isEditModalOpen && selectedWorkshift && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-2xl w-full">
+            <h3 className="text-lg font-bold mb-4">Sửa Ca làm việc</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Tên ca</label>
+                <input
+                  type="text"
+                  value={selectedWorkshift.name}
+                  onChange={(e) => setSelectedWorkshift({...selectedWorkshift, name: e.target.value})}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Phòng ban</label>
+                <select
+                  value={selectedWorkshift.department}
+                  onChange={(e) => setSelectedWorkshift({...selectedWorkshift, department: e.target.value})}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                >
+                  <option value="">Chọn phòng ban</option>
+                  <option value="kitchen">Nhà bếp</option>
+                  <option value="service">Phục vụ</option>
+                  <option value="reception">Lễ tân</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Ngày</label>
+                <input
+                  type="date"
+                  value={selectedWorkshift.date}
+                  onChange={(e) => setSelectedWorkshift({...selectedWorkshift, date: e.target.value})}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Lặp lại</label>
+                <select
+                  value={selectedWorkshift.repeatPattern}
+                  onChange={(e) => setSelectedWorkshift({...selectedWorkshift, repeatPattern: e.target.value as 'none' | 'daily' | 'weekly'})}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                >
+                  <option value="none">Không lặp lại</option>
+                  <option value="daily">Hàng ngày</option>
+                  <option value="weekly">Hàng tuần</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Giờ bắt đầu</label>
+                <input
+                  type="time"
+                  value={selectedWorkshift.startTime}
+                  onChange={(e) => setSelectedWorkshift({...selectedWorkshift, startTime: e.target.value})}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Giờ kết thúc</label>
+                <input
+                  type="time"
+                  value={selectedWorkshift.endTime}
+                  onChange={(e) => setSelectedWorkshift({...selectedWorkshift, endTime: e.target.value})}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Địa điểm làm việc</label>
+                <input
+                  type="text"
+                  value={selectedWorkshift.location}
+                  onChange={(e) => setSelectedWorkshift({...selectedWorkshift, location: e.target.value})}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Số nhân viên cần</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={selectedWorkshift.requiredStaff}
+                  onChange={(e) => setSelectedWorkshift({...selectedWorkshift, requiredStaff: parseInt(e.target.value)})}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Trạng thái</label>
+                <select
+                  value={selectedWorkshift.status}
+                  onChange={(e) => setSelectedWorkshift({...selectedWorkshift, status: e.target.value})}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                >
+                  <option value="ACTIVE">Hoạt động</option>
+                  <option value="INACTIVE">Không hoạt động</option>
+                </select>
+              </div>
+              <div className="col-span-2 flex justify-end space-x-3 mt-6">
+                <button
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setSelectedWorkshift(null);
+                  }}
+                  className="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleUpdateWorkshift}
+                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                >
+                  Cập nhật
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal thêm ca làm việc */}
       {isAddModalOpen && (
