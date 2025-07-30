@@ -18,9 +18,9 @@ interface Workshift {
   status: string;
   location: string;
   requiredStaff: number;
-  assignedEmployees: Employee[];
   department: string;
-  repeatPattern?: 'daily' | 'weekly' | 'none';
+  assignedEmployees: Employee[];
+  repeatPattern: 'daily' | 'weekly' | 'none';
 }
 
 interface FilterOptions {
@@ -47,7 +47,10 @@ const WorkshiftManager = () => {
   const [error, setError] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [selectedWorkshift, setSelectedWorkshift] = useState<Workshift | null>(null);
+  const [availableEmployees, setAvailableEmployees] = useState<Employee[]>([]);
+  const [selectedEmployees, setSelectedEmployees] = useState<number[]>([]);
   const [filter, setFilter] = useState<FilterOptions>({
     department: '',
     employeeName: '',
@@ -64,7 +67,7 @@ const WorkshiftManager = () => {
     activeEmployees: 0,
     onLeaveEmployees: 0
   });
-  const [newWorkshift, setNewWorkshift] = useState({
+  const [newWorkshift, setNewWorkshift] = useState<Omit<Workshift, 'id' | 'assignedEmployees'>>({
     name: '',
     date: new Date().toISOString().split('T')[0],
     startTime: '',
@@ -99,6 +102,41 @@ const WorkshiftManager = () => {
     setIsEditModalOpen(true);
   };
 
+  const handleAssignWorkshift = async (workshift: Workshift) => {
+    setSelectedWorkshift(workshift);
+    // Load danh sách nhân viên có thể phân công
+    const mockEmployees: Employee[] = [
+      { id: 1, name: "Nguyễn Văn A", department: workshift.department, position: "Nhân viên" },
+      { id: 2, name: "Trần Thị B", department: workshift.department, position: "Nhân viên" },
+      { id: 3, name: "Phạm Văn C", department: workshift.department, position: "Nhân viên" },
+      { id: 4, name: "Lê Thị D", department: workshift.department, position: "Nhân viên" },
+      { id: 5, name: "Hoàng Văn E", department: workshift.department, position: "Nhân viên" },
+    ];
+    setAvailableEmployees(mockEmployees);
+    setSelectedEmployees(workshift.assignedEmployees.map(e => e.id));
+    setIsAssignModalOpen(true);
+  };
+
+  const handleUpdateAssignment = async () => {
+    if (!selectedWorkshift) return;
+
+    try {
+      // Cập nhật danh sách nhân viên được phân công
+      const updatedWorkshift = {
+        ...selectedWorkshift,
+        assignedEmployees: availableEmployees.filter(emp => selectedEmployees.includes(emp.id))
+      };
+      await workshiftApi.update(updatedWorkshift.id, updatedWorkshift);
+      setIsAssignModalOpen(false);
+      setSelectedWorkshift(null);
+      loadWorkshifts();
+      setError(null);
+    } catch (err) {
+      setError('Không thể cập nhật phân công ca làm việc');
+      console.error('Error updating workshift assignment:', err);
+    }
+  };
+
   const handleUpdateWorkshift = async () => {
     if (!selectedWorkshift) return;
     
@@ -116,7 +154,13 @@ const WorkshiftManager = () => {
 
   const handleAddWorkshift = async () => {
     try {
-      await workshiftApi.create(newWorkshift);
+      const workshift: Workshift = {
+        ...newWorkshift,
+        id: 0, // ID sẽ được server tạo
+        assignedEmployees: [], // Ban đầu không có nhân viên nào được phân công
+        repeatPattern: newWorkshift.repeatPattern
+      };
+      await workshiftApi.create(workshift);
       setIsAddModalOpen(false);
       setNewWorkshift({
         name: '',
@@ -339,6 +383,7 @@ const WorkshiftManager = () => {
                     Sửa
                   </button>
                   <button
+                    onClick={() => handleAssignWorkshift(shift)}
                     className="text-green-600 hover:text-green-900"
                   >
                     Phân công
@@ -349,6 +394,65 @@ const WorkshiftManager = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Modal phân công nhân viên */}
+      {isAssignModalOpen && selectedWorkshift && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-2xl w-full">
+            <h3 className="text-lg font-bold mb-4">Phân công nhân viên - {selectedWorkshift.name}</h3>
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 mb-2">
+                Số nhân viên cần: {selectedWorkshift.requiredStaff}
+              </p>
+              <p className="text-sm text-gray-600 mb-4">
+                Đã phân công: {selectedEmployees.length}
+              </p>
+              
+              <div className="border rounded-lg p-4">
+                {availableEmployees.map(employee => (
+                  <div key={employee.id} className="flex items-center mb-2">
+                    <input
+                      type="checkbox"
+                      id={`employee-${employee.id}`}
+                      checked={selectedEmployees.includes(employee.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedEmployees([...selectedEmployees, employee.id]);
+                        } else {
+                          setSelectedEmployees(selectedEmployees.filter(id => id !== employee.id));
+                        }
+                      }}
+                      className="mr-2"
+                    />
+                    <label htmlFor={`employee-${employee.id}`} className="text-sm">
+                      {employee.name} - {employee.position}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setIsAssignModalOpen(false);
+                  setSelectedWorkshift(null);
+                }}
+                className="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleUpdateAssignment}
+                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                disabled={selectedEmployees.length > selectedWorkshift.requiredStaff}
+              >
+                Cập nhật
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal sửa ca làm việc */}
       {isEditModalOpen && selectedWorkshift && (
@@ -510,7 +614,14 @@ const WorkshiftManager = () => {
                 <label className="block text-sm font-medium text-gray-700">Lặp lại</label>
                 <select
                   value={newWorkshift.repeatPattern}
-                  onChange={(e) => setNewWorkshift({...newWorkshift, repeatPattern: e.target.value as 'none' | 'daily' | 'weekly'})}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const validPatterns = ['none', 'daily', 'weekly'] as const;
+                    const pattern = validPatterns.find(p => p === value);
+                    if (pattern) {
+                      setNewWorkshift({...newWorkshift, repeatPattern: pattern});
+                    }
+                  }}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                 >
                   <option value="none">Không lặp lại</option>
