@@ -1,7 +1,9 @@
 import WaiterOrder from './pages/waiter/Order';
 import WaiterTableView from './pages/waiter/TableView';
+import PurchaseHistoryManager from './pages/manager/PurchaseHistoryManager';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
+import WorkshiftManager from './pages/manager/WorkshiftManager';
 import Booking from './pages/Booking';
 import Menu from './pages/Menu';  // Import trang Menu
 import Cart from './pages/Cart';  // Import trang Giỏ hàng
@@ -41,16 +43,15 @@ function App() {
             <Route path="/manager/revenue" element={<RevenueManager />} /> {/* Route cho trang Quản lý doanh thu */}
             <Route path="/manager/table" element={<TableManager />} /> {/* Route cho trang Quản lý bàn */}
             <Route path="/manager/staff" element={<StaffManager />} /> {/* Route cho trang Quản lý nhân sự */}
+            <Route path="/manager/workshift" element={<WorkshiftManager />} /> {/* Route cho trang Quản lý ca làm việc */}
             <Route path="/manager/dish" element={<DishManager />} /> {/* Route cho trang Quản lý món ăn */}
             <Route path="/manager/order" element={<OrderManager />} /> {/* Route cho trang Quản lý đơn hàng */}
             <Route path="/manager/report" element={<ReportManager />} /> {/* Route cho trang Báo cáo */}
-            <Route path="/waiter/orders" element={<WaiterOrder />} /> {/* Route cho waiter đặt món */}
-            <Route path="/waiter/tables" element={<WaiterTableView />} /> {/* Route cho waiter xem bàn */}
-            <Route path="/chef" element={<Chef />} /> {/* Route cho trang Chef (bếp trưởng) */}
-            <Route path="/receptionist/orders/uppaid" element={<OrderList />} /> {/* Route cho trang xử lý thanh toán của order */}
-            <Route path="/receptionist/:orderId/payment" element={<OrderPayment />} />
-            <Route path="/receptionist"element={<ReceptionistHome/>} />
-          </Routes>
+
+          <Route path="/waiter/orders" element={<WaiterOrder />} /> {/* Route cho waiter đặt món */}
+          <Route path="/waiter/tables" element={<WaiterTableView />} /> {/* Route cho waiter xem bàn */}
+          <Route path="/chef" element={<Chef />} /> {/* Route cho trang Chef (bếp trưởng) */}
+            </Routes>
           </AuthProvider>
         </Router>
       </TableCartProvider>
