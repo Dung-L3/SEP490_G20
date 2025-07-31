@@ -1,3 +1,5 @@
+type PurchaseStatus = 'completed' | 'pending' | 'cancelled';
+
 interface PurchaseHistory {
     id: number;
     customerId: string;
@@ -5,7 +7,7 @@ interface PurchaseHistory {
     orderDate: string;
     totalAmount: number;
     paymentMethod: 'cash' | 'card' | 'banking';
-    status: 'completed' | 'pending' | 'cancelled';
+    status: PurchaseStatus;
     items: PurchaseItem[];
 }
 
@@ -105,6 +107,17 @@ export const purchaseHistoryApi = {
     getAll: async (): Promise<PurchaseHistory[]> => {
         await delay(500); // Giả lập độ trễ network
         return mockPurchases;
+    },
+
+    // Cập nhật trạng thái đơn hàng
+    updateStatus: async (id: number, newStatus: 'completed' | 'pending' | 'cancelled'): Promise<void> => {
+        await delay(500); // Giả lập độ trễ network
+        const index = mockPurchases.findIndex(p => p.id === id);
+        if (index === -1) throw new Error('Không tìm thấy đơn hàng');
+        mockPurchases[index] = {
+            ...mockPurchases[index],
+            status: newStatus
+        };
     },
 
     // Lấy chi tiết một đơn hàng

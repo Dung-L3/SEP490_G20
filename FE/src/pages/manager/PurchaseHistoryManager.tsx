@@ -103,6 +103,17 @@ const PurchaseHistoryManager = () => {
     setSelectedPurchase(purchase);
   };
 
+  const handleUpdateStatus = async (purchaseId: number, newStatus: 'completed' | 'pending' | 'cancelled') => {
+    try {
+      await purchaseHistoryApi.updateStatus(purchaseId, newStatus);
+      loadPurchases(); // Tải lại danh sách sau khi cập nhật
+      setError(null);
+    } catch (err) {
+      setError('Không thể cập nhật trạng thái đơn hàng');
+      console.error('Error updating purchase status:', err);
+    }
+  };
+
   if (loading) return <div>Đang tải...</div>;
   if (error) return <div className="text-red-500">{error}</div>;
 
@@ -245,14 +256,19 @@ const PurchaseHistoryManager = () => {
                      purchase.paymentMethod === 'card' ? 'Thẻ' : 'Chuyển khoản'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      purchase.status === 'completed' ? 'bg-green-100 text-green-800' :
-                      purchase.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {purchase.status === 'completed' ? 'Hoàn thành' :
-                       purchase.status === 'pending' ? 'Đang xử lý' : 'Đã hủy'}
-                    </span>
+                    <select
+                      value={purchase.status}
+                      onChange={(e) => handleUpdateStatus(purchase.id, e.target.value as 'completed' | 'pending' | 'cancelled')}
+                      className={`px-2 py-1 text-xs leading-5 font-semibold rounded-full ${
+                        purchase.status === 'completed' ? 'bg-green-100 text-green-800' :
+                        purchase.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }`}
+                    >
+                      <option value="completed">Hoàn thành</option>
+                      <option value="pending">Đang xử lý</option>
+                      <option value="cancelled">Đã hủy</option>
+                    </select>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <button
