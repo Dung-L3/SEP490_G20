@@ -31,4 +31,14 @@ public class WorkShift {
 
     @Column(name = "EndTime", nullable = false)
     private LocalTime endTime;
+
+    @Column(name = "HandoverTo", nullable = true)
+    private Integer handOverTo;
+
+    @Column(name = "HandoverNotes", nullable = true)
+    private String handOverNotes;
+
+    @Column(name = "IsOverNight", nullable = true)
+    private int isOverNight;
+
 }

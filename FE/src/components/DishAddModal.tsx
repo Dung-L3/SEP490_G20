@@ -1,75 +1,100 @@
-import React from 'react';
+import React, { useState } from 'react';
+import type { DishModalProps } from '../types/DishModalProps';
 
-interface Dish {
-  name: string;
-  price: string;
-  image: string;
-  status: string;
-}
+const DishAddModal: React.FC<DishModalProps> = ({ dish, onChange, onImageUrl, onCancel, onSave }) => {
+  const [imageUrl, setImageUrl] = useState(dish.image || '');
 
-interface DishAddModalProps {
-  dish: Dish;
-  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
-  onImageFile: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onCancel: () => void;
-  onSave: () => void;
-}
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg w-full max-w-md p-6">
+        <h2 className="text-xl font-bold mb-4">Thêm món ăn mới</h2>
+        
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Tên món</label>
+            <input
+              type="text"
+              name="name"
+              value={dish.name}
+              onChange={onChange}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              placeholder="Nhập tên món ăn"
+            />
+          </div>
 
-const DishAddModal: React.FC<DishAddModalProps> = ({ dish, onChange, onImageFile, onCancel, onSave }) => (
-  <div style={{
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    width: '100vw',
-    height: '100vh',
-    background: 'rgba(0,0,0,0.3)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1000
-  }}>
-    <div style={{ background: '#fff', padding: 32, borderRadius: 12, minWidth: 320, boxShadow: '0 2px 16px #0002' }}>
-      <h2 style={{ marginBottom: 16 }}>Thêm món ăn mới</h2>
-      <div style={{ marginBottom: 12 }}>
-        <label>Tên món:</label><br />
-        <input name="name" value={dish.name} onChange={onChange} style={{ width: '100%', padding: 6, borderRadius: 4, border: '1px solid #e5e7eb' }} />
-      </div>
-      <div style={{ marginBottom: 12 }}>
-        <label>Giá:</label><br />
-        <input name="price" value={dish.price} onChange={onChange} style={{ width: '100%', padding: 6, borderRadius: 4, border: '1px solid #e5e7eb' }} />
-      </div>
-      <div style={{ marginBottom: 12 }}>
-        <label>Hình ảnh:</label><br />
-        <input
-          name="image"
-          value={dish.image}
-          onChange={onChange}
-          placeholder="Dán link ảnh hoặc chọn file"
-          style={{ width: '100%', padding: 6, borderRadius: 4, border: '1px solid #e5e7eb', marginBottom: 6 }}
-        />
-        <input
-          type="file"
-          accept="image/*"
-          onChange={onImageFile}
-          style={{ marginTop: 4 }}
-        />
-        {dish.image && (
-          <img src={dish.image} alt="dish" style={{ width: 100, height: 60, objectFit: 'cover', borderRadius: 6, display: 'block', marginTop: 8 }} />
-        )}
-      </div>
-      <div style={{ marginBottom: 16 }}>
-        <label>Trạng thái:</label><br />
-        <select name="status" value={dish.status} onChange={onChange} style={{ width: '100%', padding: 6, borderRadius: 4, border: '1px solid #e5e7eb' }}>
-          <option value="Còn">Còn</option>
-          <option value="Hết món">Hết món</option>
-        </select>
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-        <button onClick={onCancel} style={{ padding: '6px 16px', borderRadius: 4, border: 'none', background: '#e5e7eb', color: '#222' }}>Hủy</button>
-        <button onClick={onSave} style={{ padding: '6px 16px', borderRadius: 4, border: 'none', background: '#2563eb', color: '#fff' }}>Thêm</button>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Giá</label>
+            <input
+              type="text"
+              name="price"
+              value={dish.price}
+              onChange={onChange}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              placeholder="Nhập giá món ăn"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">URL Ảnh</label>
+            <input
+              type="text"
+              value={imageUrl}
+              onChange={(e) => {
+                setImageUrl(e.target.value);
+                onImageUrl(e.target.value);
+              }}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              placeholder="Nhập URL ảnh"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Trạng thái</label>
+            <select
+              name="status"
+              value={dish.status}
+              onChange={onChange}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            >
+              <option value="Còn">Còn</option>
+              <option value="Hết món">Hết món</option>
+            </select>
+          </div>
+
+          {imageUrl && (
+            <div className="mt-4">
+              <p className="text-sm font-medium text-gray-700 mb-2">Xem trước ảnh:</p>
+              <img
+                src={imageUrl}
+                alt="Preview"
+                className="w-full h-48 object-cover rounded-lg"
+                onError={() => {
+                  const defaultImage = 'https://res.cloudinary.com/dx1iwvfdm/image/upload/v1704297479/default-image_qo4zv3.jpg';
+                  setImageUrl(defaultImage);
+                  onImageUrl(defaultImage);
+                }}
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="mt-6 flex justify-end space-x-3">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Hủy
+          </button>
+          <button
+            onClick={onSave}
+            className="px-4 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700"
+          >
+            Thêm
+          </button>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default DishAddModal;

@@ -1,98 +1,162 @@
-  
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import TaskbarManager from '../../components/TaskbarManager';
 import DishEditModal from '../../components/DishEditModal';
 import DishAddModal from '../../components/DishAddModal';
+import { dishApi } from '../../api/dishApi';
 
-const initialDishes = [
-  { name: "Cơm Tấm Sườn Nướng", price: "65.000đ", image: "https://i1-giadinh.vnecdn.net/2024/03/07/7-Hoan-thien-thanh-pham-1-6244-1709800134.jpg?w=1020&h=0&q=100&dpr=1&fit=crop&s=Y03-BsY4ORbpVkG4zm_DcA", status: 'Còn' },
-  { name: "Bánh Xèo Miền Tây", price: "45.000đ", image: "https://images.unsplash.com/photo-1567620832903-9fc6debc209f?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80", status: 'Còn' },
-  { name: "Lẩu Cá Kèo", price: "180.000đ", image: "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80", status: 'Còn' },
-  { name: "Gỏi Cuốn Tôm Thịt", price: "35.000đ", image: "https://images.unsplash.com/photo-1539136788836-5699e78bfc75?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80", status: 'Còn' },
-  { name: "Phở Bò", price: "50.000đ", image: "https://giavichinsu.com/wp-content/uploads/2024/01/cach-nau-pho-bo.jpg", status: 'Còn' },
-  { name: "Bún Chả Hà Nội", price: "60.000đ", image: "https://cdn2.fptshop.com.vn/unsafe/1920x0/filters:format(webp):quality(75)/2024_1_12_638406880045931692_cach-lam-bun-cha-ha-noi-0.jpg", status: 'Còn' },
-  { name: "Chả Cá Lã Vọng", price: "120.000đ", image: "https://file.hstatic.net/200000700229/article/lam-cha-ca-la-vong-bang-noi-chien-khong-dau_7e476b1bfcff43428bc8af05fd931d74.jpeg", status: 'Còn' },
-  { name: "Mì Quảng", price: "55.000đ", image: "https://danangfantasticity.com/wp-content/uploads/2024/04/cach-thuong-thuc-mot-to-mi-quang-dung-dieu-nguoi-da-nang.jpg", status: 'Còn' },
-  { name: "Bánh Mì Thịt Nướng", price: "30.000đ", image: "https://cdn.tgdd.vn/Files/2021/08/20/1376583/cach-lam-banh-mi-thit-nuong-cuc-don-gian-bang-chai-nhua-co-san-tai-nha-202108201640593483.jpg", status: 'Còn' },
-  { name: "Bánh Cuốn Hà Nội", price: "45.000đ", image: "https://static.tuoitre.vn/tto/i/s626/2013/05/08/DxofPVKe.jpg", status: 'Còn' },
-  { name: "Cơm Gà Hội An", price: "70.000đ", image: "https://i-giadinh.vnecdn.net/2023/04/22/Buoc-11-thanh-pham-1-11-9981-1682135995.jpg", status: 'Còn' },
-  { name: "Xôi Xéo", price: "40.000đ", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTLXHCgHafFLTjysi9B5c1qDkgbYs_ef_qGvw&s", status: 'Còn' },
-];
-
-// Xóa món ăn
-  const handleDelete = (idx: number) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa món này?')) {
-      setDishes(dishes => dishes.filter((_, i) => i !== idx));
-    }
-  };
+interface Dish {
+  dishId: number;
+  dishName: string;
+  categoryId: number;
+  price: number;
+  status: boolean;
+  unit: string;
+  imageUrl: string;
+  createdAt: string;
+}
 
 const DishManager = () => {
-  type Dish = typeof initialDishes[number];
-  const [dishes, setDishes] = useState<Dish[]>(initialDishes);
-  const [editIdx, setEditIdx] = useState<number | null>(null);
-  const [editDish, setEditDish] = useState<Dish | null>(null);
+  const [dishes, setDishes] = useState<Dish[]>([]);
   const [addOpen, setAddOpen] = useState(false);
-  const [newDish, setNewDish] = useState<Dish>({ name: '', price: '', image: '', status: 'Còn' });
-  // Thêm món ăn
-  const handleAddImageFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        setNewDish((prev) => ({ ...prev, image: ev.target?.result as string }));
-      };
-      reader.readAsDataURL(file);
+  const [addError, setAddError] = useState('');
+  const [editDish, setEditDish] = useState<Dish | null>(null);
+  const [newDish, setNewDish] = useState<Dish>({
+    dishId: 0,
+    dishName: '',
+    categoryId: 1,
+    price: 0,
+    status: true,
+    unit: '',
+    imageUrl: '',
+    createdAt: new Date().toISOString()
+  });
+
+  useEffect(() => {
+    const fetchDishes = async () => {
+      try {
+        const data = await dishApi.getAll();
+        setDishes(data);
+      } catch (error) {
+        console.error('Error fetching dishes:', error);
+      }
+    };
+    fetchDishes();
+  }, []);
+
+  const handleImageUrl = (value: string) => {
+    const defaultImage = 'https://res.cloudinary.com/dx1iwvfdm/image/upload/v1704297479/default-image_qo4zv3.jpg';
+    if (editDish) {
+      setEditDish(prev => ({ ...prev!, imageUrl: value || defaultImage }));
+    } else {
+      setNewDish(prev => ({ ...prev, imageUrl: value || defaultImage }));
     }
-  };
-  const handleAddChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setNewDish((prev) => ({ ...prev, [name]: value }));
-  };
-  const handleAddSave = () => {
-    if (!newDish.name.trim() || !newDish.price.trim() || !newDish.image.trim()) return;
-    setDishes((prev) => [...prev, newDish]);
-    setAddOpen(false);
-    setNewDish({ name: '', price: '', image: '', status: 'Còn' });
-  };
-  const handleAddCancel = () => {
-    setAddOpen(false);
-    setNewDish({ name: '', price: '', image: '', status: 'Còn' });
   };
 
-  // Đổi trạng thái, chỉnh sửa
-  const handleToggleStatus = (idx: number) => {
-    setDishes(dishes => dishes.map((dish, i) =>
-      i === idx ? { ...dish, status: dish.status === 'Còn' ? 'Hết món' : 'Còn' } : dish
-    ));
-  };
-  const handleEdit = (idx: number) => {
-    setEditIdx(idx);
-    setEditDish({ ...dishes[idx] });
-  };
-  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setEditDish((prev) => prev ? { ...prev, [name]: value } : prev);
-  };
-  const handleEditImageFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        setEditDish((prev) => prev ? { ...prev, image: ev.target?.result as string } : prev);
-      };
-      reader.readAsDataURL(file);
+  const handleAddSave = async () => {
+    try {
+      // Validate required fields
+      if (!newDish.dishName.trim()) {
+        setAddError('Vui lòng nhập tên món ăn!');
+        return;
+      }
+      if (newDish.price <= 0) {
+        setAddError('Vui lòng nhập giá hợp lệ!');
+        return;
+      }
+      
+      // Nếu không có ảnh, sử dụng ảnh mặc định
+      if (!newDish.imageUrl) {
+        newDish.imageUrl = 'https://res.cloudinary.com/dx1iwvfdm/image/upload/v1704297479/default-image_qo4zv3.jpg';
+      }
+
+      // Remove dishId before sending to backend
+      const { dishId, ...dishPayload } = newDish;
+      const newDishData = await dishApi.create(dishPayload);
+      setDishes(prev => [...prev, newDishData]);
+      setAddOpen(false);
+      setNewDish({
+        dishId: 0,
+        dishName: '',
+        categoryId: 1,
+        price: 0,
+        status: true,
+        unit: '',
+        imageUrl: '',
+        createdAt: new Date().toISOString()
+      });
+      setAddError('');
+    } catch (error) {
+      console.error('Error creating dish:', error);
+      setAddError(error instanceof Error ? error.message : 'Có lỗi xảy ra khi thêm món ăn');
     }
   };
-  const handleEditSave = () => {
-    if (editIdx !== null && editDish) {
-      setDishes(dishes => dishes.map((dish, i) => i === editIdx ? editDish : dish));
-    }
-    setEditIdx(null);
-    setEditDish(null);
+
+  const handleAddCancel = () => {
+    setAddOpen(false);
+    setAddError('');
   };
+
+  const handleEdit = (dish: Dish) => {
+    setEditDish(dish);
+  };
+
+
+
+  const handleEditSave = async () => {
+    try {
+      if (editDish) {
+        // Validate required fields
+        if (!editDish.dishName.trim()) {
+          throw new Error('Vui lòng nhập tên món ăn!');
+        }
+        if (editDish.price <= 0) {
+          throw new Error('Vui lòng nhập giá hợp lệ!');
+        }
+        
+        // Nếu không có ảnh, sử dụng ảnh mặc định
+        if (!editDish.imageUrl) {
+          editDish.imageUrl = 'https://res.cloudinary.com/dx1iwvfdm/image/upload/v1704297479/default-image_qo4zv3.jpg';
+        }
+
+        const updatedDish = await dishApi.update(editDish.dishId, editDish);
+        setDishes(dishes => dishes.map(dish => dish.dishId === editDish.dishId ? updatedDish : dish));
+        setEditDish(null);
+      }
+    } catch (error: unknown) {
+      console.error('Error updating dish:', error);
+      if (error instanceof Error) {
+        alert(error.message);
+      } else {
+        alert('Có lỗi xảy ra khi cập nhật món ăn');
+      }
+    }
+  };
+
   const handleEditCancel = () => {
-    setEditIdx(null);
     setEditDish(null);
+  };
+
+  const handleDelete = async (dish: Dish) => {
+    try {
+      if (window.confirm('Bạn có chắc chắn muốn xóa món này?')) {
+        await dishApi.delete(dish.dishId);
+        setDishes(dishes => dishes.filter(d => d.dishId !== dish.dishId));
+      }
+    } catch (error) {
+      console.error('Error deleting dish:', error);
+    }
+  };
+
+  const handleToggleStatus = async (dish: Dish) => {
+    try {
+      const updatedDish = await dishApi.update(dish.dishId, {
+        ...dish,
+        status: !dish.status
+      });
+      setDishes(dishes => dishes.map(d => d.dishId === dish.dishId ? updatedDish : d));
+    } catch (error) {
+      console.error('Error toggling dish status:', error);
+    }
   };
 
   return (
@@ -101,8 +165,8 @@ const DishManager = () => {
       <div style={{ marginLeft: '220px', padding: '24px', width: '100%' }}>
         <h1>Quản lý món ăn</h1>
         <p>Đây là trang quản lý món ăn.</p>
-
-        {/* Nút thêm món ăn ở góc phải trên bảng */}
+        
+        {/* Nút thêm món ăn */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
           <button
             style={{
@@ -116,9 +180,12 @@ const DishManager = () => {
               fontSize: 16
             }}
             onClick={() => setAddOpen(true)}
-          >+ Thêm món ăn</button>
+          >
+            + Thêm món ăn
+          </button>
         </div>
-        {/* Bảng món ăn kiểu hiện đại giống StaffManager */}
+
+        {/* Bảng món ăn */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -131,46 +198,42 @@ const DishManager = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {dishes.map((dish, idx) => (
-                  <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                {dishes.map((dish) => (
+                  <tr key={dish.dishId} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-16 h-12 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
-                          <img src={dish.image} alt={dish.name} className="w-full h-full object-cover" />
+                          <img src={dish.imageUrl} alt={dish.dishName} className="w-full h-full object-cover" />
                         </div>
                         <div>
-                          <div className="font-semibold text-gray-900">{dish.name}</div>
+                          <div className="font-semibold text-gray-900">{dish.dishName}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 font-semibold text-green-700">{dish.price}</td>
+                    <td className="px-6 py-4 font-semibold text-green-700">{dish.price.toLocaleString()}đ</td>
                     <td className="px-6 py-4">
                       <button
-                        onClick={() => handleToggleStatus(idx)}
+                        onClick={() => handleToggleStatus(dish)}
                         className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold transition-colors ${
-                          dish.status === 'Còn'
+                          dish.status
                             ? 'bg-green-100 text-green-800 hover:bg-green-200'
                             : 'bg-red-100 text-red-800 hover:bg-red-200'
                         }`}
                         title="Nhấn để chuyển trạng thái"
                       >
-                        {dish.status}
+                        {dish.status ? 'Còn' : 'Hết món'}
                       </button>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-center gap-2">
                         <button
-                          onClick={() => handleEdit(idx)}
+                          onClick={() => handleEdit(dish)}
                           className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-orange-700 bg-orange-100 hover:bg-orange-200 rounded-lg transition-colors"
                         >
                           Sửa
                         </button>
                         <button
-                          onClick={() => {
-                            if (window.confirm('Bạn có chắc chắn muốn xóa món này?')) {
-                              setDishes(dishes => dishes.filter((_, i) => i !== idx));
-                            }
-                          }}
+                          onClick={() => handleDelete(dish)}
                           className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-red-700 bg-red-100 hover:bg-red-200 rounded-lg transition-colors"
                         >
                           Xóa
@@ -184,23 +247,54 @@ const DishManager = () => {
           </div>
         </div>
 
-        {/* Popup thêm món ăn */}
+        {/* Modal thêm món ăn */}
         {addOpen && (
           <DishAddModal
-            dish={newDish}
-            onChange={handleAddChange}
-            onImageFile={handleAddImageFile}
+            dish={{
+              name: newDish.dishName,
+              price: newDish.price.toString(),
+              image: newDish.imageUrl,
+              status: newDish.status ? 'Còn' : 'Hết món'
+            }}
+            onChange={(e) => {
+              const { name, value } = e.target;
+              if (name === 'name') {
+                setNewDish(prev => ({ ...prev, dishName: value }));
+              } else if (name === 'price') {
+                setNewDish(prev => ({ ...prev, price: parseInt(value.replace(/[^\d]/g, '')) || 0 }));
+              } else if (name === 'status') {
+                setNewDish(prev => ({ ...prev, status: value === 'Còn' }));
+              }
+            }}
+            onImageUrl={handleImageUrl}
             onCancel={handleAddCancel}
             onSave={handleAddSave}
           />
         )}
+        {addError && (
+          <div style={{ color: 'red', marginTop: 12, fontWeight: 600 }}>{addError}</div>
+        )}
 
-        {/* Bảng chỉnh sửa */}
-        {editIdx !== null && editDish && (
+        {/* Modal chỉnh sửa món ăn */}
+        {editDish && (
           <DishEditModal
-            dish={editDish}
-            onChange={handleEditChange}
-            onImageFile={handleEditImageFile}
+            dish={{
+              name: editDish.dishName,
+              price: editDish.price.toString(),
+              image: editDish.imageUrl,
+              status: editDish.status ? 'Còn' : 'Hết món'
+            }}
+            onChange={(e) => {
+              const { name, value } = e.target;
+              if (name === 'name') {
+                setEditDish(prev => ({ ...prev!, dishName: value }));
+              } else if (name === 'price') {
+                setEditDish(prev => ({ ...prev!, price: parseInt(value.replace(/[^\d]/g, '')) || 0 }));
+              } else if (name === 'status') {
+                setEditDish(prev => ({ ...prev!, status: value === 'Còn' }));
+              }
+            }}
+            onImageUrl={handleImageUrl}
             onCancel={handleEditCancel}
             onSave={handleEditSave}
           />

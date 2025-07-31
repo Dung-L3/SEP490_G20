@@ -1,7 +1,9 @@
 import WaiterOrder from './pages/waiter/Order';
 import WaiterTableView from './pages/waiter/TableView';
+import PurchaseHistoryManager from './pages/manager/PurchaseHistoryManager';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
+import WorkshiftManager from './pages/manager/WorkshiftManager';
 import Booking from './pages/Booking';
 import Menu from './pages/Menu';  // Import trang Menu
 import Cart from './pages/Cart';  // Import trang Giỏ hàng
@@ -17,9 +19,10 @@ import OrderManager from './pages/manager/OrderManager'; // Import trang Quản 
 import ReportManager from './pages/manager/ReportManager'; // Import trang Báo cáo
 import { CartProvider } from './contexts/CartContext';
 import { TableCartProvider } from './contexts/TableCartContext';
-
-
-
+import { AuthProvider } from './contexts/AuthContext';
+import OrderList from './pages/receptionist/OrderList';
+import OrderPayment from './pages/receptionist/OrderPayment';
+import ReceptionistHome from './pages/receptionist/ReceptionistHome';
 import Chef from './pages/chef/Chef';
 
 function App() {
@@ -27,7 +30,8 @@ function App() {
     <CartProvider>
       <TableCartProvider>
         <Router>
-          <Routes>
+          <AuthProvider>
+            <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/booking" element={<Booking />} />
             <Route path="/menu" element={<Menu />} />  {/* Route cho trang Thực Đơn */}
@@ -39,15 +43,17 @@ function App() {
             <Route path="/manager/revenue" element={<RevenueManager />} /> {/* Route cho trang Quản lý doanh thu */}
             <Route path="/manager/table" element={<TableManager />} /> {/* Route cho trang Quản lý bàn */}
             <Route path="/manager/staff" element={<StaffManager />} /> {/* Route cho trang Quản lý nhân sự */}
+            <Route path="/manager/workshift" element={<WorkshiftManager />} /> {/* Route cho trang Quản lý ca làm việc */}
             <Route path="/manager/dish" element={<DishManager />} /> {/* Route cho trang Quản lý món ăn */}
             <Route path="/manager/order" element={<OrderManager />} /> {/* Route cho trang Quản lý đơn hàng */}
             <Route path="/manager/report" element={<ReportManager />} /> {/* Route cho trang Báo cáo */}
+            <Route path="/manager/purchase-history" element={<PurchaseHistoryManager />} /> {/* Route cho trang Lịch sử mua hàng */}
 
           <Route path="/waiter/orders" element={<WaiterOrder />} /> {/* Route cho waiter đặt món */}
           <Route path="/waiter/tables" element={<WaiterTableView />} /> {/* Route cho waiter xem bàn */}
           <Route path="/chef" element={<Chef />} /> {/* Route cho trang Chef (bếp trưởng) */}
-
-          </Routes>
+            </Routes>
+          </AuthProvider>
         </Router>
       </TableCartProvider>
     </CartProvider>

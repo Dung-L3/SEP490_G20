@@ -4,11 +4,18 @@ import com.system.restaurant.management.dto.OrderRequestDto;
 import com.system.restaurant.management.dto.PaymentRequest;
 import com.system.restaurant.management.dto.ReservationRequestDto;
 import com.system.restaurant.management.entity.*;
+import com.system.restaurant.management.repository.InvoiceRepository;
+import com.system.restaurant.management.repository.OrderDetailRepository;
+import com.system.restaurant.management.repository.PaymentRecordRepository;
+import com.system.restaurant.management.service.InvoicePdfService;
 import com.system.restaurant.management.service.ReceptionistService;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 
 @RestController
@@ -17,6 +24,11 @@ import java.util.List;
 public class ReceptionistController {
 
     private final ReceptionistService receptionistService;
+    private final OrderDetailRepository orderDetailRepository;
+    private final PaymentRecordRepository paymentRecordRepository;
+    private final InvoicePdfService invoicePdfService;
+    private final InvoiceRepository invoiceRepository;
+
 
     @PostMapping("/orders/takeaway")
     public Order placeTakeawayOrder(@RequestBody OrderRequestDto request) {
@@ -66,5 +78,31 @@ public class ReceptionistController {
     @PostMapping("/reservations/{id}/reminder")
     public Notification sendReminder(@PathVariable Integer id) {
         return receptionistService.sendReservationReminder(id);
+    }
+
+    @GetMapping("/{orderId}/invoice.pdf")
+    public ResponseEntity<byte[]> downloadInvoice(@PathVariable Integer orderId) throws Exception {
+        Invoice inv = invoiceRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new EntityNotFoundException("Invoice không tồn tại cho order " + orderId));
+
+        List<OrderDetail> items = orderDetailRepository.findByOrderId(orderId);
+
+        PaymentRecord pr = paymentRecordRepository
+                .findTopByInvoiceIdOrderByPaidAtDesc(inv.getInvoiceId())
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "PaymentRecord không tồn tại cho invoice " + inv.getInvoiceId()));
+
+        double discount = inv.getDiscountAmount().doubleValue();
+        double total    = inv.getFinalTotal().doubleValue();
+        String customer = inv.getOrder().getCustomerName();
+
+        byte[] pdfBytes = invoicePdfService.generateInvoicePdf(
+                orderId, customer, items, pr, discount, total);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"invoice-" + orderId + ".pdf\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdfBytes);
     }
 }

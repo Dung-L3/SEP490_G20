@@ -3,12 +3,14 @@ import { loginApi } from '../api/authApi';
 import Footer from '../components/Footer';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { setCurrentUser } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,12 +21,45 @@ const Login = () => {
     setError('');
     try {
       const res = await loginApi({ username, password });
+      
+      // Cập nhật thông tin người dùng vào localStorage và AuthContext
+      localStorage.setItem('currentUser', username);
+      localStorage.setItem('userRole', res.role);
+      setCurrentUser(username);
+      
       alert(res.message || 'Đăng nhập thành công!');
-      if (res.role === 'ROLE_MANAGER' || res.role === 'manager') navigate('/manager');
-      else if (res.role === 'ROLE_WAITER') navigate('/waiter/orders');
-      else if (res.role === 'ROLE_CHEF') navigate('/chef');
-      else navigate('/');
-    } catch (err) {
+      
+      // Điều hướng dựa trên role
+      const role = res.role.toUpperCase();
+      console.log('User role:', role); // Debug log
+      
+      switch(role) {
+        case 'ROLE_MANAGER':
+        case 'MANAGER':
+          navigate('/manager');
+          break;
+        case 'ROLE_WAITER':
+        case 'WAITER':
+          navigate('/waiter/orders');
+          break;
+        case 'ROLE_CHEF':
+        case 'CHEF':
+          navigate('/chef');
+          break;
+        case 'ROLE_RECEPTIONIST':
+        case 'RECEPTIONIST':
+          navigate('/receptionist');
+          break;
+        case 'ROLE_CUSTOMER':
+        case 'CUSTOMER':
+          navigate('/');
+          break;
+        default:
+          console.log('Role không khớp:', role); // Log để debug
+          navigate('/');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
       setError('Sai tài khoản hoặc mật khẩu');
     }
   };

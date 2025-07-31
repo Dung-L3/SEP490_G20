@@ -2,6 +2,8 @@ package com.system.restaurant.management.repository;
 
 import com.system.restaurant.management.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -15,4 +17,15 @@ public interface UserRepository extends JpaRepository<User, Integer> {
     boolean existsByEmail(String email);
     boolean existsByPhone(String phone);
     List<User> findByFullNameContainingIgnoreCase(String fullName);
+
+    @Query("""
+      SELECT u
+      FROM User u
+      WHERE NOT EXISTS (
+        SELECT r
+        FROM u.roles r
+        WHERE r.id = :roleId
+      )
+      """)
+    List<User> findAllWithoutRole(@Param("roleId") Integer roleId);
 }
