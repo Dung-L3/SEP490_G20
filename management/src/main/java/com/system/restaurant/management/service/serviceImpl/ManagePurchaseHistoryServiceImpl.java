@@ -28,21 +28,6 @@ public class ManagePurchaseHistoryServiceImpl implements ManagePurchaseHistorySe
     }
 
     @Override
-    public List<PurchaseHistoryDto> getHistoryByCustomerName(String customerName) {
-        return purchaseHistoryRepository.findHistoryByCustomerName(customerName);
-    }
-
-    @Override
-    public List<PurchaseHistoryDto> getHistoryByDateRange(LocalDateTime startDate, LocalDateTime endDate) {
-        return purchaseHistoryRepository.findHistoryByDateRange(startDate, endDate);
-    }
-
-    @Override
-    public List<PurchaseHistoryDto> getHistoryByOrderType(String orderType) {
-        return purchaseHistoryRepository.findHistoryByOrderType(orderType);
-    }
-
-    @Override
     public PurchaseHistoryResponse getCustomerStatistics(String phone) {
         List<PurchaseHistoryDto> customerHistory = getHistoryByPhone(phone);
 

@@ -8,13 +8,14 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@Data
-@Builder
-@NoArgsConstructor
+
 @AllArgsConstructor
+@Data
+@NoArgsConstructor
+@Builder
 public class PurchaseHistoryDto {
     private Integer orderId;
-    private LocalDateTime createdAt;
+    private LocalDateTime orderDate;
     private String customerName;
     private String phone;
     private String orderType;
@@ -22,5 +23,5 @@ public class PurchaseHistoryDto {
     private BigDecimal discountAmount;
     private BigDecimal finalTotal;
     private String paymentMethod;
-    private Boolean isRefunded;
+    private Integer isRefunded;
 }
