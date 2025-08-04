@@ -97,7 +97,7 @@ const Order: React.FC = () => {
     if (!currentTable) return;
     
     const cart = tableCarts[currentTable] || [];
-    const itemsWithOrderDetail = cart.filter(item => item.orderDetailId && item.orderStatus !== 'completed');
+    const itemsWithOrderDetail = cart.filter(item => item.orderDetailId);
 
     if (itemsWithOrderDetail.length === 0) return;
 
@@ -108,8 +108,10 @@ const Order: React.FC = () => {
             if (!item.orderDetailId) return item;
 
             try {
-              const status = await fetchOrderStatus(item.orderDetailId);
-              // Nếu không phải pending, xóa khỏi giỏ hàng
+              const statusResponse = await fetchOrderStatus(item.orderDetailId);
+              const status = typeof statusResponse === 'object' ? (statusResponse as any).status : statusResponse;
+              
+              // Nếu món đã chuyển sang cooking hoặc completed, xóa khỏi giỏ hàng
               if (status !== 'pending') {
                 return null;
               }
@@ -124,8 +126,12 @@ const Order: React.FC = () => {
 
         // Chỉ giữ lại các món có trạng thái pending
         const pendingItems = updatedItems.filter(item => item !== null);
-        clearCart();
-        pendingItems.forEach(item => addToCart(item));
+        
+        // Chỉ cập nhật nếu có thay đổi
+        if (pendingItems.length !== cart.length) {
+          clearCart();
+          pendingItems.forEach(item => addToCart(item));
+        }
       } catch (error) {
         console.error('Error polling order status:', error);
       }
@@ -133,7 +139,7 @@ const Order: React.FC = () => {
 
     const interval = setInterval(pollStatus, 5000); // Poll every 5 seconds
     return () => clearInterval(interval);
-  }, [currentTable, tableCarts, addToCart]);
+  }, [currentTable, tableCarts, addToCart, clearCart, fetchOrderStatus]);
 
   const filteredMenu = menuItems.filter(item =>
     item && item.name && item.name.toLowerCase().includes(search.toLowerCase())

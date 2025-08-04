@@ -5,6 +5,7 @@ import com.system.restaurant.management.entity.OrderDetail;
 import com.system.restaurant.management.repository.OrderDetailRepository;
 import com.system.restaurant.management.service.ChefService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -12,55 +13,54 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ChefServiceImpl implements ChefService {
 
     private final OrderDetailRepository orderDetailRepository;
 
     @Override
     public List<KitchenOrderDTO> getPendingOrders() {
-        return orderDetailRepository.findByStatusId(1)
-                .stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public List<KitchenOrderDTO> getCookingOrders() {
-        return orderDetailRepository.findByStatusId(2)
-                .stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public KitchenOrderDTO updateOrderStatus(Integer orderDetailId, Integer statusId) {
-        OrderDetail orderDetail = orderDetailRepository.findById(orderDetailId)
-                .orElseThrow(() -> new RuntimeException("Order detail not found"));
-
-        if (statusId < 1 || statusId > 3) {
-            throw new RuntimeException("Invalid status");
+        try {
+            return orderDetailRepository.findByStatusId(1)
+                    .stream()
+                    .map(this::convertToDTO)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.error("Error fetching pending orders: ", e);
+            return List.of();
         }
-
-        orderDetail.setStatusId(statusId);
-        return convertToDTO(orderDetailRepository.save(orderDetail));
     }
 
     private KitchenOrderDTO convertToDTO(OrderDetail orderDetail) {
         KitchenOrderDTO dto = new KitchenOrderDTO();
         dto.setOrderDetailId(orderDetail.getOrderDetailId());
         dto.setOrderId(orderDetail.getOrderId());
-        dto.setDishName(orderDetail.getDish() != null ? orderDetail.getDish().getDishName() : null);
+        
+        // Xử lý dish name an toàn
+        String dishName = "Món không xác định";
+        if (orderDetail.getDish() != null && orderDetail.getDish().getDishName() != null) {
+            dishName = orderDetail.getDish().getDishName();
+        } else if (orderDetail.getDishName() != null) {
+            dishName = orderDetail.getDishName();
+        }
+        dto.setDishName(dishName);
+        
         dto.setQuantity(orderDetail.getQuantity());
         dto.setStatus(getStatusText(orderDetail.getStatusId()));
-        dto.setNotes(orderDetail.getNotes());
+        dto.setNotes(orderDetail.getNotes() != null ? orderDetail.getNotes() : "");
 
-        if (orderDetail.getOrder() != null && orderDetail.getOrder().getTable() != null) {
-            dto.setTableNumber(orderDetail.getOrder().getTable().getTableName());
+        // Xử lý table name và order time an toàn
+        if (orderDetail.getOrder() != null) {
+            if (orderDetail.getOrder().getTable() != null && orderDetail.getOrder().getTable().getTableName() != null) {
+                dto.setTableNumber(orderDetail.getOrder().getTable().getTableName());
+            } else {
+                dto.setTableNumber("Bàn không xác định");
+            }
+            dto.setOrderTime(orderDetail.getOrder().getCreatedAt());
         } else {
-            dto.setTableNumber("Không rõ bàn");
+            dto.setTableNumber("Bàn không xác định");
+            dto.setOrderTime(java.time.LocalDateTime.now());
         }
-
-        dto.setOrderTime(orderDetail.getOrder() != null && orderDetail.getOrder().getCreatedAt() != null ? orderDetail.getOrder().getCreatedAt() : null);
 
         return dto;
     }

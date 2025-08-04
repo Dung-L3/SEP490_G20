@@ -19,7 +19,7 @@ export interface OrderStatus {
   bgColor: string;
 }
 
-import { Clock, Flame, CheckCircle } from 'lucide-react';
+import { Clock, CheckCircle } from 'lucide-react';
 
 export const statusList: OrderStatus[] = [
   {
@@ -28,13 +28,6 @@ export const statusList: OrderStatus[] = [
     icon: Clock,
     color: 'border-yellow-400 text-yellow-600',
     bgColor: 'bg-yellow-50',
-  },
-  {
-    value: 'cooking',
-    label: 'Đang nấu',
-    icon: Flame,
-    color: 'border-blue-500 text-blue-600',
-    bgColor: 'bg-blue-50',
   },
   {
     value: 'completed',
@@ -66,31 +59,4 @@ export const fetchPendingOrders = async (): Promise<KitchenOrderItem[]> => {
   const res = await fetch(`${BASE_URL}/chef/orders/pending`);
   const data = await parseJsonSafe(res);
   return enrichOrders(data);
-};
-
-export const fetchCookingOrders = async (): Promise<KitchenOrderItem[]> => {
-  const res = await fetch(`${BASE_URL}/chef/orders/cooking`);
-  const data = await parseJsonSafe(res);
-  return enrichOrders(data);
-};
-
-export const updateOrderStatus = async (
-  orderDetailId: number,
-  newStatus: string
-): Promise<KitchenOrderItem> => {
-  let endpoint = '';
-  if (newStatus === 'cooking') {
-    endpoint = `${BASE_URL}/chef/orders/${orderDetailId}/processing`;
-  } else if (newStatus === 'completed') {
-    endpoint = `${BASE_URL}/chef/orders/${orderDetailId}/completed`;
-  } else {
-    throw new Error('Trạng thái không hợp lệ');
-  }
-
-  const res = await fetch(endpoint, {
-    method: 'PUT',
-  });
-
-  const data = await parseJsonSafe(res);
-  return enrichOrders([data])[0];
 };

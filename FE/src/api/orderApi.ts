@@ -133,46 +133,6 @@ export const updateTableStatus = async (tableId: number, status: string): Promis
 
 
 
-export const acceptOrder = async (orderDetailId: number): Promise<void> => {
-  const response = await fetch(`${BASE_URL}/chef/orders/${orderDetailId}/accept`, {
-    method: 'PUT',
-    credentials: 'include',
-    headers: {
-      'Accept': 'application/json'
-    }
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    try {
-      const errorJson = JSON.parse(errorText);
-      throw new Error(errorJson.message || 'Failed to accept order');
-    } catch (e) {
-      throw new Error(errorText || 'Failed to accept order');
-    }
-  }
-};
-
-export const completeOrder = async (orderDetailId: number): Promise<void> => {
-  const response = await fetch(`${BASE_URL}/chef/orders/${orderDetailId}/complete`, {
-    method: 'PUT',
-    credentials: 'include',
-    headers: {
-      'Accept': 'application/json'
-    }
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    try {
-      const errorJson = JSON.parse(errorText);
-      throw new Error(errorJson.message || 'Failed to complete order');
-    } catch (e) {
-      throw new Error(errorText || 'Failed to complete order');
-    }
-  }
-};
-
 export const fetchOrderStatus = async (orderDetailId: number): Promise<string> => {
   const response = await fetch(`${BASE_URL}/waiter/orders/detail/${orderDetailId}/status`, {
     credentials: 'include',

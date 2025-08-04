@@ -1,19 +1,26 @@
+// src/pages/Chef.tsx
 import React, { useState, useEffect } from 'react';
 import { Clock, ChefHat, Utensils, AlertCircle } from 'lucide-react';
-import type { KitchenOrderItem, OrderStatus } from '../../api/chefApi.ts';
-import { fetchPendingOrders, fetchCookingOrders, updateOrderStatus, statusList } from '../../api/chefApi.ts';
+import type { KitchenOrderItem, OrderStatus } from '../../api/chefApi';
+import { fetchPendingOrders, statusList } from '../../api/chefApi';
 
 interface OrderCardProps {
   orderIdx: number;
   order: KitchenOrderItem;
+  currentTime: Date;
   onStatusChange: (orderDetailId: number, status: string) => void;
 }
 
 const Chef = () => {
   const [pendingOrders, setPendingOrders] = useState<KitchenOrderItem[]>([]);
-  const [cookingOrders, setCookingOrders] = useState<KitchenOrderItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const loadOrders = async () => {
@@ -21,9 +28,7 @@ const Chef = () => {
         setLoading(true);
         setErrorMessage(null);
         const pending = await fetchPendingOrders();
-        const cooking = await fetchCookingOrders();
         setPendingOrders(pending);
-        setCookingOrders(cooking);
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to fetch orders';
         setErrorMessage(message);
@@ -34,21 +39,14 @@ const Chef = () => {
     };
 
     loadOrders();
-    const interval = setInterval(loadOrders, 30000); // Refresh every 30 seconds
+    const interval = setInterval(loadOrders, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  const totalOrders = pendingOrders.length + cookingOrders.length;
-  const [currentTime, setCurrentTime] = useState(new Date());
-
-  React.useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+  const totalOrders = pendingOrders.length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-4">
-      {/* Header */}
       <div className="max-w-6xl mx-auto">
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-8 border border-slate-200">
           <div className="flex items-center justify-between">
@@ -77,59 +75,15 @@ const Chef = () => {
           </div>
         </div>
 
-        {/* Orders Grid */}
         {loading ? (
-          <div className="bg-white rounded-2xl shadow-lg p-12 text-center border border-slate-200">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-            <p className="mt-4 text-slate-600">Đang tải dữ liệu...</p>
-          </div>
+          <LoadingSection />
         ) : errorMessage ? (
-          <div className="bg-white rounded-2xl shadow-lg p-12 text-center border border-red-200">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <AlertCircle className="w-8 h-8 text-red-500" />
-            </div>
-            <h3 className="text-xl font-semibold text-red-600 mb-2">Có lỗi xảy ra</h3>
-            <p className="text-slate-500">{errorMessage}</p>
-          </div>
+          <ErrorSection message={errorMessage} />
         ) : totalOrders === 0 ? (
-          <div className="bg-white rounded-2xl shadow-lg p-12 text-center border border-slate-200">
-            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Utensils className="w-8 h-8 text-slate-400" />
-            </div>
-            <h3 className="text-xl font-semibold text-slate-600 mb-2">Chưa có đơn hàng nào</h3>
-            <p className="text-slate-500">Các đơn hàng mới sẽ xuất hiện ở đây</p>
-          </div>
+          <EmptySection />
         ) : (
           <div className="space-y-8">
-            {/* Pending Orders */}
-            <div>
-              <h2 className="text-xl font-semibold text-slate-800 mb-4">Đơn chờ xử lý ({pendingOrders.length})</h2>
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {pendingOrders.map((order: KitchenOrderItem, idx: number) => (
-                  <OrderCard 
-                    key={order.orderDetailId} 
-                    orderIdx={idx}
-                    order={order}
-                    onStatusChange={updateOrderStatus}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* Cooking Orders */}
-            <div>
-              <h2 className="text-xl font-semibold text-slate-800 mb-4">Đơn đang chế biến ({cookingOrders.length})</h2>
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {cookingOrders.map((order: KitchenOrderItem, idx: number) => (
-                  <OrderCard 
-                    key={order.orderDetailId} 
-                    orderIdx={idx}
-                    order={order}
-                    onStatusChange={updateOrderStatus}
-                  />
-                ))}
-              </div>
-            </div>
+            <OrderSection title="Đơn chờ xử lý" orders={pendingOrders} currentTime={currentTime} />
           </div>
         )}
       </div>
@@ -137,35 +91,85 @@ const Chef = () => {
   );
 };
 
-function OrderCard({ orderIdx, order, onStatusChange }: OrderCardProps) {
+const LoadingSection = () => (
+  <div className="bg-white rounded-2xl shadow-lg p-12 text-center border border-slate-200">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+    <p className="mt-4 text-slate-600">Đang tải dữ liệu...</p>
+  </div>
+);
+
+const ErrorSection = ({ message }: { message: string }) => (
+  <div className="bg-white rounded-2xl shadow-lg p-12 text-center border border-red-200">
+    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <AlertCircle className="w-8 h-8 text-red-500" />
+    </div>
+    <h3 className="text-xl font-semibold text-red-600 mb-2">Có lỗi xảy ra</h3>
+    <p className="text-slate-500">{message}</p>
+  </div>
+);
+
+const EmptySection = () => (
+  <div className="bg-white rounded-2xl shadow-lg p-12 text-center border border-slate-200">
+    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <Utensils className="w-8 h-8 text-slate-400" />
+    </div>
+    <h3 className="text-xl font-semibold text-slate-600 mb-2">Chưa có đơn hàng nào</h3>
+    <p className="text-slate-500">Các đơn hàng mới sẽ xuất hiện ở đây</p>
+  </div>
+);
+
+const OrderSection = ({ title, orders, currentTime }: { title: string; orders: KitchenOrderItem[]; currentTime: Date }) => (
+  <div>
+    <h2 className="text-xl font-semibold text-slate-800 mb-4">{title} ({orders.length})</h2>
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      {orders.map((order, idx) => (
+        <OrderCard 
+          key={order.orderDetailId} 
+          orderIdx={idx} 
+          order={order} 
+          currentTime={currentTime} 
+          onStatusChange={() => {}} // Không cần gọi API
+        />
+      ))}
+    </div>
+  </div>
+);
+
+const OrderCard = ({ orderIdx, order, currentTime, onStatusChange }: OrderCardProps) => {
   const [status, setStatus] = useState(order.status.toLowerCase());
-  const orderTime = new Date(order.orderTime);
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [updating, setUpdating] = useState(false);
 
-  React.useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const currentStatus = statusList.find((s: OrderStatus) => s.value === status);
+  const currentStatus = statusList.find(s => s.value === status);
   const StatusIcon = currentStatus?.icon;
+
+  const orderTime = new Date(order.orderTime);
   const elapsedTime = Math.floor((currentTime.getTime() - orderTime.getTime()) / 1000);
   const minutes = Math.floor(elapsedTime / 60);
   const seconds = elapsedTime % 60;
 
   const handleStatusChange = async (newStatus: string) => {
     try {
-      await onStatusChange(order.orderDetailId, newStatus);
+      setUpdating(true);
+      
+      if (newStatus === 'completed') {
+        // Chỉ cập nhật local state để ẩn món, không gọi API
+        setStatus(newStatus);
+        return;
+      }
+      
+      // Không cho phép chuyển sang cooking nữa
       setStatus(newStatus);
     } catch (error) {
       console.error('Failed to update status:', error);
-      alert('Không thể cập nhật trạng thái đơn hàng');
+    } finally {
+      setUpdating(false);
     }
   };
 
+  if (status === 'completed') return null; // Ẩn món khi đã completed
+
   return (
     <div className={`bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-slate-200 overflow-hidden ${currentStatus?.bgColor}`}>
-      {/* Card Header */}
       <div className="bg-gradient-to-r from-slate-800 to-slate-700 p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
@@ -173,7 +177,7 @@ function OrderCard({ orderIdx, order, onStatusChange }: OrderCardProps) {
               <span className="text-white font-bold text-sm">#{orderIdx + 1}</span>
             </div>
             <div>
-              <h3 className="text-white font-semibold">Bàn {order.tableNumber}</h3>
+              <h3 className="text-white font-semibold">{order.tableNumber}</h3>
               <p className="text-slate-300 text-xs">Mã đơn: #{order.orderId}</p>
             </div>
           </div>
@@ -186,7 +190,6 @@ function OrderCard({ orderIdx, order, onStatusChange }: OrderCardProps) {
         </div>
       </div>
 
-      {/* Status Section */}
       <div className="p-4 border-b border-slate-100">
         <div className="flex items-center gap-3 mb-3">
           <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border-2 ${currentStatus?.color}`}>
@@ -195,23 +198,22 @@ function OrderCard({ orderIdx, order, onStatusChange }: OrderCardProps) {
           </div>
         </div>
         <select
+          disabled={updating}
           className="w-full border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-medium focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
           value={status}
           onChange={e => handleStatusChange(e.target.value)}
         >
           {statusList
-            .filter((s: OrderStatus) => {
-              if (status === 'pending') return ['pending', 'cooking'].includes(s.value);
-              if (status === 'cooking') return ['cooking', 'completed'].includes(s.value);
+            .filter(s => {
+              if (status === 'pending') return ['pending', 'completed'].includes(s.value); // Chỉ cho phép pending -> completed
               return false;
             })
-            .map((s: OrderStatus) => (
+            .map(s => (
               <option key={s.value} value={s.value}>{s.label}</option>
             ))}
         </select>
       </div>
 
-      {/* Order Details */}
       <div className="p-4">
         <div className="space-y-3">
           <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors duration-200">
@@ -221,9 +223,7 @@ function OrderCard({ orderIdx, order, onStatusChange }: OrderCardProps) {
               </div>
               <div>
                 <h4 className="font-semibold text-slate-800">{order.dishName}</h4>
-                {order.notes && (
-                  <p className="text-slate-500 text-xs">Ghi chú: {order.notes}</p>
-                )}
+                {order.notes && <p className="text-slate-500 text-xs">Ghi chú: {order.notes}</p>}
               </div>
             </div>
           </div>
@@ -231,6 +231,6 @@ function OrderCard({ orderIdx, order, onStatusChange }: OrderCardProps) {
       </div>
     </div>
   );
-}
+};
 
 export default Chef;
