@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, ChefHat, Utensils, AlertCircle } from 'lucide-react';
 import type { KitchenOrderItem, OrderStatus } from '../../api/chefApi';
-import { fetchPendingOrders, statusList } from '../../api/chefApi';
+import { fetchPendingOrders, statusList, updateOrderStatus } from '../../api/chefApi';
 
 interface OrderCardProps {
   orderIdx: number;
@@ -151,22 +151,22 @@ const OrderCard = ({ orderIdx, order, currentTime, onStatusChange }: OrderCardPr
     try {
       setUpdating(true);
       
-      if (newStatus === 'completed') {
-        // Chỉ cập nhật local state để ẩn món, không gọi API
-        setStatus(newStatus);
-        return;
-      }
+      // Gọi API để cập nhật status trong database
+      await updateOrderStatus(order.orderDetailId, newStatus.toUpperCase());
       
-      // Không cho phép chuyển sang cooking nữa
+      // Cập nhật local state
       setStatus(newStatus);
+      
     } catch (error) {
       console.error('Failed to update status:', error);
+      alert('Không thể cập nhật trạng thái. Vui lòng thử lại.');
     } finally {
       setUpdating(false);
     }
   };
 
-  if (status === 'completed') return null; // Ẩn món khi đã completed
+  // Ẩn món khi đã processing hoặc completed
+  if (status === 'processing' || status === 'completed') return null;
 
   return (
     <div className={`bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-slate-200 overflow-hidden ${currentStatus?.bgColor}`}>
@@ -205,7 +205,7 @@ const OrderCard = ({ orderIdx, order, currentTime, onStatusChange }: OrderCardPr
         >
           {statusList
             .filter(s => {
-              if (status === 'pending') return ['pending', 'completed'].includes(s.value); // Chỉ cho phép pending -> completed
+              if (status === 'pending') return ['pending', 'processing'].includes(s.value);
               return false;
             })
             .map(s => (

@@ -21,13 +21,32 @@ public class ChefServiceImpl implements ChefService {
     @Override
     public List<KitchenOrderDTO> getPendingOrders() {
         try {
-            return orderDetailRepository.findByStatusId(1)
-                    .stream()
+            List<OrderDetail> orderDetails = orderDetailRepository.findByStatusIdWithDetails(1);
+            log.info("Found {} pending order details", orderDetails.size());
+            
+            return orderDetails.stream()
                     .map(this::convertToDTO)
                     .collect(Collectors.toList());
         } catch (Exception e) {
             log.error("Error fetching pending orders: ", e);
             return List.of();
+        }
+    }
+
+    @Override
+    public void updateOrderStatus(Integer orderDetailId, String status) {
+        try {
+            OrderDetail orderDetail = orderDetailRepository.findById(orderDetailId)
+                    .orElseThrow(() -> new RuntimeException("Order detail not found with ID: " + orderDetailId));
+            
+            Integer statusId = getStatusId(status);
+            orderDetail.setStatusId(statusId);
+            orderDetailRepository.save(orderDetail);
+            
+            log.info("Updated order detail {} status to {}", orderDetailId, status);
+        } catch (Exception e) {
+            log.error("Error updating order status: ", e);
+            throw new RuntimeException("Failed to update order status", e);
         }
     }
 
@@ -40,8 +59,6 @@ public class ChefServiceImpl implements ChefService {
         String dishName = "Món không xác định";
         if (orderDetail.getDish() != null && orderDetail.getDish().getDishName() != null) {
             dishName = orderDetail.getDish().getDishName();
-        } else if (orderDetail.getDishName() != null) {
-            dishName = orderDetail.getDishName();
         }
         dto.setDishName(dishName);
         
@@ -49,28 +66,50 @@ public class ChefServiceImpl implements ChefService {
         dto.setStatus(getStatusText(orderDetail.getStatusId()));
         dto.setNotes(orderDetail.getNotes() != null ? orderDetail.getNotes() : "");
 
-        // Xử lý table name và order time an toàn
-        if (orderDetail.getOrder() != null) {
-            if (orderDetail.getOrder().getTable() != null && orderDetail.getOrder().getTable().getTableName() != null) {
-                dto.setTableNumber(orderDetail.getOrder().getTable().getTableName());
+        // Xử lý table name với debug log
+        String tableName = "Bàn không xác định";
+        try {
+            if (orderDetail.getOrder() != null) {
+                log.debug("Order found: {}", orderDetail.getOrder().getOrderId());
+                if (orderDetail.getOrder().getTable() != null) {
+                    log.debug("Table found: {}", orderDetail.getOrder().getTable().getTableId());
+                    if (orderDetail.getOrder().getTable().getTableName() != null) {
+                        tableName = orderDetail.getOrder().getTable().getTableName();
+                        log.debug("Table name: {}", tableName);
+                    } else {
+                        log.warn("Table name is null for table ID: {}", orderDetail.getOrder().getTable().getTableId());
+                    }
+                } else {
+                    log.warn("Table is null for order ID: {}", orderDetail.getOrder().getOrderId());
+                }
+                dto.setOrderTime(orderDetail.getOrder().getCreatedAt());
             } else {
-                dto.setTableNumber("Bàn không xác định");
+                log.warn("Order is null for order detail ID: {}", orderDetail.getOrderDetailId());
+                dto.setOrderTime(java.time.LocalDateTime.now());
             }
-            dto.setOrderTime(orderDetail.getOrder().getCreatedAt());
-        } else {
-            dto.setTableNumber("Bàn không xác định");
-            dto.setOrderTime(java.time.LocalDateTime.now());
+        } catch (Exception e) {
+            log.error("Error processing table info for order detail {}: ", orderDetail.getOrderDetailId(), e);
         }
-
+        
+        dto.setTableNumber(tableName);
         return dto;
     }
 
     private String getStatusText(Integer statusId) {
         return switch (statusId) {
             case 1 -> "PENDING";
-            case 2 -> "COOKING";
+            case 2 -> "PROCESSING";
             case 3 -> "COMPLETED";
             default -> "UNKNOWN";
+        };
+    }
+
+    private Integer getStatusId(String status) {
+        return switch (status.toUpperCase()) {
+            case "PENDING" -> 1;
+            case "PROCESSING" -> 2;
+            case "COMPLETED" -> 3;
+            default -> throw new IllegalArgumentException("Invalid status: " + status);
         };
     }
 }

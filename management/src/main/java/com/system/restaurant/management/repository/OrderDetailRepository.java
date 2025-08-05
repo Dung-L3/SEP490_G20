@@ -17,6 +17,13 @@ public interface OrderDetailRepository extends JpaRepository<OrderDetail, Intege
            "LEFT JOIN FETCH od.order o " +
            "LEFT JOIN FETCH o.table t " +
            "LEFT JOIN FETCH od.dish d " +
+           "WHERE od.statusId = :statusId")
+    List<OrderDetail> findByStatusIdWithDetails(Integer statusId);
+
+    @Query("SELECT DISTINCT od FROM OrderDetail od " +
+           "LEFT JOIN FETCH od.order o " +
+           "LEFT JOIN FETCH o.table t " +
+           "LEFT JOIN FETCH od.dish d " +
            "WHERE od.orderDetailId = :id")
     Optional<OrderDetail> findByIdWithDetails(Integer id);
 

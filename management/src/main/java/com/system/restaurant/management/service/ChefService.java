@@ -5,4 +5,5 @@ import java.util.List;
 
 public interface ChefService {
     List<KitchenOrderDTO> getPendingOrders();
+    void updateOrderStatus(Integer orderDetailId, String status);
 }

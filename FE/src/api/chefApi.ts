@@ -1,4 +1,4 @@
-export const BASE_URL = 'http://localhost:8080/api';
+export const BASE_URL = '/api';
 
 export interface KitchenOrderItem {
   orderDetailId: number;
@@ -19,7 +19,7 @@ export interface OrderStatus {
   bgColor: string;
 }
 
-import { Clock, CheckCircle } from 'lucide-react';
+import { Clock, CheckCircle, ChefHat } from 'lucide-react';
 
 export const statusList: OrderStatus[] = [
   {
@@ -28,6 +28,13 @@ export const statusList: OrderStatus[] = [
     icon: Clock,
     color: 'border-yellow-400 text-yellow-600',
     bgColor: 'bg-yellow-50',
+  },
+  {
+    value: 'processing',
+    label: 'Đang chế biến',
+    icon: ChefHat,
+    color: 'border-blue-400 text-blue-600', 
+    bgColor: 'bg-blue-50',
   },
   {
     value: 'completed',
@@ -48,15 +55,51 @@ const parseJsonSafe = async (res: Response) => {
 };
 
 const enrichOrders = (data: any[]): KitchenOrderItem[] => {
-  return data.map((item, idx) => ({
-    ...item,
-    tableNumber: item.tableNumber || 'Không rõ bàn',
-    orderTime: item.orderTime || new Date(Date.now() - idx * 60000).toISOString(),
-  }));
+  return data.map((item, idx) => {
+    // Backend đã trả về tableNumber rồi, chỉ cần kiểm tra và format
+    let tableNumber = item.tableNumber || 'Bàn không xác định';
+    
+    // Đảm bảo có prefix "Bàn" nếu chưa có và không phải "Bàn không xác định"
+    if (tableNumber !== 'Bàn không xác định' && 
+        !tableNumber.toLowerCase().includes('bàn') && 
+        !tableNumber.toLowerCase().includes('table')) {
+      tableNumber = `Bàn ${tableNumber}`;
+    }
+
+    return {
+      ...item,
+      tableNumber,
+      orderTime: item.orderTime || new Date(Date.now() - idx * 60000).toISOString(),
+    };
+  });
 };
 
 export const fetchPendingOrders = async (): Promise<KitchenOrderItem[]> => {
   const res = await fetch(`${BASE_URL}/chef/orders/pending`);
   const data = await parseJsonSafe(res);
-  return enrichOrders(data);
+  
+  // Debug log để xem data thực tế
+  console.log('Raw data from backend:', data);
+  if (data.length > 0) {
+    console.log('First order structure:', data[0]);
+  }
+  
+  const enrichedData = enrichOrders(data);
+  console.log('Enriched data:', enrichedData);
+  
+  return enrichedData;
+};
+
+export const updateOrderStatus = async (orderDetailId: number, status: string): Promise<void> => {
+  const res = await fetch(`${BASE_URL}/chef/orders/${orderDetailId}/status?status=${status}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  });
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to update order status: ${errorText}`);
+  }
 };

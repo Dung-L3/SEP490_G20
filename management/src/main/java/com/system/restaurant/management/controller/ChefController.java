@@ -19,4 +19,16 @@ public class ChefController {
     public ResponseEntity<List<KitchenOrderDTO>> getPendingOrders() {
         return ResponseEntity.ok(chefService.getPendingOrders());
     }
+
+    @PutMapping("/chef/orders/{orderDetailId}/status")
+    public ResponseEntity<String> updateOrderStatus(
+            @PathVariable Integer orderDetailId,
+            @RequestParam String status) {
+        try {
+            chefService.updateOrderStatus(orderDetailId, status);
+            return ResponseEntity.ok("Order status updated successfully");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Failed to update order status: " + e.getMessage());
+        }
+    }
 }
