@@ -28,22 +28,27 @@ const TableView = () => {
   }, []);
 
   const handleTableClick = async (table: UiTable) => {
-    if (updating) return; // Prevent multiple simultaneous updates
+    if (updating) return; // Ngăn chặn nhiều lần cập nhật đồng thời
+    if (table.status !== 'Trống') {
+      // Nếu bàn không trống, không làm gì cả và không hiển thị lỗi
+      return;
+    }
     
     try {
       setUpdating(table.id);
       
-      // Toggle between 'Trống' and 'Đang phục vụ'
-      const newStatus = table.status === 'Trống' ? 'Đang phục vụ' : 'Trống';
+      // Chỉ cho phép chuyển từ trạng thái Trống sang Đang phục vụ
+      const newStatus = 'Đang phục vụ';
       
       await tableApi.updateStatus(table.id, newStatus);
       
-      // Update local state
+      // Cập nhật trạng thái local
       setTables(prevTables => 
         prevTables.map(t => 
           t.id === table.id ? { ...t, status: newStatus } : t
         )
       );
+      // Không cần setError(null) vì chúng ta không hiển thị lỗi nữa
       
     } catch (error) {
       console.error('Error updating table status:', error);
