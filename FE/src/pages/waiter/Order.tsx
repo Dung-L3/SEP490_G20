@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTableCart } from '../../contexts/TableCartContext';
 import { tableApi } from '../../api/tableApi';
 import { type UiTable } from '../../utils/tableMapping';
-import TaskbarWaiter from '../../components/TaskbarWaiter';
+import TaskbarWaiter from './TaskbarWaiter';
 
 export interface MenuItem {
   id: number;
@@ -12,15 +12,15 @@ export interface MenuItem {
   image: string;
 }
 
-const API_URL = '/api/v1/menu';
+import { waiterApi } from '../../api/waiterApi';
 
 const fetchMenuItems = async (): Promise<MenuItem[]> => {
   try {
-    const response = await fetch(`${API_URL}/all`);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    const menuItems = await waiterApi.getAllMenuItems();
+    if (!menuItems || menuItems.length === 0) {
+      throw new Error('No menu items found');
     }
-    return await response.json();
+    return menuItems;
   } catch (error) {
     console.error('Error fetching menu items:', error);
     throw error;
@@ -289,8 +289,29 @@ const Order: React.FC = () => {
                   </button>
                   <button
                     className="flex-1 py-3 px-6 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                    disabled={cart.length === 0}
-                    onClick={() => alert('Đã gửi đơn hàng!')}
+                    disabled={cart.length === 0 || !currentTable}
+                    onClick={async () => {
+                      try {
+                        const selectedTable = tableList.find(t => t.name === currentTable);
+                        if (!selectedTable) {
+                          throw new Error('Vui lòng chọn bàn');
+                        }
+                        
+                        await waiterApi.createOrder({
+                          tableId: selectedTable.id,
+                          items: cart.map(item => ({
+                            menuItemId: item.id,
+                            quantity: item.quantity
+                          }))
+                        });
+                        
+                        clearCart();
+                        alert('Đã gửi đơn hàng thành công!');
+                      } catch (error) {
+                        console.error('Error sending order:', error);
+                        alert('Lỗi khi gửi đơn hàng: ' + (error instanceof Error ? error.message : 'Unknown error'));
+                      }
+                    }}
                   >
                     <span className="flex items-center justify-center">
                       <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
