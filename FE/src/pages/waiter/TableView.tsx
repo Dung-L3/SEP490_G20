@@ -1,92 +1,16 @@
-import React, { useEffect, useState } from 'react';
-import { tableApi } from '../../api/tableApi';
-import { type UiTable, mapApiTableToUiTable } from '../../utils/tableMapping';
-import TaskbarWaiter from './TaskbarWaiter';
-import WaiterTableMap from './WaiterTableMap';
 
-const TableView = () => {
-  const [tables, setTables] = useState<UiTable[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [updating, setUpdating] = useState<number | null>(null); // ID of table being updated
+import React from 'react';
+import TaskbarWaiter from '../../components/TaskbarWaiter';
+import TableMap from '../../components/TableMap';
 
-  useEffect(() => {
-    const fetchTables = async () => {
-      try {
-        const data = await tableApi.getAll();
-        const uiTables = data.map(mapApiTableToUiTable);
-        setTables(uiTables);
-        setError(null);
-      } catch (error) {
-        console.error('Error fetching tables:', error);
-        setError('Không thể tải danh sách bàn');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchTables();
-  }, []);
-
-  const handleTableClick = async (table: UiTable) => {
-    if (updating) return; // Prevent multiple simultaneous updates
-    
-    try {
-      setUpdating(table.id);
-      
-      // Toggle between 'Trống' and 'Đang phục vụ'
-      const newStatus = table.status === 'Trống' ? 'Đang phục vụ' : 'Trống';
-      
-      await tableApi.updateStatus(table.id, newStatus);
-      
-      // Update local state
-      setTables(prevTables => 
-        prevTables.map(t => 
-          t.id === table.id ? { ...t, status: newStatus } : t
-        )
-      );
-      
-    } catch (error) {
-      console.error('Error updating table status:', error);
-      setError('Không thể cập nhật trạng thái bàn');
-    } finally {
-      setUpdating(null);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 to-blue-50">
-        <div className="text-xl">Đang tải dữ liệu bàn...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 to-blue-50">
-        <div className="text-xl text-red-500">{error}</div>
-      </div>
-    );
-  }
-
+const TableView: React.FC = () => {
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
-      {/* Taskbar trái */}
+    <div className="min-h-screen bg-gray-50 flex">
       <TaskbarWaiter />
       <div className="hidden md:block w-56" />
-      
-      {/* Nội dung chính */}
-      <main className="flex-1 p-6">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Sơ đồ bàn</h1>
-          <p className="text-gray-600">Quản lý trạng thái các bàn trong nhà hàng</p>
-        </div>
-
-        {/* Sơ đồ bàn */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <WaiterTableMap tables={tables} onTableClick={handleTableClick} />
-        </div>
+      <main className="flex-1 p-4">
+        <h1 className="text-2xl font-bold mb-4">Sơ đồ bàn</h1>
+        <TableMap />
       </main>
     </div>
   );
