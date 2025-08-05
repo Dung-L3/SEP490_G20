@@ -5,15 +5,18 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class StaffRequestDto {
+public class UserRequestDto {
     private String fullName;
     private String email;
     private String phone;
     private Boolean status;
-    private String role;
     private String username;
+    private String passwordHash;
+    private List<String> roleNames;
 }

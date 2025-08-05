@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -24,6 +25,7 @@ import java.util.stream.Collectors;
 @Transactional
 public class WaiterServiceImpl implements WaiterService {
 
+    private final CustomerRepository customerRepository;
     private final OrderRepository orderRepository;
     private final RestaurantTableRepository restaurantTableRepository;
     private final ReservationRepository reservationRepository;
@@ -32,7 +34,12 @@ public class WaiterServiceImpl implements WaiterService {
     private final PaymentMethodRepository paymentMethodRepository;
     private final DishRepository dishRepository;
     private final OrderDetailRepository orderDetailRepository;
+    private final OrderStatusRepository orderStatusRepository;
     private final ComboRepository comboRepository;
+    private final InvoicePrintRepository invoicePrintRepository;
+    private final LoyaltyTransactionRepository loyaltyTransactionRepository;
+
+
 
     @Override
     public boolean isTableOccupied(Integer tableId) {
@@ -345,28 +352,41 @@ public class WaiterServiceImpl implements WaiterService {
                 .build();
         pr = paymentRecordRepository.save(pr);
 
-//        // 6. Cập nhật Order → Done
-//        OrderStatus done = orderStatusRepository.findByStatusName("Done")
-//                .orElseThrow(() -> new EntityNotFoundException("Status 'Done' not found"));
-//        order.setStatusId(done.getStatusID());
-//        orderRepository.save(order);
-//
-//        // 7. Cập nhật bàn (nếu DINEIN)
-//        if ("DINEIN".equalsIgnoreCase(order.getOrderType()) && order.getTable() != null) {
-//            RestaurantTable table = order.getTable();
-//            table.setStatus("AVAILABLE");
-//            restaurantTableRepository.save(table);
-//        }
-//
-//        // 8. Ghi InvoicePrint
-//        InvoicePrint ip = InvoicePrint.builder()
-//                .invoiceId(invoice.getInvoiceId())
-//                .printedBy(issuedBy)
-//                .printedAt(LocalDateTime.now())
-//                .build();
-//        invoicePrintRepository.save(ip);
-//
-        // 9. Trả về response
+        OrderStatus done = orderStatusRepository.findByStatusName("Done")
+                .orElseThrow(() -> new EntityNotFoundException("Status 'Done' not found"));
+        order.setStatusId(done.getStatusId());
+        orderRepository.save(order);
+
+        if ("DINEIN".equalsIgnoreCase(order.getOrderType()) && order.getTable() != null) {
+            RestaurantTable table = order.getTable();
+            table.setStatus("FREE");
+            restaurantTableRepository.save(table);
+        }
+
+        InvoicePrint ip = InvoicePrint.builder()
+                .invoiceId(invoice.getInvoiceId())
+                .printedBy(issuedBy)
+                .printedAt(LocalDateTime.now())
+                .build();
+        invoicePrintRepository.save(ip);
+
+        customerRepository.findByPhone(order.getPhone()).ifPresent(customer ->
+        {BigDecimal subTotal = order.getSubTotal();
+            int points = subTotal
+                    .divide(new BigDecimal("100000"), RoundingMode.DOWN)
+                    .intValue();
+                customer.setLoyaltyPoints(customer.getLoyaltyPoints() + points);
+                customerRepository.save(customer);
+            LoyaltyTransaction tx = LoyaltyTransaction.builder()
+                    .customerId(customer.getCustomerId())
+                    .orderId(orderId)
+                    .pointsChange(points)
+                    .transactionAt(LocalDateTime.now())
+                    .reason("Tích điểm cho hóa đơn #" + orderId)
+                    .build();
+            loyaltyTransactionRepository.save(tx);
+        });
+
         return CompletePaymentResponse.builder()
                 .orderId(orderId)
                 .invoiceNumber("INV-" + invoice.getInvoiceId())

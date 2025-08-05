@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface PaymentRecordRepository extends JpaRepository<PaymentRecord, Integer> {
@@ -16,4 +17,6 @@ public interface PaymentRecordRepository extends JpaRepository<PaymentRecord, In
 
     @Query("SELECT pr FROM PaymentRecord pr WHERE pr.invoice.order.orderId = :orderId")
     List<PaymentRecord> findByOrderId(@Param("orderId") Integer orderId);
+
+    Optional<PaymentRecord> findTopByInvoiceIdOrderByPaidAtDesc(Integer invoiceId);
 }

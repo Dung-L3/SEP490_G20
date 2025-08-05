@@ -1,26 +1,18 @@
 // src/components/Header.tsx
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { ChefHat, Menu, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
+import { useAuth } from '../contexts/AuthContext';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { cart } = useCart();
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const [currentUser, setCurrentUser] = useState<string | null>(null);
-
-  useEffect(() => {
-    setCurrentUser(localStorage.getItem('currentUser'));
-    // Lắng nghe sự thay đổi localStorage nếu cần
-    window.addEventListener('storage', () => setCurrentUser(localStorage.getItem('currentUser')));
-    return () => window.removeEventListener('storage', () => setCurrentUser(localStorage.getItem('currentUser')));
-  }, []);
+  const { currentUser, logout } = useAuth();
 
   const handleLogout = () => {
-    localStorage.removeItem('currentUser');
-    setCurrentUser(null);
-    window.location.reload();
+    logout();
   };
 
   return (

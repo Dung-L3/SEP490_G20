@@ -33,7 +33,14 @@ const Register = () => {
       return;
     }
     setError('');
-    registerCustomerApi({ username, password, fullName, email, phone })
+    registerCustomerApi({ 
+      username, 
+      password, 
+      fullName, 
+      email, 
+      phone,
+      roleName: 'customer' // Backend sẽ tự động set role là ROLE_CUSTOMER
+    })
       .then(() => {
         alert('Đăng ký thành công!');
         navigate('/login');

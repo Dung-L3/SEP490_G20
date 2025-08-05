@@ -2,10 +2,13 @@ package com.system.restaurant.management.controller;
 
 import com.system.restaurant.management.dto.RevenueReportDto;
 import com.system.restaurant.management.dto.ShiftAttendanceDTO;
+import com.system.restaurant.management.dto.WorkShiftRequest;
+import com.system.restaurant.management.entity.WorkShift;
 import com.system.restaurant.management.service.RevenueService;
 import com.system.restaurant.management.service.ShiftAttendanceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -46,5 +49,20 @@ public class ReportController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate
     ) {
         return shiftAttendanceService.getShiftAttendances(userId, fromDate, toDate);
+    }
+
+    @PostMapping("/create/shift")
+    public ResponseEntity<WorkShift> createWorkShift(
+            @RequestBody WorkShiftRequest request
+    ) {
+        return ResponseEntity.ok(shiftAttendanceService.createWorkShift(request));
+    }
+
+    @PutMapping("/update/shift/{shiftId}")
+    public ResponseEntity<WorkShift> updateWorkShift(
+            @PathVariable Integer shiftId,
+            @RequestBody WorkShiftRequest request
+    ) {
+        return ResponseEntity.ok(shiftAttendanceService.updateWorkShift(shiftId, request));
     }
 }

@@ -1,24 +1,27 @@
 package com.system.restaurant.management.controller;
 
+import com.system.restaurant.management.dto.OrderDto;
 import com.system.restaurant.management.dto.OrderRequestDto;
 import com.system.restaurant.management.entity.Order;
+import com.system.restaurant.management.service.OrderService;
 import com.system.restaurant.management.service.ReceptionistService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
-@RequestMapping("/receptionist/orders")
+@RequestMapping("/api/receptionist/orders")
 public class OrderController {
 
     private final ReceptionistService receptionistService;
+    private final OrderService orderService;
 
     @Autowired
-    public OrderController(ReceptionistService receptionistService) {
+    public OrderController(ReceptionistService receptionistService, OrderService orderService) {
         this.receptionistService = receptionistService;
+        this.orderService = orderService;
     }
 
     @PostMapping
@@ -27,4 +30,13 @@ public class OrderController {
         return ResponseEntity.ok(savedOrder);
     }
 
+    @GetMapping("/unpaid")
+    public List<OrderDto> getUnpaidOrders() {
+        return orderService.getUnpaidOrders();
+    }
+
+    @GetMapping("{id}")
+    public ResponseEntity<OrderDto> getOrder(@PathVariable Integer id) {
+        return ResponseEntity.ok(orderService.findById(id));
+    }
 }

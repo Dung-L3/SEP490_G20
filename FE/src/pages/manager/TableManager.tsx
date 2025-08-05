@@ -83,6 +83,7 @@ const TableManager: FC = () => {
         setIsLoading(true);
         await tableApi.delete(table.id, '');
         setTables(tables.filter(t => t.id !== table.id));
+        setFilteredTables(filteredTables.filter(t => t.id !== table.id));
         setShowEditModal(false);
         setSelectedTable(null);
       } catch (err) {
