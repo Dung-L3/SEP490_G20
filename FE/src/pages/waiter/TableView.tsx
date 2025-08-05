@@ -1,17 +1,38 @@
 
-import React from 'react';
-import TaskbarWaiter from '../../components/TaskbarWaiter';
-import TableMap from '../../components/TableMap';
 
-const TableView: React.FC = () => {
+import React, { useEffect, useState } from 'react';
+import TableMap from '../../components/TableMap';
+import { tableApi } from '../../api/tableApi';
+import { type UiTable, mapApiTableToUiTable } from '../../utils/tableMapping';
+
+const TableView = () => {
+  const [tables, setTables] = useState<UiTable[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchTables = async () => {
+      try {
+        const data = await tableApi.getAll();
+        const uiTables = data.map(mapApiTableToUiTable);
+        setTables(uiTables);
+        setError(null);
+      } catch (err) {
+        setError('Không thể tải danh sách bàn');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTables();
+  }, []);
+
+  if (loading) return <div>Đang tải dữ liệu bàn...</div>;
+  if (error) return <div style={{color:'red'}}>{error}</div>;
+
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <TaskbarWaiter />
-      <div className="hidden md:block w-56" />
-      <main className="flex-1 p-4">
-        <h1 className="text-2xl font-bold mb-4">Sơ đồ bàn</h1>
-        <TableMap />
-      </main>
+    <div style={{ padding: 32 }}>
+      <h1>Table View (Waiter)</h1>
+      <TableMap tables={tables} />
     </div>
   );
 };

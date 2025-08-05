@@ -1,6 +1,7 @@
 import { Table } from '../types/Table';
 
-const API_URL = '/api/v1/tables';
+const API_URL = '/api/v1/tables'; // Make sure this matches your backend URL
+const API_BASE_URL = '/api/v1';
 
 export const tableApi = {
   getAll: async (): Promise<Table[]> => {
@@ -14,6 +15,49 @@ export const tableApi = {
     } catch (error) {
       console.error('Error fetching tables:', error);
       throw new Error('Failed to fetch tables');
+    }
+  },
+
+  updateStatus: async (id: number, status: string): Promise<Table> => {
+    try {
+      console.log('Calling updateStatus API with:', { id, status });
+      
+      // Construct full URL
+      const url = `${API_URL}/${id}/status`;
+      console.log('Request URL:', url);
+      
+      // Prepare request body
+      const requestBody = { status };
+      console.log('Request body:', requestBody);
+      
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      // Log the raw response
+      console.log('Raw response:', response);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error response:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        });
+        throw new Error(`Failed to update table status: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('Successfully updated table status. Response:', result);
+      return result;
+    } catch (error) {
+      console.error('Error in updateStatus:', error);
+      throw error;
     }
   },
 
