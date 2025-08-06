@@ -20,56 +20,64 @@ interface TableForOrder {
 interface TableSelectorProps {
   onTableSelect: (table: TableForOrder) => void;
   selectedTableId?: number;
+  selectedTableIds?: number[]; // Support multiple selection
 }
 
 export interface TableSelectorRef {
   refresh: () => void;
 }
 
-const TableSelector = forwardRef<TableSelectorRef, TableSelectorProps>(({ onTableSelect, selectedTableId }, ref) => {
+const TableSelector = forwardRef<TableSelectorRef, TableSelectorProps>(
+  ({ onTableSelect, selectedTableId, selectedTableIds = [] }, ref) => {
   const [tables, setTables] = useState<TableForOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const fetchTables = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await mergedTableApi.getTablesForOrder();
+      
+      const processedTables: TableForOrder[] = response.map((item: any) => {
+        // Kiểm tra xem đây là merged table hay individual table
+        if (item.groupId !== undefined) {
+          // Đây là merged table
+          const mergedTable = item as MergedTable;
+          return {
+            id: mergedTable.groupId,
+            name: mergedTable.mergedTableName,
+            status: mergedTable.status,
+            type: 'merged',
+            groupId: mergedTable.groupId
+          };
+        } else {
+          // Đây là individual table
+          const individualTable = item as Table;
+          return {
+            id: individualTable.tableId,
+            name: individualTable.tableName,
+            status: individualTable.status,
+            type: 'individual'
+          };
+        }
+      });
+
+      setTables(processedTables);
+    } catch (err) {
+      console.error('Error fetching tables:', err);
+      setError('Failed to load tables');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Expose refresh method to parent components
+  useImperativeHandle(ref, () => ({
+    refresh: fetchTables
+  }));
+
   useEffect(() => {
-    const fetchTables = async () => {
-      try {
-        setLoading(true);
-        const response = await mergedTableApi.getTablesForOrder();
-        
-        const processedTables: TableForOrder[] = response.map((item: any) => {
-          // Kiểm tra xem đây là merged table hay individual table
-          if (item.groupId !== undefined) {
-            // Đây là merged table
-            const mergedTable = item as MergedTable;
-            return {
-              id: mergedTable.groupId,
-              name: mergedTable.mergedTableName,
-              status: mergedTable.status,
-              type: 'merged',
-              groupId: mergedTable.groupId
-            };
-          } else {
-            // Đây là individual table
-            const individualTable = item as Table;
-            return {
-              id: individualTable.tableId,
-              name: individualTable.tableName,
-              status: individualTable.status,
-              type: 'individual'
-            };
-          }
-        });
-
-        setTables(processedTables);
-      } catch (err) {
-        console.error('Error fetching tables:', err);
-        setError('Failed to load tables');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchTables();
   }, []);
 
@@ -89,7 +97,7 @@ const TableSelector = forwardRef<TableSelectorRef, TableSelectorProps>(({ onTabl
           onClick={() => onTableSelect(table)}
           className={`
             p-4 rounded-lg border-2 transition-all duration-200
-            ${selectedTableId === table.id 
+            ${selectedTableId === table.id || selectedTableIds.includes(table.id)
               ? 'border-blue-500 bg-blue-50' 
               : 'border-gray-300 hover:border-gray-400'
             }
@@ -115,6 +123,8 @@ const TableSelector = forwardRef<TableSelectorRef, TableSelectorProps>(({ onTabl
       ))}
     </div>
   );
-};
+});
+
+TableSelector.displayName = 'TableSelector';
 
 export default TableSelector;
