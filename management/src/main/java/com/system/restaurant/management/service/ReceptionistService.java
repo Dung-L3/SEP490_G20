@@ -9,7 +9,7 @@ import jakarta.servlet.http.HttpSession;
 import java.util.List;
 
 public interface ReceptionistService {
-    Order placeTakeawayOrder(OrderRequestDto dto);
+    OrderRequestDto placeTakeawayOrder(OrderRequestDto dto);
     Invoice generateInvoice(Integer orderId, HttpSession session);
     Invoice applyDiscount(Integer orderId, double amount);
     PaymentRecord processPayment(Integer orderId, PaymentRequest req);

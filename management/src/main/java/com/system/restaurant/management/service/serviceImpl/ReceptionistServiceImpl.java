@@ -29,27 +29,42 @@ public class ReceptionistServiceImpl implements ReceptionistService {
     private final ReservationRepository reservationRepo;
     private final NotificationRepository notificationRepo;
     private final UserRepository userRepo;
+    private final OrderStatusRepository statusRepo;
+    private final RestaurantTableRepository tableRepo;
 
     @Override
-    public Order placeTakeawayOrder(OrderRequestDto dto) {
-        if (dto.getDiscountAmount() == null) {
-            dto.setDiscountAmount(BigDecimal.ZERO);
-        }
+    public OrderRequestDto placeTakeawayOrder(OrderRequestDto req) {
+        Order o = new Order();
+        o.setOrderType(req.getOrderType());
+        o.setCustomerName(req.getCustomerName());
+        o.setPhone(req.getPhone());
+        o.setSubTotal(req.getSubTotal());
+        o.setDiscountAmount(req.getDiscountAmount());
+        o.setFinalTotal(req.getFinalTotal());
+        o.setNotes(req.getNotes());
+        o.setCreatedAt(LocalDateTime.now());
+        o.setStatus(statusRepo.findByStatusName("Pending").orElseThrow());
 
-        Order order = Order.builder()
-                .orderType(dto.getOrderType())
-                .customerName(dto.getCustomerName())
-                .phone(dto.getPhone())
-                .subTotal(dto.getSubTotal())
-                .discountAmount(dto.getDiscountAmount())
-                .finalTotal(dto.getFinalTotal())
-                .table(dto.getTableId() != null ? new RestaurantTable(dto.getTableId()) : null)
-                .statusId(1) // Pending
-                .createdAt(LocalDateTime.now())
-                .isRefunded(0)
-                .notes(dto.getNotes())
+        if (req.getTableId() != null) {
+            RestaurantTable t = tableRepo.findById(req.getTableId())
+                    .orElseThrow(EntityNotFoundException::new);
+            o.setTable(t);
+        }
+        o = orderRepo.save(o);
+
+        return OrderRequestDto.builder()
+                .orderId(o.getOrderId())
+                .createdAt(o.getCreatedAt())
+                .status(o.getStatus().getStatusName())
+                .orderType(o.getOrderType())
+                .customerName(o.getCustomerName())
+                .phone(o.getPhone())
+                .subTotal(o.getSubTotal())
+                .discountAmount(o.getDiscountAmount())
+                .finalTotal(o.getFinalTotal())
+                .tableId(o.getTable()!=null ? o.getTable().getTableId() : null)
+                .notes(o.getNotes())
                 .build();
-        return orderRepo.save(order);
     }
 
     @Override
