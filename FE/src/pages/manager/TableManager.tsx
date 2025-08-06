@@ -26,21 +26,21 @@ const TableManager: FC = () => {
     orders: []
   });
 
+  const fetchTables = async () => {
+    try {
+      setIsLoading(true);
+      const response = await tableApi.getAll();
+      const uiTables = response.map(mapApiTableToUiTable);
+      setTables(uiTables);
+      setFilteredTables(uiTables);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch tables');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchTables = async () => {
-      try {
-        setIsLoading(true);
-        const response = await tableApi.getAll();
-        const uiTables = response.map(mapApiTableToUiTable);
-        setTables(uiTables);
-        setFilteredTables(uiTables);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch tables');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
     fetchTables();
   }, []);
 
@@ -83,7 +83,6 @@ const TableManager: FC = () => {
         setIsLoading(true);
         await tableApi.delete(table.id, '');
         setTables(tables.filter(t => t.id !== table.id));
-        setFilteredTables(filteredTables.filter(t => t.id !== table.id));
         setShowEditModal(false);
         setSelectedTable(null);
       } catch (err) {
@@ -135,16 +134,25 @@ const TableManager: FC = () => {
   const handleStatusChange = async (table: UiTable) => {
     try {
       setIsLoading(true);
-      const newStatus = table.status === 'Trống' ? 'Đang phục vụ' : 'Trống';
-      const apiTable = mapUiTableToApiTable({...table, status: newStatus});
-      const updatedTable = await tableApi.update(table.id, {
-        ...apiTable,
-        tableId: table.id,
-      });
+      setError('');
+      
+      // Gọi API cập nhật trạng thái
+      const updatedTable = await tableApi.updateStatus(table.id, newStatus);
       const uiTable = mapApiTableToUiTable(updatedTable);
-      setTables(tables.map(t => t.id === uiTable.id ? uiTable : t));
+      
+      // Cập nhật state tables và filteredTables
+      setTables(prevTables => 
+        prevTables.map(t => t.id === uiTable.id ? uiTable : t)
+      );
+      setFilteredTables(prevTables => 
+        prevTables.map(t => t.id === uiTable.id ? uiTable : t)
+      );
+      
+      // Đóng dropdown
+      setStatusDropdownId(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update table status');
+      console.error('Error updating table status:', err);
+      setError('Không thể cập nhật trạng thái bàn');
     } finally {
       setIsLoading(false);
     }
@@ -261,13 +269,13 @@ const TableManager: FC = () => {
                         <div 
                           className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-10 border border-gray-200"
                         >
-                          {availableStatuses.map(status => (
+                          {['Trống', 'Đang phục vụ', 'Đã đặt trước'].map(status => (
                             <button
                               key={status}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleStatusChange({...table, status});
-                                setStatusDropdownId(null);
+                                e.preventDefault();
+                                handleStatusChange(table, status);
                               }}
                               className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 ${
                                 table.status === status ? 'font-medium bg-gray-50' : ''
