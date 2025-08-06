@@ -25,8 +25,8 @@ public class OrderController {
     }
 
     @PostMapping
-    public ResponseEntity<Order> placeTakeawayOrder(@RequestBody OrderRequestDto orderDto) {
-        Order savedOrder = receptionistService.placeTakeawayOrder(orderDto);
+    public ResponseEntity<OrderRequestDto> placeTakeawayOrder(@RequestBody OrderRequestDto orderDto) {
+        OrderRequestDto savedOrder = receptionistService.placeTakeawayOrder(orderDto);
         return ResponseEntity.ok(savedOrder);
     }
 
