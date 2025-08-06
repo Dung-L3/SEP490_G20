@@ -3,6 +3,7 @@ import WaiterTableView from './pages/waiter/TableView';
 import PurchaseHistoryManager from './pages/manager/PurchaseHistoryManager';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
+import QRMenu from './pages/QRMenu';
 import WorkshiftManager from './pages/manager/WorkshiftManager';
 import Booking from './pages/Booking';
 import Menu from './pages/Menu';  // Import trang Menu
@@ -52,6 +53,7 @@ function App() {
           <Route path="/waiter/orders" element={<WaiterOrder />} /> {/* Route cho waiter đặt món */}
           <Route path="/waiter/tables" element={<WaiterTableView />} /> {/* Route cho waiter xem bàn */}
           <Route path="/chef" element={<Chef />} /> {/* Route cho trang Chef (bếp trưởng) */}
+          <Route path="/qr-menu/:tableId" element={<QRMenu />} /> {/* Route cho trang gọi món qua QR */}
             </Routes>
           </AuthProvider>
         </Router>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { tableApi } from '../../api/tableApi';
 import { type UiTable, mapApiTableToUiTable } from '../../utils/tableMapping';
 import TaskbarWaiter from './TaskbarWaiter';
