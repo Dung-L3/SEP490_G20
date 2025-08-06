@@ -42,7 +42,9 @@ const handleError = (error: Error | AxiosError) => {
     throw new Error(message);
   }
   throw error;
-};export const staffApi = {
+};
+
+export const staffApi = {
   getAll: async (): Promise<Staff[]> => {
     try {
       console.log('Calling staff API...');
@@ -171,7 +173,7 @@ const handleError = (error: Error | AxiosError) => {
         email: user.email,
         phone: user.phone,
         status: user.status,
-        roleNames: user.roles.map(role => role.roleName)
+        roleNames: user.roles.map((role: { roleName: string }) => role.roleName)
       };
     } catch (error) {
       console.error('Error creating staff:', error);
@@ -190,7 +192,7 @@ const handleError = (error: Error | AxiosError) => {
         email: user.email,
         phone: user.phone,
         status: user.status,
-        roleNames: user.roles.map(role => role.roleName)
+        roleNames: user.roles.map((role: { roleName: string }) => role.roleName)
       };
     } catch (error) {
       console.error('Error updating staff:', error);
@@ -209,7 +211,7 @@ const handleError = (error: Error | AxiosError) => {
         email: user.email,
         phone: user.phone,
         status: user.status,
-        roleNames: user.roles.map(role => role.roleName)
+        roleNames: user.roles.map((role: { roleName: string }) => role.roleName)
       };
     } catch (error) {
       console.error('Error updating status:', error);
@@ -229,14 +231,14 @@ const handleError = (error: Error | AxiosError) => {
   searchByName: async (name: string): Promise<Staff[]> => {
     try {
       const response = await api.get<UserResponse[]>(`/search?name=${encodeURIComponent(name)}`);
-      return response.data.map(user => ({
+      return response.data.map((user: UserResponse) => ({
         id: user.id,
         username: user.username,
         fullName: user.fullName,
         email: user.email,
         phone: user.phone,
         status: user.status,
-        roleNames: user.roles.map(role => role.roleName)
+        roleNames: user.roles.map((role: { roleName: string }) => role.roleName)
       }));
     } catch (error) {
       console.error('Error searching staff:', error);

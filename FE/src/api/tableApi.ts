@@ -1,4 +1,4 @@
-import { Table } from '../types/Table';
+import type { Table } from '../types/Table';
 
 const API_URL = '/api/v1/tables';
 

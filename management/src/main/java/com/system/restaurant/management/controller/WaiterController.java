@@ -3,17 +3,21 @@ package com.system.restaurant.management.controller;
 import com.system.restaurant.management.dto.*;
 import com.system.restaurant.management.entity.*;
 import com.system.restaurant.management.service.WaiterService;
+import com.system.restaurant.management.exception.ResourceNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/waiter")
 @RequiredArgsConstructor
-@CrossOrigin
 public class WaiterController {
 
     private final WaiterService waiterService;
@@ -114,5 +118,23 @@ public class WaiterController {
     @GetMapping("/customers/{phone}/history")
     public ResponseEntity<CustomerPurchaseHistoryResponse> getCustomerHistory(@PathVariable String phone) {
         return ResponseEntity.ok(waiterService.getCustomerPurchaseHistoryByPhone(phone));
+    }
+
+    @GetMapping("/orders/detail/{orderDetailId}/status")
+    public ResponseEntity<Map<String, Object>> getOrderDetailStatus(@PathVariable Integer orderDetailId) {
+        OrderDetail orderDetail = waiterService.getOrderDetailById(orderDetailId);
+        String status = switch (orderDetail.getStatusId()) {
+            case 1 -> "pending";
+            case 2 -> "cooking";
+            case 3 -> "completed";
+            default -> "unknown";
+        };
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", status);
+        response.put("statusId", orderDetail.getStatusId());
+        response.put("orderDetailId", orderDetail.getOrderDetailId());
+        
+        return ResponseEntity.ok(response);
     }
 }

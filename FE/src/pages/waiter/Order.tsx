@@ -1,71 +1,61 @@
 import React, { useState, useEffect } from 'react';
 import { useTableCart } from '../../contexts/TableCartContext';
-import { tableApi } from '../../api/tableApi';
-import { type UiTable } from '../../utils/tableMapping';
+import type { TableInfo } from '../../api/orderApi.ts';
 import TaskbarWaiter from '../../components/TaskbarWaiter';
-
-export interface MenuItem {
-  id: number;
-  name: string;
-  price: number;
-  description: string;
-  image: string;
-}
-
-const API_URL = '/api/v1/menu';
-
-const fetchMenuItems = async (): Promise<MenuItem[]> => {
-  try {
-    const response = await fetch(`${API_URL}/all`);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching menu items:', error);
-    throw error;
-  }
-};
+import type { MenuItem } from '../../api/orderApi.ts';
+import { 
+  fetchOccupiedTables, 
+  fetchMenuItems, 
+  createOrder, 
+  updateTableStatus, 
+  fetchOrderStatus,
+  fetchOrderItems
+} from '../../api/orderApi.ts';
 
 const Order: React.FC = () => {
   const { tableCarts, setTable, currentTable, addToCart, updateQuantity, removeFromCart, clearCart } = useTableCart();
   const [search, setSearch] = useState('');
-  const [tableList, setTableList] = useState<UiTable[]>([]);
+  const [tableList, setTableList] = useState<TableInfo[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
 
+  // Fetch tables
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchTables = async () => {
       try {
-        setIsLoading(true);
-        const [tablesResponse, menuResponse] = await Promise.all([
-          tableApi.getAll(),
-          fetchMenuItems()
-        ]);
-        
-        setTableList(tablesResponse.map(table => ({
-          id: table.tableId,
-          name: table.tableName,
-          x: 0,
-          y: 0,
-          status: table.status,
-          areaId: table.areaId,
-          isWindow: table.isWindow,
-          notes: table.notes || '',
-          type: table.tableType
-        })));
-        
-        setMenuItems(menuResponse);
+        const tables = await fetchOccupiedTables();
+        setTableList(tables);
       } catch (error) {
-        setError(error instanceof Error ? error.message : 'Failed to fetch data');
-      } finally {
-        setIsLoading(false);
+        console.error('Error fetching tables:', error);
+        setTableList([]);
+        alert('Không thể lấy danh sách bàn. Vui lòng thử lại sau.');
       }
     };
-    
-    fetchData();
+
+    fetchTables();
   }, []);
+
+
+
+  // Fetch menu items
+  useEffect(() => {
+    const loadMenu = async () => {
+      setLoading(true);
+      try {
+        const items = await fetchMenuItems(search);
+        console.log('Menu items:', items);
+        setMenuItems(items);
+      } catch (error) {
+        console.error('Error fetching menu items:', error);
+        setMenuItems([]);
+        alert('Không thể lấy danh sách món. Vui lòng thử lại sau.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadMenu();
+  }, [search]);
 
   // Lấy bàn từ query string nếu có
   useEffect(() => {
@@ -76,26 +66,85 @@ const Order: React.FC = () => {
     }
   }, [currentTable, setTable]);
 
+  // Fetch trạng thái đơn hàng hiện tại của bàn
+  useEffect(() => {
+    if (!currentTable) return;
+
+    const fetchCurrentOrder = async () => {
+      try {
+        const selectedTable = tableList.find(table => table.name === currentTable);
+        if (!selectedTable) return;
+
+        const activeOrders = await fetchOrderItems(selectedTable.id);
+        if (activeOrders && activeOrders.length > 0) {
+          // Thêm các món từ đơn hàng hiện tại vào giỏ hàng
+          clearCart();
+          activeOrders.forEach(item => addToCart({
+            ...item,
+            orderStatus: item.orderStatus as 'pending' | 'cooking' | 'completed'
+          }));
+        }
+      } catch (error) {
+        console.error('Error fetching current order:', error);
+      }
+    };
+
+    fetchCurrentOrder();
+  }, [currentTable, tableList, addToCart, clearCart]);
+
+  // Poll trạng thái món ăn
+  useEffect(() => {
+    if (!currentTable) return;
+    
+    const cart = tableCarts[currentTable] || [];
+    const itemsWithOrderDetail = cart.filter(item => item.orderDetailId);
+
+    if (itemsWithOrderDetail.length === 0) return;
+
+    const pollStatus = async () => {
+      try {
+        const updatedItems = await Promise.all(
+          cart.map(async (item) => {
+            if (!item.orderDetailId) return item;
+
+            try {
+              const statusResponse = await fetchOrderStatus(item.orderDetailId);
+              const status = typeof statusResponse === 'object' ? (statusResponse as any).status : statusResponse;
+              
+              // Nếu món đã chuyển sang cooking hoặc completed, xóa khỏi giỏ hàng
+              if (status !== 'pending') {
+                return null;
+              }
+              return item;
+            } catch (error) {
+              // Nếu không fetch được status, giữ nguyên trạng thái cũ
+              console.error(`Error fetching status for item ${item.name}:`, error);
+              return item;
+            }
+          })
+        );
+
+        // Chỉ giữ lại các món có trạng thái pending
+        const pendingItems = updatedItems.filter(item => item !== null);
+        
+        // Chỉ cập nhật nếu có thay đổi
+        if (pendingItems.length !== cart.length) {
+          clearCart();
+          pendingItems.forEach(item => addToCart(item));
+        }
+      } catch (error) {
+        console.error('Error polling order status:', error);
+      }
+    };
+
+    const interval = setInterval(pollStatus, 5000); // Poll every 5 seconds
+    return () => clearInterval(interval);
+  }, [currentTable, tableCarts, addToCart, clearCart, fetchOrderStatus]);
+
   const filteredMenu = menuItems.filter(item =>
-    item.name.toLowerCase().includes(search.toLowerCase())
+    item && item.name && item.name.toLowerCase().includes(search.toLowerCase())
   );
   const cart = tableCarts[currentTable] || [];
-
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 to-blue-50">
-        <div className="text-xl">Loading...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 to-blue-50">
-        <div className="text-xl text-red-500">{error}</div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
@@ -125,11 +174,15 @@ const Order: React.FC = () => {
               value={currentTable}
               onChange={e => setTable(e.target.value)}
             >
-              {tableList.map(table => (
-                <option key={table.id} value={table.name} className="py-2">
-                  {table.name} ({table.status})
-                </option>
-              ))}
+              {tableList && tableList.length > 0 ? (
+                tableList.map(table => (
+                  <option key={table.id} value={table.name}>
+                    Bàn {table.name}
+                  </option>
+                ))
+              ) : (
+                <option value="">Không có bàn đang phục vụ</option>
+              )}
             </select>
           </div>
         </div>
@@ -152,7 +205,11 @@ const Order: React.FC = () => {
 
         {/* Menu món ăn với grid responsive */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
-          {filteredMenu.map(item => (
+          {loading ? (
+            <div className="col-span-full flex justify-center items-center py-8">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+            </div>
+          ) : filteredMenu.map(item => (
             <div key={item.name} className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden">
               <div className="relative">
                 <img 
@@ -227,7 +284,20 @@ const Order: React.FC = () => {
                     />
                     <div className="flex-1 ml-4">
                       <h4 className="font-semibold text-gray-800">{item.name}</h4>
-                      <p className="text-blue-600 font-bold">{item.price.toLocaleString()} đ</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-blue-600 font-bold">{item.price.toLocaleString()} đ</p>
+                        {item.orderStatus && (
+                          <span className={`text-sm px-2 py-1 rounded-full ${
+                            item.orderStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            item.orderStatus === 'cooking' ? 'bg-blue-100 text-blue-800' :
+                            'bg-green-100 text-green-800'
+                          }`}>
+                            {item.orderStatus === 'pending' ? 'Chờ xử lý' :
+                             item.orderStatus === 'cooking' ? 'Đang chế biến' :
+                             'Hoàn thành'}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center space-x-3">
                       <div className="flex items-center bg-white rounded-lg border-2 border-gray-200">
@@ -254,14 +324,16 @@ const Order: React.FC = () => {
                       <div className="text-right min-w-[80px]">
                         <p className="font-bold text-gray-800">{(item.price * item.quantity).toLocaleString()} đ</p>
                       </div>
-                      <button
-                        className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200"
-                        onClick={() => removeFromCart(item.name)}
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
+                      {(!item.orderDetailId || item.orderStatus === 'pending') && (
+                        <button
+                          className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200"
+                          onClick={() => removeFromCart(item.name)}
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -290,7 +362,70 @@ const Order: React.FC = () => {
                   <button
                     className="flex-1 py-3 px-6 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                     disabled={cart.length === 0}
-                    onClick={() => alert('Đã gửi đơn hàng!')}
+                    onClick={async () => {
+                      if (!currentTable) {
+                        alert('Vui lòng chọn bàn trước khi gửi đơn hàng');
+                        return;
+                      }
+                      
+                      if (cart.length === 0) {
+                        alert('Vui lòng thêm ít nhất một món vào đơn hàng');
+                        return;
+                      }
+
+                      // Kiểm tra trạng thái bàn trong tableList
+                      const selectedTable = tableList.find(table => table.name === currentTable);
+                      if (!selectedTable) {
+                        alert('Không tìm thấy thông tin bàn');
+                        return;
+                      }
+                      
+                      if (selectedTable.status !== 'OCCUPIED') {
+                        try {
+                          await updateTableStatus(selectedTable.id, 'OCCUPIED');
+                          // Refresh table list after status update
+                          const updatedTables = await fetchOccupiedTables();
+                          setTableList(updatedTables);
+                        } catch (error) {
+                          console.error('Error updating table status:', error);
+                          alert('Không thể cập nhật trạng thái bàn. Vui lòng thử lại.');
+                          return;
+                        }
+                      }
+
+                      const orderData = {
+                        tableId: Number(currentTable.replace(/\D/g, '')),
+                        items: cart.map(item => ({
+                          dishId: item.id,
+                          quantity: item.quantity || 1,
+                          notes: "",
+                          unitPrice: item.price
+                        }))
+                      };
+                      
+                      try {
+                        const response = await createOrder(orderData);
+                        alert(response.message || 'Đơn hàng đã được gửi thành công!');
+                        
+                        // Cập nhật trạng thái của các món trong giỏ hàng
+                        const updatedCart = cart.map(item => ({
+                          ...item,
+                          orderStatus: 'pending' as 'pending' | 'cooking' | 'completed',
+                          orderDetailId: response.orderId
+                        }));
+                        
+                        // Cập nhật giỏ hàng với trạng thái mới
+                        clearCart();
+                        updatedCart.forEach(item => addToCart(item));
+                        
+                        const tables = await fetchOccupiedTables();
+                        setTableList(tables);
+                      } catch (error: any) {
+                        console.error('Error submitting order:', error);
+                        const errorMessage = error.message || 'Có lỗi xảy ra khi gửi đơn hàng!';
+                        alert(errorMessage);
+                      }
+                    }}
                   >
                     <span className="flex items-center justify-center">
                       <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

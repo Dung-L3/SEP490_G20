@@ -7,6 +7,7 @@ import com.system.restaurant.management.entity.*;
 import com.system.restaurant.management.repository.InvoiceRepository;
 import com.system.restaurant.management.repository.OrderDetailRepository;
 import com.system.restaurant.management.repository.PaymentRecordRepository;
+import com.system.restaurant.management.repository.UserRepository;
 import com.system.restaurant.management.service.InvoicePdfService;
 import com.system.restaurant.management.service.ReceptionistService;
 import jakarta.persistence.EntityNotFoundException;
@@ -24,11 +25,11 @@ import java.util.List;
 public class ReceptionistController {
 
     private final ReceptionistService receptionistService;
+    private final UserRepository userRepository;
+    private final InvoiceRepository invoiceRepository;
     private final OrderDetailRepository orderDetailRepository;
     private final PaymentRecordRepository paymentRecordRepository;
     private final InvoicePdfService invoicePdfService;
-    private final InvoiceRepository invoiceRepository;
-
 
     @PostMapping("/orders/takeaway")
     public Order placeTakeawayOrder(@RequestBody OrderRequestDto request) {
@@ -80,29 +81,54 @@ public class ReceptionistController {
         return receptionistService.sendReservationReminder(id);
     }
 
-    @GetMapping("/{orderId}/invoice.pdf")
-    public ResponseEntity<byte[]> downloadInvoice(@PathVariable Integer orderId) throws Exception {
-        Invoice inv = invoiceRepository.findByOrderId(orderId)
-                .orElseThrow(() -> new EntityNotFoundException("Invoice không tồn tại cho order " + orderId));
+        @GetMapping("/{orderId}/invoice.pdf")
+        public ResponseEntity<byte[]> downloadInvoice(@PathVariable Integer orderId, @SessionAttribute("userId") Integer sessionUserId) throws Exception {
+            // 1. Lấy Invoice
+            Invoice inv = invoiceRepository.findByOrderId(orderId)
+                    .orElseThrow(() -> new EntityNotFoundException("Invoice không tồn tại cho order " + orderId));
 
-        List<OrderDetail> items = orderDetailRepository.findByOrderId(orderId);
+            // 2. Lấy danh sách OrderDetail
+            List<OrderDetail> items = orderDetailRepository.findByOrderId(orderId);
 
-        PaymentRecord pr = paymentRecordRepository
-                .findTopByInvoiceIdOrderByPaidAtDesc(inv.getInvoiceId())
-                .orElseThrow(() -> new EntityNotFoundException(
-                        "PaymentRecord không tồn tại cho invoice " + inv.getInvoiceId()));
+            // 3. Lấy PaymentRecord mới nhất
+            PaymentRecord pr = paymentRecordRepository
+                    .findTopByInvoiceIdOrderByPaidAtDesc(inv.getInvoiceId())
+                    .orElseThrow(() -> new EntityNotFoundException(
+                            "PaymentRecord không tồn tại cho invoice " + inv.getInvoiceId()));
 
-        double discount = inv.getDiscountAmount().doubleValue();
-        double total    = inv.getFinalTotal().doubleValue();
-        String customer = inv.getOrder().getCustomerName();
+            // 4. Các thông tin khác
+            double discount    = inv.getDiscountAmount().doubleValue();
+            double total       = inv.getFinalTotal().doubleValue();
+            String customer    = inv.getOrder().getCustomerName();
+            // lấy số bàn từ Order → RestaurantTable → TableID
+            Integer tableNumber = inv.getOrder().getTable().getTableId();
+            // hoặc nếu bạn muốn hiển thị TableName:
+            // String tableName = inv.getOrder().getTable().getTableName();
 
-        byte[] pdfBytes = invoicePdfService.generateInvoicePdf(
-                orderId, customer, items, pr, discount, total);
+            // 5. Tên thu ngân (issuedBy)
+            User cashierUser = userRepository.findById(sessionUserId)
+                    .orElseThrow(() -> new EntityNotFoundException("User không tồn tại: " + sessionUserId));
+            String cashierName = cashierUser.getFullName();
 
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"invoice-" + orderId + ".pdf\"")
-                .contentType(MediaType.APPLICATION_PDF)
-                .body(pdfBytes);
+            // 6. Gọi service với đủ 8 tham số
+            byte[] pdfBytes = invoicePdfService.generateInvoicePdf(
+                    orderId,
+                    customer,
+                    tableNumber,
+                    cashierName,
+                    items,
+                    pr,
+                    discount,
+                    total
+            );
+
+            // 7. Trả về ResponseEntity
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=\"invoice-" + orderId + ".pdf\"")
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(pdfBytes);
+        }
     }
-}
+
+

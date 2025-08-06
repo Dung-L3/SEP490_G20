@@ -19,6 +19,7 @@ public interface WaiterService {
     List<Order> getActiveOrders();
     Order getOrderById(Integer orderId);
     Order updateOrderStatus(Integer orderId, Integer statusId);
+    OrderDetail getOrderDetailById(Integer orderDetailId);
 
     List<RestaurantTable> getTablesByStatus(String status);
     RestaurantTable updateTableStatus(Integer tableId, String status);
