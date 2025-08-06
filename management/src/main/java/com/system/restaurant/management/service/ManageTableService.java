@@ -32,6 +32,9 @@ public interface ManageTableService {
     // Merged table info
     MergedTableDTO getMergedTableInfo(Integer groupId);
     List<MergedTableDTO> getAllMergedTables();
+    
+    // Get tables for order page (merged tables + individual tables)
+    List<Object> getTablesForOrder();
 
     //Reservation
     void initializeReservedTables();

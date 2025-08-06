@@ -125,6 +125,12 @@ public class ManageTableController {
         MergedTableDTO mergedTable = service.getMergedTableInfo(groupId);
         return ResponseEntity.ok(mergedTable);
     }
+
+    @GetMapping("/for-order")
+    public ResponseEntity<List<Object>> getTablesForOrder() {
+        List<Object> tables = service.getTablesForOrder();
+        return ResponseEntity.ok(tables);
+    }
     @PostMapping("/initialize-reserved")
     public ResponseEntity<Void> initializeReservedTables() {
         service.initializeReservedTables();

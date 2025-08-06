@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.ArrayList;
 
 @Service
 @RequiredArgsConstructor
@@ -173,11 +174,14 @@ public class ManageTableServiceImpl implements ManageTableService {
             throw new ResourceNotFoundException("TableGroup", "id", groupId);
         }
         
-        // Reset table status back to Available
+        // Get tables in group before deleting
         List<RestaurantTable> tables = tableGroupMemberRepository.findTablesByGroupId(groupId);
+        
+        // Reset table status back to Available for each table
         for (RestaurantTable table : tables) {
-            table.setStatus("Available");
+            table.setStatus("Available"); // Reset về Available
             repo.save(table);
+            System.out.println("Reset table " + table.getTableName() + " status to Available");
         }
         
         // Delete group members first (foreign key constraint)
@@ -185,6 +189,8 @@ public class ManageTableServiceImpl implements ManageTableService {
         
         // Delete the group
         tableGroupRepository.deleteById(groupId);
+        
+        System.out.println("Disbanded table group " + groupId + " successfully");
     }
 
     @Override
@@ -305,5 +311,21 @@ public class ManageTableServiceImpl implements ManageTableService {
                 })
                 .filter(dto -> dto != null)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Object> getTablesForOrder() {
+        List<Object> result = new ArrayList<>();
+        
+        // 1. Lấy tất cả bàn không bị merge
+        List<RestaurantTable> individualTables = tableRepository.findTablesNotInGroup();
+        result.addAll(individualTables);
+        
+        // 2. Lấy tất cả bàn đã merge (dưới dạng MergedTableDTO)
+        List<MergedTableDTO> mergedTables = getAllMergedTables();
+        result.addAll(mergedTables);
+        
+        return result;
     }
 }
