@@ -65,12 +65,17 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public List<OrderDto> getUnpaidOrders() {
-        OrderStatus pending = statusRepo.findByStatusName("Processing")
+        // 1) Tìm lookup status "Pending"
+        OrderStatus pending = statusRepo.findByStatusName("Pending")
                 .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Processing status not found"));
+                        HttpStatus.NOT_FOUND, "Pending status not found"));
 
         Integer pendingId = pending.getStatusId();
+
+        // 2) Lấy danh sách Order có statusId = pendingId
         List<Order> orders = orderRepository.findByStatusId(pendingId);
+
+        // 3) Map sang DTO
         return orders.stream()
                 .map(this::mapToDto)
                 .collect(Collectors.toList());
@@ -89,6 +94,7 @@ public class OrderServiceImpl implements OrderService {
         dto.setOrderId(order.getOrderId());
         dto.setOrderType(order.getOrderType());
         dto.setCustomerName(order.getCustomerName());
+        // mapping tới RestaurantTable table; cần @ManyToOne trong entity Order
         dto.setTableName(order.getTable() != null
                 ? order.getTable().getTableName()
                 : null);

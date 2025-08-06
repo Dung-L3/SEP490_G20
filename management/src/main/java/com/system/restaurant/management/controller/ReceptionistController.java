@@ -12,10 +12,8 @@ import com.system.restaurant.management.service.InvoicePdfService;
 import com.system.restaurant.management.service.ReceptionistService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpSession;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -34,15 +32,8 @@ public class ReceptionistController {
     private final InvoicePdfService invoicePdfService;
 
     @PostMapping("/orders/takeaway")
-    public ResponseEntity<OrderRequestDto> placeTakeawayOrder(
-            @Valid @RequestBody OrderRequestDto orderDto) {
-
-        // service trả về DTO
-        OrderRequestDto savedDto = receptionistService.placeTakeawayOrder(orderDto);
-
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(savedDto);
+    public Order placeTakeawayOrder(@RequestBody OrderRequestDto request) {
+        return receptionistService.placeTakeawayOrder(request);
     }
 
     @PostMapping("/invoices/{orderId}")
