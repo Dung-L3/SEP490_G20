@@ -2,6 +2,7 @@ package com.system.restaurant.management.service;
 
 import com.system.restaurant.management.entity.RestaurantTable;
 import com.system.restaurant.management.entity.TableGroup;
+import com.system.restaurant.management.dto.MergedTableDTO;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -27,6 +28,10 @@ public interface ManageTableService {
     List<RestaurantTable> getTablesInGroup(Integer groupId);
     List<String> getAllTableTypes();
     List<RestaurantTable> getByTableType(String tableType);
+    
+    // Merged table info
+    MergedTableDTO getMergedTableInfo(Integer groupId);
+    List<MergedTableDTO> getAllMergedTables();
 
     //Reservation
     void initializeReservedTables();
