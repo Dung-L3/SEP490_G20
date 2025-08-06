@@ -52,10 +52,6 @@ function App() {
           <Route path="/waiter/orders" element={<WaiterOrder />} /> {/* Route cho waiter đặt món */}
           <Route path="/waiter/tables" element={<WaiterTableView />} /> {/* Route cho waiter xem bàn */}
           <Route path="/chef" element={<Chef />} /> {/* Route cho trang Chef (bếp trưởng) */}
-          <Route path="/qr-menu/:tableId" element={<QRMenu />} /> {/* Route cho trang gọi món qua QR */}
-          <Route path="/receptionist" element={<ReceptionistHome />} /> {/* Route cho trang Receptionist */}
-          <Route path="/receptionist/orders" element={<OrderList />} /> {/* Route cho danh sách đơn hàng */}
-          <Route path="/receptionist/payment" element={<OrderPayment />} /> {/* Route cho thanh toán */}
             </Routes>
           </AuthProvider>
         </Router>
