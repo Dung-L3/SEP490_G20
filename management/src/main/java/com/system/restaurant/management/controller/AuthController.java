@@ -1,11 +1,10 @@
 package com.system.restaurant.management.controller;
 
-import com.system.restaurant.management.dto.LoginRequest;
-import com.system.restaurant.management.dto.LoginResponse;
-import com.system.restaurant.management.dto.RegisterRequest;
+import com.system.restaurant.management.dto.*;
 import com.system.restaurant.management.entity.Role;
 import com.system.restaurant.management.entity.User;
 import com.system.restaurant.management.service.AuthService;
+import com.system.restaurant.management.service.PasswordResetService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +17,7 @@ import jakarta.validation.Valid;
 @RequiredArgsConstructor
 public class AuthController {
     private final AuthService authService;
+    private final PasswordResetService passwordResetService;
 
     @PostMapping("register/employee")
     public ResponseEntity<RegisterRequest> registerEmployee(
@@ -46,7 +46,7 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<String> logout(HttpSession session) {
-        session.invalidate(); // xóa session
+        session.invalidate();
         return ResponseEntity.ok("Đăng xuất thành công");
     }
 
@@ -60,6 +60,18 @@ public class AuthController {
         } else {
             return ResponseEntity.status(401).body("Chưa đăng nhập");
         }
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Void> forgot(@RequestBody @Valid PasswordResetRequest req) {
+        passwordResetService.sendResetOtp(req);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> reset(@RequestBody @Valid PasswordResetDto dto) {
+        passwordResetService.resetPassword(dto);
+        return ResponseEntity.noContent().build();
     }
 
 }
