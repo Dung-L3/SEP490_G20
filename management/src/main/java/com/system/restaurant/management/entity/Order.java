@@ -15,6 +15,7 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 @Table(name = "Orders")
+@Data
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Order {
     @Id
@@ -83,4 +84,8 @@ public class Order {
             discountAmount = BigDecimal.ZERO;
         }
     }
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "StatusID", insertable = false, updatable = false)
+    private OrderStatus status;
 }
