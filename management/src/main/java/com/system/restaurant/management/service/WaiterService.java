@@ -11,7 +11,7 @@ public interface WaiterService {
 
     Order createOrderWithReservationTracking(CreateOrderRequest request);
     Order createDineInOrder(CreateDineInOrderRequest request);
-    Order createTakeawayOrder(CreateTakeawayOrderRequest request);
+//    Order createTakeawayOrder(CreateTakeawayOrderRequest request);
     CheckInResponse checkInReservation(Integer reservationId, Integer tableId);
     CompletePaymentResponse processCompletePayment(Integer orderId, PaymentRequest paymentRequest);
 
