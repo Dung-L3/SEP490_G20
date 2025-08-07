@@ -25,7 +25,7 @@ import OrderPayment from './pages/receptionist/OrderPayment';
 import ReceptionistHome from './pages/receptionist/ReceptionistHome';
 import Chef from './pages/chef/Chef';
 import QRMenu from './pages/QRMenu';
-import QRCodeManager from './pages/QRCodeManager';
+import QRCodeManager from './pages/manager/QRCodeManager';
 
 function App() {
   return (

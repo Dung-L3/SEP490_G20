@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { tableApi } from '../api/tableApi';
-import { getQRBaseURL, displayLocalIPInfo } from '../utils/networkUtils';
-import { NETWORK_CONFIG } from '../config/networkConfig';
-import type { Table } from '../types/Table';
+import { tableApi } from '../../api/tableApi';
+import { getQRBaseURL, displayLocalIPInfo } from '../../utils/networkUtils';
+import { NETWORK_CONFIG } from '../../config/networkConfig';
+import type { Table } from '../../types/Table';
 
 interface QRDisplayProps {
   tableId: number;
