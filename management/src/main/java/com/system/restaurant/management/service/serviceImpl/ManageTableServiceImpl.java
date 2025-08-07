@@ -2,10 +2,13 @@ package com.system.restaurant.management.service.serviceImpl;
 
 import com.system.restaurant.management.entity.RestaurantTable;
 import com.system.restaurant.management.entity.TableGroup;
+import com.system.restaurant.management.entity.TableGroupMember;
+import com.system.restaurant.management.dto.MergedTableDTO;
 import com.system.restaurant.management.exception.ResourceNotFoundException;
 import com.system.restaurant.management.repository.ManageTableRepository;
 import com.system.restaurant.management.repository.RestaurantTableRepository;
 import com.system.restaurant.management.repository.TableGroupRepository;
+import com.system.restaurant.management.repository.TableGroupMemberRepository;
 import com.system.restaurant.management.service.ManageTableService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -13,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.ArrayList;
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +24,7 @@ import java.util.List;
 public class ManageTableServiceImpl implements ManageTableService {
     private final ManageTableRepository repo;
     private final TableGroupRepository tableGroupRepository;
+    private final TableGroupMemberRepository tableGroupMemberRepository;
     private final RestaurantTableRepository tableRepository;
 
     @Override
@@ -95,18 +100,35 @@ public class ManageTableServiceImpl implements ManageTableService {
 
     @Override
     public TableGroup mergeTable(List<Integer> tableIds, Integer createdBy, String notes) {
-        // Validate all tables exist
+        // Validate all tables exist and are available for merging
         for (Integer tableId : tableIds) {
-            findById(tableId);
+            RestaurantTable table = findById(tableId);
+            if (!"Available".equals(table.getStatus()) && !"Occupied".equals(table.getStatus())) {
+                throw new IllegalStateException("Table " + tableId + " is not available for merging");
+            }
         }
 
+        // Create TableGroup
         TableGroup tableGroup = TableGroup.builder()
                 .createdBy(createdBy)
                 .createdAt(LocalDateTime.now())
                 .notes(notes != null ? notes : "Merge table operation")
                 .build();
 
-        return tableGroupRepository.save(tableGroup);
+        TableGroup savedGroup = tableGroupRepository.save(tableGroup);
+
+        // Create TableGroupMembers for each table
+        for (Integer tableId : tableIds) {
+            TableGroupMember member = new TableGroupMember(savedGroup.getGroupId(), tableId);
+            tableGroupMemberRepository.save(member);
+            
+            // Update table status to MERGED
+            RestaurantTable table = findById(tableId);
+            table.setStatus("MERGED");
+            repo.save(table);
+        }
+
+        return savedGroup;
     }
 
     @Override
@@ -151,7 +173,24 @@ public class ManageTableServiceImpl implements ManageTableService {
         if (!tableGroupRepository.existsById(groupId)) {
             throw new ResourceNotFoundException("TableGroup", "id", groupId);
         }
+        
+        // Get tables in group before deleting
+        List<RestaurantTable> tables = tableGroupMemberRepository.findTablesByGroupId(groupId);
+        
+        // Reset table status back to Available for each table
+        for (RestaurantTable table : tables) {
+            table.setStatus("Available"); // Reset về Available
+            repo.save(table);
+            System.out.println("Reset table " + table.getTableName() + " status to Available");
+        }
+        
+        // Delete group members first (foreign key constraint)
+        tableGroupMemberRepository.deleteByTableGroupGroupId(groupId);
+        
+        // Delete the group
         tableGroupRepository.deleteById(groupId);
+        
+        System.out.println("Disbanded table group " + groupId + " successfully");
     }
 
     @Override
@@ -160,7 +199,7 @@ public class ManageTableServiceImpl implements ManageTableService {
         if (!tableGroupRepository.existsById(groupId)) {
             throw new ResourceNotFoundException("TableGroup", "id", groupId);
         }
-        return List.of();
+        return tableGroupMemberRepository.findTablesByGroupId(groupId);
     }
     @Override
     public void initializeReservedTables() {
@@ -213,5 +252,80 @@ public class ManageTableServiceImpl implements ManageTableService {
     public boolean hasAvailableReservedTables(LocalDateTime reservationTime) {
         LocalDateTime endTime = reservationTime.plusHours(2);
         return !tableRepository.findAvailableReservedTables(reservationTime, endTime).isEmpty();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MergedTableDTO getMergedTableInfo(Integer groupId) {
+        TableGroup tableGroup = tableGroupRepository.findById(groupId)
+                .orElseThrow(() -> new ResourceNotFoundException("TableGroup", "id", groupId));
+        
+        List<RestaurantTable> tables = tableGroupMemberRepository.findTablesByGroupId(groupId);
+        
+        if (tables.isEmpty()) {
+            throw new IllegalStateException("No tables found in group " + groupId);
+        }
+        
+        // Build merged table name: "Bàn 1 + Bàn 2 + Bàn 3"
+        List<String> tableNames = tables.stream()
+                .map(RestaurantTable::getTableName)
+                .sorted()
+                .toList();
+        
+        String mergedName = String.join(" + ", tableNames);
+        
+        List<Integer> tableIds = tables.stream()
+                .map(RestaurantTable::getTableId)
+                .sorted()
+                .toList();
+        
+        // Status sẽ là "MERGED" nếu tất cả bàn đều MERGED
+        String status = tables.stream()
+                .allMatch(table -> "MERGED".equals(table.getStatus())) ? "MERGED" : "MIXED";
+        
+        return new MergedTableDTO(
+                groupId,
+                mergedName,
+                tableNames,
+                tableIds,
+                status,
+                tableGroup.getCreatedBy(),
+                tableGroup.getCreatedAt(),
+                tableGroup.getNotes()
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MergedTableDTO> getAllMergedTables() {
+        List<TableGroup> allGroups = tableGroupRepository.findAll();
+        
+        return allGroups.stream()
+                .map(group -> {
+                    try {
+                        return getMergedTableInfo(group.getGroupId());
+                    } catch (Exception e) {
+                        // Skip groups that have issues (empty groups, etc.)
+                        return null;
+                    }
+                })
+                .filter(dto -> dto != null)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Object> getTablesForOrder() {
+        List<Object> result = new ArrayList<>();
+        
+        // 1. Lấy tất cả bàn không bị merge
+        List<RestaurantTable> individualTables = tableRepository.findTablesNotInGroup();
+        result.addAll(individualTables);
+        
+        // 2. Lấy tất cả bàn đã merge (dưới dạng MergedTableDTO)
+        List<MergedTableDTO> mergedTables = getAllMergedTables();
+        result.addAll(mergedTables);
+        
+        return result;
     }
 }

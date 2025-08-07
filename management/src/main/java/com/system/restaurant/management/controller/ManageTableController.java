@@ -2,6 +2,7 @@ package com.system.restaurant.management.controller;
 
 import com.system.restaurant.management.dto.TableGroupRequest;
 import com.system.restaurant.management.dto.TableStatusRequest;
+import com.system.restaurant.management.dto.MergedTableDTO;
 import com.system.restaurant.management.entity.RestaurantTable;
 import com.system.restaurant.management.entity.TableGroup;
 import com.system.restaurant.management.service.ManageTableService;
@@ -110,6 +111,24 @@ public class ManageTableController {
     @GetMapping("/group/{groupId}/tables")
     public ResponseEntity<List<RestaurantTable>> getTablesInGroup(@PathVariable Integer groupId) {
         List<RestaurantTable> tables = service.getTablesInGroup(groupId);
+        return ResponseEntity.ok(tables);
+    }
+
+    @GetMapping("/merged")
+    public ResponseEntity<List<MergedTableDTO>> getAllMergedTables() {
+        List<MergedTableDTO> mergedTables = service.getAllMergedTables();
+        return ResponseEntity.ok(mergedTables);
+    }
+
+    @GetMapping("/merged/{groupId}")
+    public ResponseEntity<MergedTableDTO> getMergedTableInfo(@PathVariable Integer groupId) {
+        MergedTableDTO mergedTable = service.getMergedTableInfo(groupId);
+        return ResponseEntity.ok(mergedTable);
+    }
+
+    @GetMapping("/for-order")
+    public ResponseEntity<List<Object>> getTablesForOrder() {
+        List<Object> tables = service.getTablesForOrder();
         return ResponseEntity.ok(tables);
     }
     @PostMapping("/initialize-reserved")

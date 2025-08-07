@@ -24,6 +24,8 @@ import OrderList from './pages/receptionist/OrderList';
 import OrderPayment from './pages/receptionist/OrderPayment';
 import ReceptionistHome from './pages/receptionist/ReceptionistHome';
 import Chef from './pages/chef/Chef';
+import QRMenu from './pages/QRMenu';
+import QRCodeManager from './pages/manager/QRCodeManager';
 
 function App() {
   return (
@@ -52,6 +54,15 @@ function App() {
           <Route path="/waiter/orders" element={<WaiterOrder />} /> {/* Route cho waiter đặt món */}
           <Route path="/waiter/tables" element={<WaiterTableView />} /> {/* Route cho waiter xem bàn */}
           <Route path="/chef" element={<Chef />} /> {/* Route cho trang Chef (bếp trưởng) */}
+
+          {/* QR Menu Routes */}
+          <Route path="/menu/:tableId" element={<QRMenu />} /> {/* Route cho trang QR menu khách hàng */}
+          <Route path="/qr-manager" element={<QRCodeManager />} /> {/* Route cho trang quản lý QR codes */}
+
+          {/* Receptionist Routes */}
+            <Route path="/receptionist/orders/uppaid" element={<OrderList />} /> {/* Route cho trang xử lý thanh toán của order */}
+            <Route path="/receptionist/:orderId/payment" element={<OrderPayment />} />
+            <Route path="/receptionist"element={<ReceptionistHome/>} />
             </Routes>
           </AuthProvider>
         </Router>

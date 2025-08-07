@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTableCart } from '../../contexts/TableCartContext';
 import type { TableInfo } from '../../api/orderApi.ts';
-import TaskbarWaiter from '../../components/TaskbarWaiter';
+import TaskbarWaiter from './TaskbarWaiter';
 import type { MenuItem } from '../../api/orderApi.ts';
 import { 
   fetchOccupiedTables, 
@@ -405,13 +405,17 @@ const Order: React.FC = () => {
                       
                       try {
                         const response = await createOrder(orderData);
-                        alert(response.message || 'Đơn hàng đã được gửi thành công!');
+                        // Xử lý response từ orderApi mới
+                        const message = (response as any)?.message || 'Đơn hàng đã được gửi thành công!';
+                        const orderId = (response as any)?.orderId || (response as any)?.id;
+                        
+                        alert(message);
                         
                         // Cập nhật trạng thái của các món trong giỏ hàng
                         const updatedCart = cart.map(item => ({
                           ...item,
                           orderStatus: 'pending' as 'pending' | 'cooking' | 'completed',
-                          orderDetailId: response.orderId
+                          orderDetailId: orderId
                         }));
                         
                         // Cập nhật giỏ hàng với trạng thái mới

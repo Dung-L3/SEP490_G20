@@ -1,8 +1,6 @@
 package com.system.restaurant.management.controller;
 
-import com.system.restaurant.management.dto.LoginRequest;
-import com.system.restaurant.management.dto.LoginResponse;
-import com.system.restaurant.management.dto.RegisterRequest;
+import com.system.restaurant.management.dto.*;
 import com.system.restaurant.management.entity.Role;
 import com.system.restaurant.management.entity.User;
 import com.system.restaurant.management.service.AuthService;
@@ -46,7 +44,7 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<String> logout(HttpSession session) {
-        session.invalidate(); // xóa session
+        session.invalidate();
         return ResponseEntity.ok("Đăng xuất thành công");
     }
 
@@ -61,5 +59,4 @@ public class AuthController {
             return ResponseEntity.status(401).body("Chưa đăng nhập");
         }
     }
-
 }

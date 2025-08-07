@@ -33,7 +33,6 @@ public class Combo {
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private List<ComboItem> comboItems;
 
-    // Getter thủ công để đảm bảo hoạt động
     public List<ComboItem> getComboItems() {
         return comboItems;
     }
