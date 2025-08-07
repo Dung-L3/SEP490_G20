@@ -60,9 +60,9 @@ function App() {
           <Route path="/qr-manager" element={<QRCodeManager />} /> {/* Route cho trang quản lý QR codes */}
 
           {/* Receptionist Routes */}
-          <Route path="/receptionist" element={<ReceptionistHome />} />
-          <Route path="/receptionist/orders" element={<OrderList />} />
-          <Route path="/receptionist/payment" element={<OrderPayment />} />
+            <Route path="/receptionist/orders/uppaid" element={<OrderList />} /> {/* Route cho trang xử lý thanh toán của order */}
+            <Route path="/receptionist/:orderId/payment" element={<OrderPayment />} />
+            <Route path="/receptionist"element={<ReceptionistHome/>} />
             </Routes>
           </AuthProvider>
         </Router>
