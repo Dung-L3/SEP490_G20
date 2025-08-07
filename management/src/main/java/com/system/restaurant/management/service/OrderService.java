@@ -1,6 +1,7 @@
 package com.system.restaurant.management.service;
 
 import com.system.restaurant.management.dto.OrderDto;
+import com.system.restaurant.management.dto.OrderRequestDto;
 import com.system.restaurant.management.dto.TableOrderRequest;
 import com.system.restaurant.management.dto.TableOrderResponse;
 import com.system.restaurant.management.entity.Order;
@@ -16,6 +17,11 @@ public interface OrderService {
     OrderDetail updateOrderDetail(OrderDetail orderDetail);
 
     List<OrderDto> getUnpaidOrders();
+    
+    // Methods for QR Menu
+    List<OrderDto> findAll();
+    OrderRequestDto createOrder(OrderRequestDto orderDto);
+    List<Object> getActiveOrderItemsByTable(Integer tableId);
 
     void cancelOrderDetail(Integer orderDetailId);
     OrderDetail replaceOrderDetail(Integer orderDetailId, OrderDetail newOrderDetail);

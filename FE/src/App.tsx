@@ -24,39 +24,47 @@ import OrderList from './pages/receptionist/OrderList';
 import OrderPayment from './pages/receptionist/OrderPayment';
 import ReceptionistHome from './pages/receptionist/ReceptionistHome';
 import Chef from './pages/chef/Chef';
+import QRMenu from './pages/QRMenu';
+import QRCodeManager from './pages/QRCodeManager';
 
 function App() {
   return (
-    <CartProvider>
-      <TableCartProvider>
-        <Router>
-          <AuthProvider>
-            <Routes>
+    <TableCartProvider>
+      <Router>
+        <AuthProvider>
+          <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/booking" element={<Booking />} />
-            <Route path="/menu" element={<Menu />} />  {/* Route cho trang Thực Đơn */}
-            <Route path="/cart" element={<Cart />} />  {/* Route cho trang Giỏ hàng */}
-            <Route path="/payment" element={<Payment />} /> {/* Route cho trang Thanh Toán */}
-            <Route path="/login" element={<Login />} /> {/* Route cho trang Đăng Nhập */}
-            <Route path="/register" element={<Register />} /> {/* Route cho trang Đăng Ký */}
-            <Route path="/manager" element={<ManagerHome />} /> {/* Route cho trang Manager */}
-            <Route path="/manager/revenue" element={<RevenueManager />} /> {/* Route cho trang Quản lý doanh thu */}
-            <Route path="/manager/table" element={<TableManager />} /> {/* Route cho trang Quản lý bàn */}
-            <Route path="/manager/staff" element={<StaffManager />} /> {/* Route cho trang Quản lý nhân sự */}
-            <Route path="/manager/workshift" element={<WorkshiftManager />} /> {/* Route cho trang Quản lý ca làm việc */}
-            <Route path="/manager/dish" element={<DishManager />} /> {/* Route cho trang Quản lý món ăn */}
-            <Route path="/manager/order" element={<OrderManager />} /> {/* Route cho trang Quản lý đơn hàng */}
-            <Route path="/manager/report" element={<ReportManager />} /> {/* Route cho trang Báo cáo */}
-            <Route path="/manager/purchase-history" element={<PurchaseHistoryManager />} /> {/* Route cho trang Lịch sử mua hàng */}
+            
+            {/* Manager Routes */}
+            <Route path="/manager" element={<ManagerHome />} />
+            <Route path="/manager/revenue" element={<RevenueManager />} />
+            <Route path="/manager/table" element={<TableManager />} />
+            <Route path="/manager/staff" element={<StaffManager />} />
+            <Route path="/manager/workshift" element={<WorkshiftManager />} />
+            <Route path="/manager/dish" element={<DishManager />} />
+            <Route path="/manager/order" element={<OrderManager />} />
+            <Route path="/manager/report" element={<ReportManager />} />
+            <Route path="/manager/purchase-history" element={<PurchaseHistoryManager />} />
 
-          <Route path="/waiter/orders" element={<WaiterOrder />} /> {/* Route cho waiter đặt món */}
-          <Route path="/waiter/tables" element={<WaiterTableView />} /> {/* Route cho waiter xem bàn */}
-          <Route path="/chef" element={<Chef />} /> {/* Route cho trang Chef (bếp trưởng) */}
-            </Routes>
-          </AuthProvider>
-        </Router>
-      </TableCartProvider>
-    </CartProvider>
+            {/* Waiter Routes */}
+            <Route path="/waiter/orders" element={<WaiterOrder />} />
+            <Route path="/waiter/tables" element={<WaiterTableView />} />
+            
+            {/* Chef Routes */}
+            <Route path="/chef" element={<Chef />} />
+
+            {/* QR Menu Routes - CHỨC NĂNG MỚI */}
+            <Route path="/menu/:tableId" element={<QRMenu />} />
+            <Route path="/qr-manager" element={<QRCodeManager />} />
+            
+            {/* Receptionist Routes */}
+            <Route path="/receptionist" element={<ReceptionistHome />} />
+            <Route path="/receptionist/orders" element={<OrderList />} />
+            <Route path="/receptionist/payment" element={<OrderPayment />} />
+          </Routes>
+        </AuthProvider>
+      </Router>
+    </TableCartProvider>
   );
 }
 
