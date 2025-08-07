@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useState } from 'react';
 import type { CartItem } from './CartContext';
 
+// Types
 interface TableCartContextType {
   tableCarts: Record<string, CartItem[]>;
   setTable: (table: string) => void;
@@ -13,42 +14,21 @@ interface TableCartContextType {
 
 const TableCartContext = createContext<TableCartContextType | undefined>(undefined);
 
+// Hook for using the cart context
 export const useTableCart = () => {
-  const context = useContext(TableCartContext);
-  if (!context) throw new Error('useTableCart must be used within a TableCartProvider');
+  const context = React.useContext(TableCartContext);
+  if (context === undefined) {
+    throw new Error('useTableCart must be used within a TableCartProvider');
+  }
   return context;
 };
 
-// Dữ liệu mẫu cho đơn bếp demo
-const demoTableCarts: Record<string, CartItem[]> = {
-  'Bàn 1': [
-    { name: 'Cơm Tấm Sườn Nướng', price: 65000, image: '', quantity: 2 },
-    { name: 'Phở Bò', price: 50000, image: '', quantity: 1 },
-  ],
-  'Bàn 2': [
-    { name: 'Bún Chả Hà Nội', price: 55000, image: '', quantity: 2 },
-    { name: 'Bánh Cuốn', price: 40000, image: '', quantity: 1 },
-  ],
-  'Bàn 3': [
-    { name: 'Bánh Xèo Miền Tây', price: 45000, image: '', quantity: 3 },
-  ],
-  'Bàn 4': [
-    { name: 'Chả Cá Lã Vọng', price: 120000, image: '', quantity: 1 },
-    { name: 'Bún Bò Huế', price: 60000, image: '', quantity: 2 },
-  ],
-  'Bàn 5': [
-    { name: 'Lẩu Cá Kèo', price: 180000, image: '', quantity: 1 },
-    { name: 'Gỏi Cuốn Tôm Thịt', price: 35000, image: '', quantity: 4 },
-  ],
-  'Bàn 6': [
-    { name: 'Bánh Mì Thịt', price: 25000, image: '', quantity: 5 },
-    { name: 'Bún Riêu', price: 45000, image: '', quantity: 2 },
-  ],
-};
+export { TableCartContext };
+export type { TableCartContextType };
 
 export const TableCartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [tableCarts, setTableCarts] = useState<Record<string, CartItem[]>>(demoTableCarts);
-  const [currentTable, setCurrentTable] = useState<string>('A1');
+  const [tableCarts, setTableCarts] = useState<Record<string, CartItem[]>>({});
+  const [currentTable, setCurrentTable] = useState<string>('');
 
   const setTable = (table: string) => setCurrentTable(table);
 

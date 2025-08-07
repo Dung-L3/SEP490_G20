@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useTableCart } from '../../contexts/TableCartContext';
 import { tableApi } from '../../api/tableApi';
 import { type UiTable } from '../../utils/tableMapping';
 import TaskbarWaiter from './TaskbarWaiter';
+import { useTableCart } from '../../contexts/TableCartContext';
 
 export interface MenuItem {
   id: number;
