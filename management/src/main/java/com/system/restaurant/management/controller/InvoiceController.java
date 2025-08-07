@@ -1,7 +1,6 @@
 package com.system.restaurant.management.controller;
 
 import com.system.restaurant.management.dto.PaymentRequest;
-import com.system.restaurant.management.dto.PaymentRequestDto;
 import com.system.restaurant.management.entity.Invoice;
 import com.system.restaurant.management.entity.PaymentRecord;
 import com.system.restaurant.management.service.ReceptionistService;
