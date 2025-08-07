@@ -1,8 +1,10 @@
 import React, { createContext, useContext, useState } from 'react';
-import type { MenuItem } from '../pages/waiter/Order';
 
 // Định nghĩa kiểu dữ liệu cho món ăn
-export interface CartItem extends MenuItem {
+export interface CartItem {
+  name: string;
+  price: number;
+  image: string;
   quantity: number;
 }
 

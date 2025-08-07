@@ -1,17 +1,19 @@
 package com.system.restaurant.management.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-
+import lombok.*;
 import java.math.BigDecimal;
+import java.util.List;
 
 @Entity
-@Table(name = "Combos")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
+@Table(name = "Combos")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Combo {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,4 +28,13 @@ public class Combo {
 
     @Column(name = "Description", length = 255)
     private String description;
+
+    @OneToMany(mappedBy = "combo", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private List<ComboItem> comboItems;
+
+    // Getter thủ công để đảm bảo hoạt động
+    public List<ComboItem> getComboItems() {
+        return comboItems;
+    }
 }
