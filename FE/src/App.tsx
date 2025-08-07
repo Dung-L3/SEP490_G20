@@ -52,6 +52,9 @@ function App() {
           <Route path="/waiter/orders" element={<WaiterOrder />} /> {/* Route cho waiter đặt món */}
           <Route path="/waiter/tables" element={<WaiterTableView />} /> {/* Route cho waiter xem bàn */}
           <Route path="/chef" element={<Chef />} /> {/* Route cho trang Chef (bếp trưởng) */}
+            <Route path="/receptionist/orders/uppaid" element={<OrderList />} /> {/* Route cho trang xử lý thanh toán của order */}
+            <Route path="/receptionist/:orderId/payment" element={<OrderPayment />} />
+            <Route path="/receptionist"element={<ReceptionistHome/>} />
             </Routes>
           </AuthProvider>
         </Router>
