@@ -1,14 +1,9 @@
 import React, { createContext, useContext, useState } from 'react';
-import type { MenuItem } from '../pages/waiter/Order';
-
-// Định nghĩa kiểu dữ liệu cho món ăn
-export interface CartItem extends MenuItem {
-  quantity: number;
-}
+import type { StandardMenuItem, StandardCartItem } from '../types/StandardTypes';
 
 interface CartContextType {
-  cart: CartItem[];
-  addToCart: (item: Omit<CartItem, 'quantity'>) => void;
+  cart: StandardCartItem[];
+  addToCart: (item: StandardMenuItem) => void;
   updateQuantity: (name: string, quantity: number) => void;
   removeFromCart: (name: string) => void;
   clearCart: () => void;
@@ -23,9 +18,9 @@ export const useCart = () => {
 };
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cart, setCart] = useState<StandardCartItem[]>([]);
 
-  const addToCart = (item: Omit<CartItem, 'quantity'>) => {
+  const addToCart = (item: StandardMenuItem) => {
     setCart(prev => {
       const found = prev.find(i => i.name === item.name);
       if (found) {
