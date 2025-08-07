@@ -1,95 +1,63 @@
 import type { MenuItem } from '../pages/waiter/Order';
 
-const MENU_API_URL = '/api/v1/menu';
-const ORDER_API_URL = '/api/v1/orders';
+// Mock data cho menu items
+const mockMenuItems: MenuItem[] = [
+  {
+    id: 1,
+    name: 'Phở bò',
+    price: 50000,
+    description: 'Phở bò truyền thống',
+    image: 'pho.jpg'
+  },
+  {
+    id: 2,
+    name: 'Cà phê sữa đá',
+    price: 25000,
+    description: 'Cà phê sữa đá thơm ngon',
+    image: 'cafe.jpg'
+  },
+  {
+    id: 3,
+    name: 'Chè thái',
+    price: 30000,
+    description: 'Chè thái mát lạnh',
+    image: 'che.jpg'
+  }
+];
 
 export const waiterApi = {
-  // Menu items
+  // Menu items với mock data
   getAllMenuItems: async (): Promise<MenuItem[]> => {
-    try {
-      const response = await fetch(`${MENU_API_URL}/all`, {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        }
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return response.json();
-    } catch (error) {
-      console.error('Error fetching menu items:', error);
-      throw new Error('Failed to fetch menu items');
-    }
+    // Return mock data thay vì gọi API
+    return Promise.resolve(mockMenuItems);
   },
 
-  // Orders
-  createOrder: async (order: {
-    tableId: number;
-    items: Array<{
-      menuItemId: number;
-      quantity: number;
-      note?: string;
-    }>;
-  }): Promise<void> => {
-    try {
-      const response = await fetch(`${ORDER_API_URL}/create`, {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(order)
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-    } catch (error) {
-      console.error('Error creating order:', error);
-      throw new Error('Failed to create order');
-    }
-  },
+  // Orders - Tạm thời comment out vì chưa có backend
+  // createOrder: async (order: {
+  //   tableId: number;
+  //   items: Array<{
+  //     menuItemId: number;
+  //     quantity: number;
+  //     note?: string;
+  //   }>;
+  // }): Promise<void> => {
+  //   // Implement khi có backend
+  //   return Promise.resolve();
+  // },
 
-  getOrdersByTable: async (tableId: number): Promise<Array<{
-    id: number;
-    menuItem: MenuItem;
-    quantity: number;
-    status: string;
-    note?: string;
-  }>> => {
-    try {
-      const response = await fetch(`${ORDER_API_URL}/table/${tableId}`, {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        }
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return response.json();
-    } catch (error) {
-      console.error('Error fetching orders:', error);
-      throw new Error('Failed to fetch orders');
-    }
-  },
+  // getOrdersByTable: async (tableId: number): Promise<Array<{
+  //   id: number;
+  //   menuItem: MenuItem;
+  //   quantity: number;
+  //   status: string;
+  //   note?: string;
+  // }>> => {
+  //   // Implement khi có backend
+  //   return Promise.resolve([]);
+  // },
 
-  updateOrderStatus: async (orderId: number, status: string): Promise<void> => {
-    try {
-      const response = await fetch(`${ORDER_API_URL}/${orderId}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ status })
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-    } catch (error) {
-      console.error('Error updating order status:', error);
-      throw new Error('Failed to update order status');
-    }
-  }
+  // updateOrderStatus: async (orderId: number, status: string): Promise<void> => {
+  //   // Implement khi có backend
+  //   return Promise.resolve();
+  // }
 };

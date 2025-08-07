@@ -1,7 +1,6 @@
-import { Table } from '../types/Table';
+import type { Table } from '../types/Table';
 
 const API_URL = '/api/v1/tables'; // Make sure this matches your backend URL
-const API_BASE_URL = '/api/v1';
 
 export const tableApi = {
   getAll: async (): Promise<Table[]> => {
