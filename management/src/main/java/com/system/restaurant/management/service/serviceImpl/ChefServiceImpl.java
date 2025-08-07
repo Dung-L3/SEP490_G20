@@ -3,22 +3,23 @@ package com.system.restaurant.management.service.serviceImpl;
 import com.system.restaurant.management.dto.KitchenOrderDTO;
 import com.system.restaurant.management.entity.OrderDetail;
 import com.system.restaurant.management.repository.OrderDetailRepository;
-import com.system.restaurant.management.service.ChefService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional
 @RequiredArgsConstructor
 @Slf4j
-public class ChefServiceImpl implements ChefService {
+public class ChefServiceImpl {
 
     private final OrderDetailRepository orderDetailRepository;
 
-    @Override
     public List<KitchenOrderDTO> getPendingOrders() {
         try {
             List<OrderDetail> orderDetails = orderDetailRepository.findByStatusIdWithDetails(1);
@@ -33,7 +34,6 @@ public class ChefServiceImpl implements ChefService {
         }
     }
 
-    @Override
     public void updateOrderStatus(Integer orderDetailId, String status) {
         try {
             OrderDetail orderDetail = orderDetailRepository.findById(orderDetailId)
@@ -111,5 +111,75 @@ public class ChefServiceImpl implements ChefService {
             case "COMPLETED" -> 3;
             default -> throw new IllegalArgumentException("Invalid status: " + status);
         };
+    }
+
+    public List<Map<String, Object>> getPendingKitchenOrders() {
+        try {
+            // Get pending order details (status = 1)
+            List<OrderDetail> pendingDetails = orderDetailRepository.findByStatusId(1);
+            
+            return pendingDetails.stream().map(detail -> {
+                Map<String, Object> orderMap = new HashMap<>();
+                orderMap.put("orderDetailId", detail.getOrderDetailId());
+                orderMap.put("orderId", detail.getOrderId());
+                orderMap.put("dishName", detail.getDish() != null ? detail.getDish().getDishName() : "Unknown");
+                orderMap.put("quantity", detail.getQuantity());
+                orderMap.put("status", "pending");
+                orderMap.put("notes", detail.getNotes() != null ? detail.getNotes() : "");
+                
+                // Get table information
+                String tableNumber = "Bàn không xác định";
+                if (detail.getOrder() != null) {
+                    if (detail.getOrder().getTableId() != null) {
+                        // Use table from order relationship if available
+                        if (detail.getOrder().getTable() != null) {
+                            tableNumber = detail.getOrder().getTable().getTableName();
+                        } else {
+                            tableNumber = "Bàn " + detail.getOrder().getTableId();
+                        }
+                    } else if (detail.getOrder().getTableGroupId() != null) {
+                        tableNumber = "Bàn ghép " + detail.getOrder().getTableGroupId();
+                    }
+                }
+                orderMap.put("tableNumber", tableNumber);
+                
+                // Order time
+                String orderTime = detail.getOrder() != null && detail.getOrder().getCreatedAt() != null
+                    ? detail.getOrder().getCreatedAt().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                    : new Date().toString();
+                orderMap.put("orderTime", orderTime);
+                
+                return orderMap;
+            }).collect(Collectors.toList());
+            
+        } catch (Exception e) {
+            System.err.println("Error getting pending kitchen orders: " + e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
+    public void updateOrderDetailStatus(Integer orderDetailId, String status) {
+        try {
+            OrderDetail detail = orderDetailRepository.findById(orderDetailId)
+                .orElseThrow(() -> new RuntimeException("Order detail not found"));
+            
+            // Convert status string to statusId
+            Integer statusId = switch (status.toLowerCase()) {
+                case "pending" -> 1;
+                case "processing", "cooking" -> 2;
+                case "completed", "done" -> 3;
+                case "cancelled" -> 4;
+                default -> throw new IllegalArgumentException("Invalid status: " + status);
+            };
+            
+            detail.setStatusId(statusId);
+            orderDetailRepository.save(detail);
+            
+            System.out.println("Updated order detail " + orderDetailId + " to status " + status);
+            
+        } catch (Exception e) {
+            System.err.println("Error updating order detail status: " + e.getMessage());
+            throw new RuntimeException("Failed to update order status: " + e.getMessage());
+        }
     }
 }

@@ -10,7 +10,7 @@ public class KitchenOrderDTO {
     private String dishName;
     private Integer quantity;
     private String status;
+    private String notes;
     private String tableNumber;
     private LocalDateTime orderTime;
-    private String notes;
 }

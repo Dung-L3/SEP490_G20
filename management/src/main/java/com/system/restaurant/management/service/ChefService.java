@@ -1,9 +1,9 @@
 package com.system.restaurant.management.service;
 
-import com.system.restaurant.management.dto.KitchenOrderDTO;
 import java.util.List;
+import java.util.Map;
 
 public interface ChefService {
-    List<KitchenOrderDTO> getPendingOrders();
-    void updateOrderStatus(Integer orderDetailId, String status);
+    List<Map<String, Object>> getPendingKitchenOrders();
+    void updateOrderDetailStatus(Integer orderDetailId, String status);
 }

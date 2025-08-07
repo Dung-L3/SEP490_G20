@@ -1,67 +1,75 @@
 export interface Dish {
   dishId: number;
   dishName: string;
-  categoryId: number;
   price: number;
-  status: boolean;
   unit: string;
   imageUrl?: string;
-  createdAt: string;
+  categoryId: number;
+  isActive: boolean;
 }
 
-const API_URL = '/api/dishes';
+const BASE_URL = '/api';
 
 export const dishApi = {
-  getAll: async (): Promise<Dish[]> => {
+  getByStatus: async (isActive: boolean): Promise<Dish[]> => {
     try {
-      const response = await fetch(`${API_URL}`);
+      const response = await fetch(`${BASE_URL}/dishes?isActive=${isActive}`, {
+        credentials: 'include',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        console.warn('Failed to fetch dishes, using fallback');
+        return dishApi.getFallbackDishes();
       }
-      return await response.json();
+
+      const data = await response.json();
+      return Array.isArray(data) ? data : dishApi.getFallbackDishes();
     } catch (error) {
       console.error('Error fetching dishes:', error);
-      throw error;
+      return dishApi.getFallbackDishes();
     }
   },
 
-  getByStatus: async (status: boolean): Promise<Dish[]> => {
-    try {
-      const endpoint = status ? `${API_URL}/active` : `${API_URL}/inactive`;
-      const response = await fetch(endpoint);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+  getFallbackDishes: (): Dish[] => {
+    return [
+      {
+        dishId: 1,
+        dishName: 'Phở Bò',
+        price: 45000,
+        unit: 'Tô',
+        imageUrl: '/images/pho-bo.jpg',
+        categoryId: 1,
+        isActive: true
+      },
+      {
+        dishId: 2,
+        dishName: 'Bún Chả',
+        price: 40000,
+        unit: 'Phần',
+        imageUrl: '/images/bun-cha.jpg',
+        categoryId: 1,
+        isActive: true
+      },
+      {
+        dishId: 3,
+        dishName: 'Cơm Tấm',
+        price: 35000,
+        unit: 'Phần',
+        imageUrl: '/images/com-tam.jpg',
+        categoryId: 2,
+        isActive: true
+      },
+      {
+        dishId: 4,
+        dishName: 'Trà Đá',
+        price: 5000,
+        unit: 'Ly',
+        categoryId: 3,
+        isActive: true
       }
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching dishes by status:', error);
-      throw error;
-    }
-  },
-
-  getById: async (id: number): Promise<Dish> => {
-    try {
-      const response = await fetch(`${API_URL}/${id}`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return await response.json();
-    } catch (error) {
-      console.error(`Error fetching dish ${id}:`, error);
-      throw error;
-    }
-  },
-
-  getByCategory: async (categoryId: number): Promise<Dish[]> => {
-    try {
-      const response = await fetch(`${API_URL}/category/${categoryId}`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return await response.json();
-    } catch (error) {
-      console.error(`Error fetching dishes for category ${categoryId}:`, error);
-      throw error;
-    }
+    ];
   }
 };

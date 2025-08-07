@@ -10,7 +10,8 @@ import {
   createOrder, 
   updateTableStatus, 
   fetchOrderStatus,
-  fetchOrderItems
+  fetchOrderItems,
+  fetchOrderItemsForMergedTable
 } from '../../api/orderApi.ts';
 
 const Order: React.FC = () => {
@@ -76,7 +77,19 @@ const Order: React.FC = () => {
         const selectedTable = tableList.find(table => table.name === currentTable);
         if (!selectedTable) return;
 
-        const activeOrders = await fetchOrderItems(selectedTable.id);
+        let activeOrders: MenuItem[];
+        
+        if (selectedTable.type === 'merged') {
+          // For merged tables, use groupId and special API
+          activeOrders = await fetchOrderItemsForMergedTable(selectedTable.groupId!);
+        } else {
+          // For individual tables, convert id to number
+          const tableId = typeof selectedTable.id === 'string' 
+            ? parseInt(selectedTable.id) 
+            : selectedTable.id;
+          activeOrders = await fetchOrderItems(tableId);
+        }
+
         if (activeOrders && activeOrders.length > 0) {
           // Thêm các món từ đơn hàng hiện tại vào giỏ hàng với type conversion
           clearCart();
@@ -390,9 +403,18 @@ const Order: React.FC = () => {
                         return;
                       }
                       
-                      if (selectedTable.status !== 'OCCUPIED') {
+                      if (selectedTable.status !== 'OCCUPIED' && selectedTable.status !== 'MERGED') {
                         try {
-                          await updateTableStatus(selectedTable.id, 'OCCUPIED');
+                          // Convert id to number for updateTableStatus
+                          const numericId = typeof selectedTable.id === 'string' 
+                            ? parseInt(selectedTable.id.replace('group_', '')) 
+                            : selectedTable.id;
+                          
+                          // Only update status for individual tables, not merged tables
+                          if (selectedTable.type !== 'merged') {
+                            await updateTableStatus(numericId, 'OCCUPIED');
+                          }
+                          
                           // Refresh table list after status update
                           const updatedTables = await fetchOccupiedTables();
                           setTableList(updatedTables);
@@ -402,9 +424,26 @@ const Order: React.FC = () => {
                           return;
                         }
                       }
+                      
+                      // Handle both individual and merged tables
+                      let tableId: number | undefined;
+                      let tableGroupId: number | undefined;
+                      
+                      if (selectedTable.type === 'merged') {
+                        tableGroupId = selectedTable.groupId;
+                        tableId = undefined;
+                      } else {
+                        // Convert string/number id to number for individual tables
+                        const numericId = typeof selectedTable.id === 'string' 
+                          ? parseInt(selectedTable.id) 
+                          : selectedTable.id;
+                        tableId = numericId;
+                        tableGroupId = undefined;
+                      }
 
                       const orderData = {
-                        tableId: Number(currentTable.replace(/\D/g, '')),
+                        ...(tableId && { tableId }),
+                        ...(tableGroupId && { tableGroupId }),
                         items: cart.map(item => ({
                           dishId: item.id,
                           quantity: item.quantity || 1,

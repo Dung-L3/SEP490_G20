@@ -41,6 +41,9 @@ public interface ManageTableService {
     RestaurantTable assignTableForReservation(LocalDateTime reservationTime);
     RestaurantTable assignTableForConfirmation(Integer reservationId);
     boolean hasAvailableReservedTables(LocalDateTime reservationTime);
+
+    // Debug method to check table status
+    void debugTableStatus();
 }
 
 

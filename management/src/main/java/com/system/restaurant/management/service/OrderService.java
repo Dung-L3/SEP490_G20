@@ -34,4 +34,10 @@ public interface OrderService {
     TableOrderResponse removeTableOrderItem(Integer tableId, Integer dishId);
     void cancelTableOrder(Integer tableId);
     List<Order> getOrdersByTableAndStatuses(Integer tableId, List<Integer> statusIds);
+    
+    // Methods for merged tables
+    List<Order> getOrdersByTableGroup(Integer tableGroupId);
+    List<Order> getActiveOrdersByTableGroup(Integer tableGroupId);
+    TableOrderResponse addMergedTableOrderItem(Integer tableGroupId, Integer dishId, Integer quantity);
+    List<Object> getActiveOrderItemsByMergedTable(Integer tableGroupId);
 }

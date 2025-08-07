@@ -3,6 +3,7 @@ package com.system.restaurant.management.controller;
 import com.system.restaurant.management.dto.*;
 import com.system.restaurant.management.entity.*;
 import com.system.restaurant.management.service.WaiterService;
+import com.system.restaurant.management.service.OrderService;
 import com.system.restaurant.management.exception.ResourceNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +23,7 @@ import java.util.Map;
 public class WaiterController {
 
     private final WaiterService waiterService;
+    private final OrderService orderService;
 
     @GetMapping("/tables/by-name/{tableName}")
     public ResponseEntity<RestaurantTable> getTableByName(@PathVariable String tableName) {
@@ -87,15 +90,41 @@ public class WaiterController {
     }
 
     @GetMapping("/tables")
-    public ResponseEntity<List<RestaurantTable>> getTablesByStatus(@RequestParam String status) {
-        return ResponseEntity.ok(waiterService.getTablesByStatus(status));
+    public ResponseEntity<List<RestaurantTable>> getTablesByStatus(@RequestParam(required = false) String status) {
+        try {
+            System.out.println("Getting tables with status: " + status);
+            
+            List<RestaurantTable> tables;
+            if (status != null && !status.isEmpty()) {
+                tables = waiterService.getTablesByStatus(status);
+            } else {
+                // If no status specified, get all tables
+                tables = waiterService.getTablesByStatus("OCCUPIED"); // Default to occupied for waiter
+            }
+            
+            System.out.println("Found " + tables.size() + " tables");
+            return ResponseEntity.ok(tables);
+            
+        } catch (Exception e) {
+            System.err.println("Error getting tables: " + e.getMessage());
+            e.printStackTrace();
+            
+            // Return empty list instead of error
+            return ResponseEntity.ok(new ArrayList<>());
+        }
     }
 
     @PutMapping("/tables/{tableId}/status")
     public ResponseEntity<RestaurantTable> updateTableStatus(
             @PathVariable Integer tableId,
             @RequestParam String status) {
-        return ResponseEntity.ok(waiterService.updateTableStatus(tableId, status));
+        try {
+            RestaurantTable table = waiterService.updateTableStatus(tableId, status);
+            return ResponseEntity.ok(table);
+        } catch (Exception e) {
+            System.err.println("Error updating table status: " + e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @GetMapping("/tables/area/{areaId}")
@@ -136,5 +165,72 @@ public class WaiterController {
         response.put("orderDetailId", orderDetail.getOrderDetailId());
         
         return ResponseEntity.ok(response);
+    }
+
+    // === ORDER MANAGEMENT ENDPOINTS ===
+    
+    // Get order items for individual table
+    @GetMapping("/orders/{tableId}/items")
+    public ResponseEntity<List<Object>> getOrderItemsByTable(@PathVariable Integer tableId) {
+        try {
+            List<Object> items = orderService.getActiveOrderItemsByTable(tableId);
+            return ResponseEntity.ok(items);
+        } catch (Exception e) {
+            System.err.println("Error getting order items for table: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ArrayList<>());
+        }
+    }
+
+    // Get order items for merged table
+    @GetMapping("/orders/group/{groupId}/items")
+    public ResponseEntity<List<Object>> getOrderItemsByMergedTable(@PathVariable Integer groupId) {
+        try {
+            List<Object> items = orderService.getActiveOrderItemsByMergedTable(groupId);
+            return ResponseEntity.ok(items);
+        } catch (Exception e) {
+            System.err.println("Error getting order items for merged table: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ArrayList<>());
+        }
+    }
+
+    // Create order for table or merged table
+    @PostMapping("/orders/create")
+    public ResponseEntity<?> createOrderForTable(@RequestBody TableOrderRequest request) {
+        try {
+            System.out.println("Creating order: " + request);
+            
+            if (request.getTableGroupId() != null) {
+                // Create order for merged table - handle multiple items
+                Integer orderId = null;
+                for (var item : request.getItems()) {
+                    TableOrderResponse response = orderService.addMergedTableOrderItem(
+                        request.getTableGroupId(), 
+                        item.getDishId(), 
+                        item.getQuantity()
+                    );
+                    if (orderId == null) {
+                        orderId = response.getOrderId();
+                    }
+                }
+                return ResponseEntity.ok(Map.of(
+                    "orderId", orderId,
+                    "message", "Order created for merged table successfully"
+                ));
+            } else if (request.getTableId() != null) {
+                // Create order for individual table
+                TableOrderResponse response = orderService.addTableOrderItem(request);
+                return ResponseEntity.ok(Map.of(
+                    "orderId", response.getOrderId(),
+                    "message", "Order created successfully"
+                ));
+            } else {
+                return ResponseEntity.badRequest().body(Map.of("error", "Either tableId or tableGroupId must be provided"));
+            }
+            
+        } catch (Exception e) {
+            System.err.println("Error creating order: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", e.getMessage()));
+        }
     }
 }

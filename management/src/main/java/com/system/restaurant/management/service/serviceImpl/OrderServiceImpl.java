@@ -27,6 +27,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Optional;
 
 @Service
 @Transactional
@@ -89,40 +92,37 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public List<Object> getActiveOrderItemsByTable(Integer tableId) {
         try {
-            // Tìm order đang active của bàn (status = 1 hoặc 2: Pending hoặc Processing)
-            List<Order> activeOrders = orderRepository.findByTableIdAndStatusIdIn(tableId, List.of(1, 2));
+            System.out.println("Getting active order items for table: " + tableId);
             
-            if (activeOrders.isEmpty()) {
-                return List.of(); // Trả về danh sách rỗng nếu không có order
+            List<Integer> activeStatuses = Arrays.asList(1, 2); // Pending and Confirmed
+            List<Order> activeOrders = orderRepository.findByTableIdAndStatusIdIn(tableId, activeStatuses);
+            List<Object> result = new ArrayList<>();
+            
+            for (Order order : activeOrders) {
+                List<OrderDetail> orderDetails = orderDetailRepository.findByOrder_OrderId(order.getOrderId());
+                
+                for (OrderDetail detail : orderDetails) {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("orderDetailId", detail.getOrderDetailId());
+                    item.put("dishId", detail.getDish().getDishId());
+                    item.put("dishName", detail.getDish().getDishName());
+                    item.put("quantity", detail.getQuantity());
+                    item.put("unitPrice", detail.getUnitPrice());
+                    item.put("status", getOrderDetailStatus(detail.getStatusId()));
+                    item.put("imageUrl", detail.getDish().getImageUrl());
+                    item.put("orderId", order.getOrderId());
+                    item.put("tableId", tableId);
+                    
+                    result.add(item);
+                }
             }
-
-            // Lấy order details từ các active orders
-            return activeOrders.stream()
-                    .flatMap(order -> {
-                        List<OrderDetail> details = orderDetailRepository.findByOrderId(order.getOrderId());
-                        return details.stream().map(detail -> {
-                            Map<String, Object> item = new HashMap<>();
-                            
-                            // Lấy thông tin dish
-                            Dish dish = dishRepository.findById(detail.getDishId()).orElse(null);
-                            
-                            item.put("orderDetailId", detail.getOrderDetailId());
-                            item.put("dishId", detail.getDishId());
-                            item.put("dishName", dish != null ? dish.getDishName() : "Unknown");
-                            item.put("quantity", detail.getQuantity());
-                            item.put("unitPrice", detail.getUnitPrice());
-                            item.put("imageUrl", dish != null ? dish.getImageUrl() : null);
-                            item.put("status", getStatusName(detail.getStatusId()).toLowerCase());
-                            item.put("orderStatus", getStatusName(detail.getStatusId()).toLowerCase());
-                            item.put("notes", detail.getNotes());
-                            
-                            return item;
-                        });
-                    })
-                    .collect(Collectors.toList());
+            
+            System.out.println("Found " + result.size() + " active items for table");
+            return result;
+            
         } catch (Exception e) {
-            System.err.println("Error fetching active order items for table " + tableId + ": " + e.getMessage());
-            return List.of(); // Trả về danh sách rỗng nếu có lỗi
+            System.err.println("Error getting active order items for table: " + e.getMessage());
+            return new ArrayList<>();
         }
     }
 
@@ -223,22 +223,64 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public TableOrderResponse addTableOrderItem(TableOrderRequest request) {
-        Order order = findOrCreatePendingOrder(request.getTableId());
-        OrderItemRequest item = request.getItem();
-
-        OrderDetail detail = new OrderDetail();
-        detail.setOrderId(order.getOrderId());
-        detail.setDishId(item.getDishId());
-        detail.setComboId(item.getComboId());
-        detail.setQuantity(item.getQuantity());
-        detail.setUnitPrice(item.getUnitPrice());
-        detail.setStatusId(1); // Pending
-        detail.setNotes(item.getNotes());
-
-        orderDetailRepository.save(detail);
-        updateOrderTotals(order);
-
-        return convertToTableOrderResponse(order);
+        try {
+            System.out.println("Adding order items to table: " + request.getTableId());
+            
+            // Find or create pending order for the table
+            Optional<Order> existingOrderOpt = orderRepository.findActiveOrderByTableId(request.getTableId());
+            Order order;
+            
+            if (existingOrderOpt.isPresent()) {
+                order = existingOrderOpt.get();
+                System.out.println("Found existing order: " + order.getOrderId());
+            } else {
+                // Create new order
+                order = Order.builder()
+                    .orderType(request.getOrderType() != null ? request.getOrderType() : "DINE_IN")
+                    .tableId(request.getTableId())
+                    .statusId(1) // Pending
+                    .subTotal(BigDecimal.ZERO)
+                    .discountAmount(BigDecimal.ZERO)
+                    .finalTotal(BigDecimal.ZERO)
+                    .isRefunded(0)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+                order = orderRepository.save(order);
+                System.out.println("Created new order: " + order.getOrderId());
+            }
+            
+            // Add order details
+            Integer lastOrderDetailId = null;
+            for (var item : request.getItems()) {
+                Dish dish = dishRepository.findById(item.getDishId())
+                    .orElseThrow(() -> new IllegalArgumentException("Dish not found: " + item.getDishId()));
+                
+                OrderDetail orderDetail = OrderDetail.builder()
+                    .order(order)
+                    .dish(dish)
+                    .quantity(item.getQuantity())
+                    .unitPrice(dish.getPrice())
+                    .notes(item.getNotes() != null ? item.getNotes() : "")
+                    .statusId(1) // Pending
+                    .build();
+                
+                orderDetail = orderDetailRepository.save(orderDetail);
+                lastOrderDetailId = orderDetail.getOrderDetailId();
+            }
+            
+            // Update order totals
+            updateOrderTotals(order);
+            
+            return new TableOrderResponse(
+                order.getOrderId(),
+                lastOrderDetailId,
+                "Items added to table successfully"
+            );
+            
+        } catch (Exception e) {
+            System.err.println("Error adding items to table: " + e.getMessage());
+            throw new RuntimeException("Failed to add items to table: " + e.getMessage());
+        }
     }
 
     @Override
@@ -278,6 +320,123 @@ public class OrderServiceImpl implements OrderService {
         orderRepository.save(order);
     }
 
+    // Methods for merged tables
+    @Override
+    public List<Order> getOrdersByTableGroup(Integer tableGroupId) {
+        try {
+            return orderRepository.findByTableGroupId(tableGroupId);
+        } catch (Exception e) {
+            System.err.println("Error getting orders by table group: " + e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
+    @Override
+    public List<Order> getActiveOrdersByTableGroup(Integer tableGroupId) {
+        try {
+            List<Integer> activeStatuses = Arrays.asList(1, 2); // Pending and Confirmed
+            return orderRepository.findByTableGroupIdAndStatusIdIn(tableGroupId, activeStatuses);
+        } catch (Exception e) {
+            System.err.println("Error getting active orders by table group: " + e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
+    @Override
+    public TableOrderResponse addMergedTableOrderItem(Integer tableGroupId, Integer dishId, Integer quantity) {
+        try {
+            System.out.println("Adding order item to merged table group: " + tableGroupId + ", dish: " + dishId + ", quantity: " + quantity);
+            
+            // Find or create pending order for the table group
+            Optional<Order> existingOrderOpt = orderRepository.findActiveOrderByTableGroupId(tableGroupId);
+            Order order;
+            
+            if (existingOrderOpt.isPresent()) {
+                order = existingOrderOpt.get();
+                System.out.println("Found existing order: " + order.getOrderId());
+            } else {
+                // Create new order for merged table
+                order = Order.builder()
+                    .orderType("DINE_IN")
+                    .tableGroupId(tableGroupId)
+                    .tableId(null) // No specific table for merged orders
+                    .statusId(1) // Pending
+                    .subTotal(BigDecimal.ZERO)
+                    .discountAmount(BigDecimal.ZERO)
+                    .finalTotal(BigDecimal.ZERO)
+                    .isRefunded(0)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+                order = orderRepository.save(order);
+                System.out.println("Created new order for merged table: " + order.getOrderId());
+            }
+            
+            // Add order detail
+            Dish dish = dishRepository.findById(dishId)
+                .orElseThrow(() -> new IllegalArgumentException("Dish not found: " + dishId));
+            
+            OrderDetail orderDetail = OrderDetail.builder()
+                .order(order)
+                .dish(dish)
+                .quantity(quantity)
+                .unitPrice(dish.getPrice())
+                .notes("")
+                .statusId(1) // Pending
+                .build();
+            
+            orderDetail = orderDetailRepository.save(orderDetail);
+            
+            // Update order totals
+            updateOrderTotals(order);
+            
+            return new TableOrderResponse(
+                order.getOrderId(),
+                orderDetail.getOrderDetailId(),
+                "Item added to merged table successfully"
+            );
+            
+        } catch (Exception e) {
+            System.err.println("Error adding item to merged table: " + e.getMessage());
+            throw new RuntimeException("Failed to add item to merged table: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public List<Object> getActiveOrderItemsByMergedTable(Integer tableGroupId) {
+        try {
+            System.out.println("Getting active order items for merged table group: " + tableGroupId);
+            
+            List<Order> activeOrders = getActiveOrdersByTableGroup(tableGroupId);
+            List<Object> result = new ArrayList<>();
+            
+            for (Order order : activeOrders) {
+                List<OrderDetail> orderDetails = orderDetailRepository.findByOrder_OrderId(order.getOrderId());
+                
+                for (OrderDetail detail : orderDetails) {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("orderDetailId", detail.getOrderDetailId());
+                    item.put("dishId", detail.getDish().getDishId());
+                    item.put("dishName", detail.getDish().getDishName());
+                    item.put("quantity", detail.getQuantity());
+                    item.put("unitPrice", detail.getUnitPrice());
+                    item.put("status", getOrderDetailStatus(detail.getStatusId()));
+                    item.put("imageUrl", detail.getDish().getImageUrl());
+                    item.put("orderId", order.getOrderId());
+                    item.put("tableGroupId", tableGroupId);
+                    
+                    result.add(item);
+                }
+            }
+            
+            System.out.println("Found " + result.size() + " active items for merged table group");
+            return result;
+            
+        } catch (Exception e) {
+            System.err.println("Error getting active order items for merged table: " + e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
     private Order findOrCreatePendingOrder(Integer tableId) {
         return orderRepository.findPendingOrderByTableId(tableId)
                 .orElseGet(() -> {
@@ -293,14 +452,21 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private void updateOrderTotals(Order order) {
-        List<OrderDetail> details = orderDetailRepository.findByOrderId(order.getOrderId());
-        BigDecimal subTotal = details.stream()
+        try {
+            List<OrderDetail> orderDetails = orderDetailRepository.findByOrder_OrderId(order.getOrderId());
+            
+            BigDecimal subTotal = orderDetails.stream()
                 .map(detail -> detail.getUnitPrice().multiply(BigDecimal.valueOf(detail.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        order.setSubTotal(subTotal);
-        order.setFinalTotal(subTotal.subtract(order.getDiscountAmount()));
-        orderRepository.save(order);
+            
+            order.setSubTotal(subTotal);
+            order.setFinalTotal(subTotal.subtract(order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO));
+            
+            orderRepository.save(order);
+            
+        } catch (Exception e) {
+            System.err.println("Error updating order totals: " + e.getMessage());
+        }
     }
 
     private TableOrderResponse convertToTableOrderResponse(Order order) {
@@ -339,5 +505,14 @@ public class OrderServiceImpl implements OrderService {
             case 4: return "Cancelled";
             default: return "Unknown";
         }
+    }
+
+    private String getOrderDetailStatus(Integer statusId) {
+        return switch (statusId) {
+            case 1 -> "pending";
+            case 2 -> "cooking";
+            case 3 -> "completed";
+            default -> "unknown";
+        };
     }
 }

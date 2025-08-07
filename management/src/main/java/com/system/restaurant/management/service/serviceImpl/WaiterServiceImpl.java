@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -38,6 +39,7 @@ public class WaiterServiceImpl implements WaiterService {
     private final ComboRepository comboRepository;
     private final InvoicePrintRepository invoicePrintRepository;
     private final LoyaltyTransactionRepository loyaltyTransactionRepository;
+    private final TableGroupRepository tableGroupRepository;
 
 
 
@@ -431,40 +433,37 @@ public class WaiterServiceImpl implements WaiterService {
 
     @Override
     public List<RestaurantTable> getTablesByStatus(String status) {
-        return restaurantTableRepository.findByStatus(status);
-    }
-
-    @Override
-    public RestaurantTable updateTableStatus(Integer tableId, String status) {
-        RestaurantTable table = restaurantTableRepository.findById(tableId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy bàn với ID: " + tableId));
-        table.setStatus(status);
-        return restaurantTableRepository.save(table);
-    }
-
-    @Override
-    public CustomerPurchaseHistoryResponse getCustomerPurchaseHistoryByPhone(String phone) {
-        List<Order> orders = orderRepository.findByPhone(phone);
-
-        List<Order> completeOrders = orders.stream()
-                .filter(order -> order.getStatusId() == 4)
-                .toList();
-
-        BigDecimal totalSpent = completeOrders.stream()
-                .map(Order::getFinalTotal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        CustomerPurchaseHistoryResponse response = new CustomerPurchaseHistoryResponse();
-        response.setPhone(phone);
-        response.setOrders(completeOrders);
-        response.setTotalSpent(totalSpent);
-        response.setTotalOrders(completeOrders.size());
-
-        if (!completeOrders.isEmpty()) {
-            response.setCustomerName(completeOrders.get(0).getCustomerName());
+        try {
+            System.out.println("Getting tables by status: " + status);
+            
+            // Get regular tables by status
+            List<RestaurantTable> regularTables = restaurantTableRepository.findByStatus(status);
+            List<RestaurantTable> result = new ArrayList<>(regularTables);
+            
+            // If status is OCCUPIED, also include merged tables
+            if ("OCCUPIED".equalsIgnoreCase(status)) {
+                List<TableGroup> activeGroups = tableGroupRepository.findByStatus("ACTIVE");
+                
+                for (TableGroup group : activeGroups) {
+                    // Create a virtual table representing the merged group
+                    RestaurantTable mergedTable = new RestaurantTable();
+                    mergedTable.setTableId(-group.getGroupId()); // Negative ID to distinguish
+                    mergedTable.setTableName(group.getGroupName());
+                    mergedTable.setStatus("MERGED");
+                    mergedTable.setCapacity(group.getTotalCapacity());
+                    
+                    result.add(mergedTable);
+                }
+            }
+            
+            System.out.println("Found " + result.size() + " tables");
+            return result;
+            
+        } catch (Exception e) {
+            System.err.println("Error getting tables by status: " + e.getMessage());
+            e.printStackTrace();
+            return new ArrayList<>();
         }
-
-        return response;
     }
 
     @Override

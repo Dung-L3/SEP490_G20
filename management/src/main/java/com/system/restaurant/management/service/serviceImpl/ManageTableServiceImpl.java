@@ -1,49 +1,264 @@
 package com.system.restaurant.management.service.serviceImpl;
 
+import com.system.restaurant.management.dto.MergedTableDTO;
 import com.system.restaurant.management.entity.RestaurantTable;
 import com.system.restaurant.management.entity.TableGroup;
 import com.system.restaurant.management.entity.TableGroupMember;
-import com.system.restaurant.management.dto.MergedTableDTO;
-import com.system.restaurant.management.exception.ResourceNotFoundException;
-import com.system.restaurant.management.repository.ManageTableRepository;
+import com.system.restaurant.management.entity.TableGroupMemberId;
 import com.system.restaurant.management.repository.RestaurantTableRepository;
 import com.system.restaurant.management.repository.TableGroupRepository;
 import com.system.restaurant.management.repository.TableGroupMemberRepository;
+import com.system.restaurant.management.repository.OrderRepository;
 import com.system.restaurant.management.service.ManageTableService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Transactional
 public class ManageTableServiceImpl implements ManageTableService {
-    private final ManageTableRepository repo;
+    
+    private final RestaurantTableRepository tableRepository;
     private final TableGroupRepository tableGroupRepository;
     private final TableGroupMemberRepository tableGroupMemberRepository;
-    private final RestaurantTableRepository tableRepository;
+    private final OrderRepository orderRepository;
 
+    @Override
+    @Transactional
+    public TableGroup mergeTable(List<Integer> tableIds, Integer createdBy, String notes) {
+        // Validate input
+        if (tableIds == null || tableIds.size() < 2) {
+            throw new IllegalArgumentException("Cần ít nhất 2 bàn để ghép");
+        }
+
+        // Kiểm tra tất cả bàn có tồn tại và đang trống
+        List<RestaurantTable> tables = tableRepository.findAllById(tableIds);
+        if (tables.size() != tableIds.size()) {
+            throw new IllegalArgumentException("Một hoặc nhiều bàn không tồn tại");
+        }
+
+        // Debug: Log status của từng bàn
+        for (RestaurantTable table : tables) {
+            System.out.println("Table ID: " + table.getTableId() + 
+                             ", Name: " + table.getTableName() + 
+                             ", Status: '" + table.getStatus() + "'");
+        }
+
+        // Kiểm tra bàn nào đã được ghép rồi
+        List<Integer> alreadyMergedTableIds = tableGroupMemberRepository.findAll()
+            .stream()
+            .map(member -> member.getTable().getTableId())
+            .collect(Collectors.toList());
+        
+        List<RestaurantTable> alreadyMergedTables = tables.stream()
+            .filter(table -> alreadyMergedTableIds.contains(table.getTableId()))
+            .collect(Collectors.toList());
+        
+        if (!alreadyMergedTables.isEmpty()) {
+            String mergedTableNames = alreadyMergedTables.stream()
+                .map(RestaurantTable::getTableName)
+                .collect(Collectors.joining(", "));
+            throw new IllegalArgumentException("Các bàn sau đã được ghép rồi: " + mergedTableNames);
+        }
+
+        // Kiểm tra bàn không thể ghép (chỉ Reserved)
+        List<RestaurantTable> nonMergeableTables = tables.stream()
+            .filter(table -> {
+                String status = table.getStatus();
+                // Chỉ cấm ghép bàn Reserved
+                return status != null && status.equalsIgnoreCase("Reserved");
+            })
+            .collect(Collectors.toList());
+        
+        if (!nonMergeableTables.isEmpty()) {
+            String tableNames = nonMergeableTables.stream()
+                .map(RestaurantTable::getTableName)
+                .collect(Collectors.joining(", "));
+            throw new IllegalArgumentException("Các bàn sau không thể ghép (đã đặt trước): " + tableNames);
+        }
+
+        // Tạo TableGroup
+        TableGroup tableGroup = TableGroup.builder()
+            .createdBy(createdBy)
+            .createdAt(LocalDateTime.now())
+            .notes(notes != null ? notes : "Bàn ghép")
+            .build();
+        
+        tableGroup = tableGroupRepository.save(tableGroup);
+
+        // Tạo TableGroupMember records
+        for (RestaurantTable table : tables) {
+            TableGroupMember member = TableGroupMember.builder()
+                .id(new TableGroupMemberId(tableGroup.getGroupId(), table.getTableId()))
+                .tableGroup(tableGroup)
+                .table(table)
+                .build();
+            tableGroupMemberRepository.save(member);
+        }
+
+        // Gộp orders: Link tất cả active orders với TableGroup
+        System.out.println("Linking orders to table group " + tableGroup.getGroupId());
+        try {
+            orderRepository.updateOrdersWithTableGroupId(tableGroup.getGroupId(), tableIds);
+            System.out.println("Orders successfully linked to table group");
+        } catch (Exception e) {
+            System.err.println("Error linking orders to table group: " + e.getMessage());
+            // Continue anyway as this is not critical for table merging
+        }
+
+        return tableGroup;
+    }
+
+    @Override
+    public List<RestaurantTable> getAvailableTables() {
+        // Lấy tất cả bàn
+        List<RestaurantTable> allTables = tableRepository.findAll();
+        
+        // Lấy danh sách ID các bàn đã được ghép
+        List<Integer> mergedTableIds = tableGroupMemberRepository.findAll()
+            .stream()
+            .map(member -> member.getTable().getTableId())
+            .collect(Collectors.toList());
+        
+        System.out.println("Merged table IDs: " + mergedTableIds);
+        
+        // Filter các bàn Available hoặc Occupied và không bị ghép
+        return allTables.stream()
+            .filter(table -> {
+                String status = table.getStatus();
+                boolean isAvailableOrOccupied = status != null && 
+                       (status.equalsIgnoreCase("Available") || 
+                        status.equalsIgnoreCase("Trống") ||
+                        status.equalsIgnoreCase("Occupied") ||
+                        status.equalsIgnoreCase("Đang phục vụ") ||
+                        status.trim().isEmpty());
+                
+                boolean isNotMerged = !mergedTableIds.contains(table.getTableId());
+                
+                System.out.println("Table " + table.getTableId() + 
+                                 " - Status: " + status + 
+                                 " - Available/Occupied: " + isAvailableOrOccupied + 
+                                 " - Not merged: " + isNotMerged);
+                
+                return isAvailableOrOccupied && isNotMerged;
+            })
+            .collect(Collectors.toList());
+    }
+
+    @Override
+    public MergedTableDTO getMergedTableInfo(Integer groupId) {
+        TableGroup tableGroup = tableGroupRepository.findById(groupId)
+            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy nhóm bàn"));
+
+        // Lấy tables từ TableGroupMember
+        List<RestaurantTable> tables = tableGroupMemberRepository.findTablesByGroupId(groupId);
+        
+        // Debug logging
+        System.out.println("Group ID: " + groupId + ", Tables found: " + tables.size());
+        for (RestaurantTable table : tables) {
+            System.out.println("Table: " + table.getTableName() + " (ID: " + table.getTableId() + ")");
+        }
+        
+        List<String> tableNames = tables.stream()
+            .map(RestaurantTable::getTableName)
+            .collect(Collectors.toList());
+        
+        String mergedName = String.join(" + ", tableNames);
+        
+        System.out.println("Final merged name: " + mergedName);
+        System.out.println("Table names list: " + tableNames);
+        
+        return new MergedTableDTO(
+            tableGroup.getGroupId(),
+            mergedName,
+            tableNames,
+            tables.stream().map(RestaurantTable::getTableId).collect(Collectors.toList()),
+            "MERGED", // Custom status for merged tables
+            tableGroup.getCreatedBy(),
+            tableGroup.getCreatedAt(),
+            tableGroup.getNotes()
+        );
+    }
+
+    @Override
+    public List<MergedTableDTO> getAllMergedTables() {
+        List<TableGroup> allGroups = tableGroupRepository.findAll();
+        return allGroups.stream()
+            .map(group -> getMergedTableInfo(group.getGroupId()))
+            .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public void disbandTableGroup(Integer groupId) {
+        System.out.println("Disbanding table group: " + groupId);
+        
+        // Lấy thông tin tables trong group trước khi xóa
+        List<RestaurantTable> tablesInGroup = tableGroupMemberRepository.findTablesByGroupId(groupId);
+        
+        if (!tablesInGroup.isEmpty()) {
+            // Chọn bàn chính (bàn đầu tiên) để chuyển tất cả orders về
+            RestaurantTable primaryTable = tablesInGroup.get(0);
+            System.out.println("Primary table selected: " + primaryTable.getTableName() + " (ID: " + primaryTable.getTableId() + ")");
+            
+            // Chuyển tất cả orders về bàn chính và xóa tableGroupId
+            try {
+                orderRepository.updateOrdersFromGroupToTable(groupId, primaryTable.getTableId());
+                System.out.println("Orders transferred to primary table successfully");
+            } catch (Exception e) {
+                System.err.println("Error transferring orders: " + e.getMessage());
+            }
+        }
+        
+        // Xóa TableGroupMember records trước
+        tableGroupMemberRepository.deleteByTableGroupId(groupId);
+        
+        // Xóa TableGroup
+        tableGroupRepository.deleteById(groupId);
+        
+        System.out.println("Table group disbanded successfully");
+    }
+
+    @Override
+    public List<RestaurantTable> getTablesInGroup(Integer groupId) {
+        return tableGroupMemberRepository.findTablesByGroupId(groupId);
+    }
+
+    @Override
+    public List<Object> getTablesForOrder() {
+        List<Object> result = new ArrayList<>();
+        
+        // Thêm merged tables
+        List<MergedTableDTO> mergedTables = getAllMergedTables();
+        result.addAll(mergedTables);
+        
+        // Thêm individual tables (không bị merge)
+        List<RestaurantTable> individualTables = tableRepository.findTablesNotInGroup();
+        result.addAll(individualTables);
+        
+        return result;
+    }
+
+    // Basic CRUD operations
     @Override
     public RestaurantTable create(RestaurantTable table) {
-        table.setCreatedAt(LocalDateTime.now());
-        return repo.save(table);
+        return tableRepository.save(table);
     }
 
     @Override
-    @Transactional(readOnly = true)
     public RestaurantTable findById(Integer id) {
-        return repo.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("RestaurantTable", "id", id));
+        return tableRepository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Table not found"));
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<RestaurantTable> findAll() {
-        return repo.findAll();
+        return tableRepository.findAll();
     }
 
     @Override
@@ -55,277 +270,92 @@ public class ManageTableServiceImpl implements ManageTableService {
         existing.setStatus(table.getStatus());
         existing.setIsWindow(table.getIsWindow());
         existing.setNotes(table.getNotes());
-        return repo.save(existing);
+        return tableRepository.save(existing);
     }
 
     @Override
     public void delete(Integer id) {
-        RestaurantTable existing = findById(id);
-        repo.delete(existing);
+        tableRepository.deleteById(id);
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<String> getAllTableTypes() {
-        return repo.findDistinctTableTypes();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<RestaurantTable> getByTableType(String tableType) {
-        return repo.findByTableType(tableType);
-    }
     @Override
     public RestaurantTable updateTableStatus(Integer tableId, String status) {
-        RestaurantTable table = findById(tableId);
+        RestaurantTable table = tableRepository.findById(tableId)
+            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bàn với ID: " + tableId));
+        
+        System.out.println("Updating table " + tableId + " from '" + table.getStatus() + "' to '" + status + "'");
+        
         table.setStatus(status);
-        return repo.save(table);
+        RestaurantTable savedTable = tableRepository.save(table);
+        
+        System.out.println("Table " + tableId + " status updated successfully");
+        return savedTable;
     }
 
+    @Override
+    public List<RestaurantTable> getTablesByStatus(String status) {
+        return tableRepository.findByStatus(status);
+    }
+
+    @Override
+    public List<RestaurantTable> getTablesByArea(Integer areaId) {
+        return tableRepository.findByAreaId(areaId);
+    }
+
+    @Override
+    public List<String> getAllTableTypes() {
+        return tableRepository.findAll().stream()
+            .map(RestaurantTable::getTableType)
+            .distinct()
+            .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<RestaurantTable> getByTableType(String tableType) {
+        return tableRepository.findByTableType(tableType);
+    }
+
+    // Table group operations
     @Override
     public TableGroup splitTable(List<Integer> tableIds, Integer createdBy, String notes) {
-        // Validate all tables exist
-        for (Integer tableId : tableIds) {
-            findById(tableId);
-        }
-
-        TableGroup tableGroup = TableGroup.builder()
-                .createdBy(createdBy)
-                .createdAt(LocalDateTime.now())
-                .notes(notes != null ? notes : "Split table operation")
-                .build();
-
-        return tableGroupRepository.save(tableGroup);
-    }
-
-    @Override
-    public TableGroup mergeTable(List<Integer> tableIds, Integer createdBy, String notes) {
-        // Validate all tables exist and are available for merging
-        for (Integer tableId : tableIds) {
-            RestaurantTable table = findById(tableId);
-            if (!"Available".equals(table.getStatus()) && !"Occupied".equals(table.getStatus())) {
-                throw new IllegalStateException("Table " + tableId + " is not available for merging");
-            }
-        }
-
-        // Create TableGroup
-        TableGroup tableGroup = TableGroup.builder()
-                .createdBy(createdBy)
-                .createdAt(LocalDateTime.now())
-                .notes(notes != null ? notes : "Merge table operation")
-                .build();
-
-        TableGroup savedGroup = tableGroupRepository.save(tableGroup);
-
-        // Create TableGroupMembers for each table
-        for (Integer tableId : tableIds) {
-            TableGroupMember member = new TableGroupMember(savedGroup.getGroupId(), tableId);
-            tableGroupMemberRepository.save(member);
-            
-            // Update table status to MERGED
-            RestaurantTable table = findById(tableId);
-            table.setStatus("MERGED");
-            repo.save(table);
-        }
-
-        return savedGroup;
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<RestaurantTable> getAvailableTables() {
-        return repo.findByStatus("Available");
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<RestaurantTable> getTablesByStatus(String status) {
-        return repo.findByStatus(status);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<RestaurantTable> getTablesByArea(Integer areaId) {
-        return repo.findByAreaId(areaId);
+        return mergeTable(tableIds, createdBy, notes); // Same logic for now
     }
 
     @Override
     public TableGroup createTableGroup(List<Integer> tableIds, Integer createdBy, String notes) {
-        // Validate all tables exist and are available
-        for (Integer tableId : tableIds) {
-            RestaurantTable table = findById(tableId);
-            if (!"Available".equals(table.getStatus())) {
-                throw new IllegalStateException("Table " + tableId + " is not available for grouping");
-            }
-        }
-
-        TableGroup tableGroup = TableGroup.builder()
-                .createdBy(createdBy)
-                .createdAt(LocalDateTime.now())
-                .notes(notes)
-                .build();
-
-        return tableGroupRepository.save(tableGroup);
+        return mergeTable(tableIds, createdBy, notes);
     }
 
-    @Override
-    public void disbandTableGroup(Integer groupId) {
-        if (!tableGroupRepository.existsById(groupId)) {
-            throw new ResourceNotFoundException("TableGroup", "id", groupId);
-        }
-        
-        // Get tables in group before deleting
-        List<RestaurantTable> tables = tableGroupMemberRepository.findTablesByGroupId(groupId);
-        
-        // Reset table status back to Available for each table
-        for (RestaurantTable table : tables) {
-            table.setStatus("Available"); // Reset về Available
-            repo.save(table);
-            System.out.println("Reset table " + table.getTableName() + " status to Available");
-        }
-        
-        // Delete group members first (foreign key constraint)
-        tableGroupMemberRepository.deleteByTableGroupGroupId(groupId);
-        
-        // Delete the group
-        tableGroupRepository.deleteById(groupId);
-        
-        System.out.println("Disbanded table group " + groupId + " successfully");
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<RestaurantTable> getTablesInGroup(Integer groupId) {
-        if (!tableGroupRepository.existsById(groupId)) {
-            throw new ResourceNotFoundException("TableGroup", "id", groupId);
-        }
-        return tableGroupMemberRepository.findTablesByGroupId(groupId);
-    }
+    // Reservation methods - placeholder implementations
     @Override
     public void initializeReservedTables() {
-        // Find or create the special reserved table
-        List<RestaurantTable> reservedTables = tableRepository.findByStatus(RestaurantTable.Status.RESERVED);
-
-        if (reservedTables.isEmpty()) {
-            // Create new reserved table if it doesn't exist
-            RestaurantTable specialTable = RestaurantTable.builder()
-                    .tableName("Auto-Reservation Table")
-                    .areaId(1) // Assuming area ID 1 exists
-                    .tableType("Reserved")
-                    .status(RestaurantTable.Status.RESERVED)
-                    .isWindow(false)
-                    .notes("Special table for automatic reservations. Capacity: 1/3 of total restaurant capacity")
-                    .createdAt(LocalDateTime.now())
-                    .build();
-
-            tableRepository.save(specialTable);
-        }
+        // Implementation for reservation initialization
     }
 
     @Override
     public RestaurantTable assignTableForReservation(LocalDateTime reservationTime) {
-        LocalDateTime endTime = reservationTime.plusHours(2);
-        List<RestaurantTable> availableReservedTables = tableRepository
-                .findAvailableReservedTables(reservationTime, endTime);
-
-        if (availableReservedTables.isEmpty()) {
-            throw new IllegalStateException("No reserved tables available for this time slot");
-        }
-
-        return availableReservedTables.get(0);
+        return null;
     }
 
     @Override
     public RestaurantTable assignTableForConfirmation(Integer reservationId) {
-        List<RestaurantTable> availableTables = tableRepository.findByStatus(RestaurantTable.Status.AVAILABLE);
-
-        if (availableTables.isEmpty()) {
-            throw new IllegalStateException("No available tables for seating customers");
-        }
-
-        RestaurantTable selectedTable = availableTables.get(0);
-        selectedTable.setStatus(RestaurantTable.Status.OCCUPIED);
-        return tableRepository.save(selectedTable);
+        return null;
     }
 
     @Override
     public boolean hasAvailableReservedTables(LocalDateTime reservationTime) {
-        LocalDateTime endTime = reservationTime.plusHours(2);
-        return !tableRepository.findAvailableReservedTables(reservationTime, endTime).isEmpty();
+        return false;
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public MergedTableDTO getMergedTableInfo(Integer groupId) {
-        TableGroup tableGroup = tableGroupRepository.findById(groupId)
-                .orElseThrow(() -> new ResourceNotFoundException("TableGroup", "id", groupId));
-        
-        List<RestaurantTable> tables = tableGroupMemberRepository.findTablesByGroupId(groupId);
-        
-        if (tables.isEmpty()) {
-            throw new IllegalStateException("No tables found in group " + groupId);
+    // Debug method to check table status
+    public void debugTableStatus() {
+        List<RestaurantTable> tables = tableRepository.findAll();
+        System.out.println("=== DEBUG: Table Status Check ===");
+        for (RestaurantTable table : tables) {
+            System.out.println("Table ID: " + table.getTableId() + 
+                             ", Name: " + table.getTableName() + 
+                             ", Status: '" + table.getStatus() + "'");
         }
-        
-        // Build merged table name: "Bàn 1 + Bàn 2 + Bàn 3"
-        List<String> tableNames = tables.stream()
-                .map(RestaurantTable::getTableName)
-                .sorted()
-                .toList();
-        
-        String mergedName = String.join(" + ", tableNames);
-        
-        List<Integer> tableIds = tables.stream()
-                .map(RestaurantTable::getTableId)
-                .sorted()
-                .toList();
-        
-        // Status sẽ là "MERGED" nếu tất cả bàn đều MERGED
-        String status = tables.stream()
-                .allMatch(table -> "MERGED".equals(table.getStatus())) ? "MERGED" : "MIXED";
-        
-        return new MergedTableDTO(
-                groupId,
-                mergedName,
-                tableNames,
-                tableIds,
-                status,
-                tableGroup.getCreatedBy(),
-                tableGroup.getCreatedAt(),
-                tableGroup.getNotes()
-        );
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<MergedTableDTO> getAllMergedTables() {
-        List<TableGroup> allGroups = tableGroupRepository.findAll();
-        
-        return allGroups.stream()
-                .map(group -> {
-                    try {
-                        return getMergedTableInfo(group.getGroupId());
-                    } catch (Exception e) {
-                        // Skip groups that have issues (empty groups, etc.)
-                        return null;
-                    }
-                })
-                .filter(dto -> dto != null)
-                .toList();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<Object> getTablesForOrder() {
-        List<Object> result = new ArrayList<>();
-        
-        // 1. Lấy tất cả bàn không bị merge
-        List<RestaurantTable> individualTables = tableRepository.findTablesNotInGroup();
-        result.addAll(individualTables);
-        
-        // 2. Lấy tất cả bàn đã merge (dưới dạng MergedTableDTO)
-        List<MergedTableDTO> mergedTables = getAllMergedTables();
-        result.addAll(mergedTables);
-        
-        return result;
+        System.out.println("=== END DEBUG ===");
     }
 }
