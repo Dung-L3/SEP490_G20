@@ -39,6 +39,14 @@ public class QRMenuOrderController {
             String orderType = (String) requestBody.getOrDefault("orderType", "DINE_IN");
             List<Map<String, Object>> items = (List<Map<String, Object>>) requestBody.get("items");
 
+            if (tableId == null) {
+                throw new IllegalArgumentException("Table ID is required");
+            }
+            
+            if (items == null || items.isEmpty()) {
+                throw new IllegalArgumentException("Order items are required");
+            }
+
             // Tạo OrderRequestDto
             OrderRequestDto orderDto = new OrderRequestDto();
             orderDto.setOrderType(orderType);
@@ -47,12 +55,10 @@ public class QRMenuOrderController {
             
             // Tính toán totals từ items
             BigDecimal subTotal = BigDecimal.ZERO;
-            if (items != null) {
-                for (Map<String, Object> item : items) {
-                    Integer quantity = (Integer) item.get("quantity");
-                    BigDecimal unitPrice = new BigDecimal(item.get("unitPrice").toString());
-                    subTotal = subTotal.add(unitPrice.multiply(BigDecimal.valueOf(quantity)));
-                }
+            for (Map<String, Object> item : items) {
+                Integer quantity = (Integer) item.get("quantity");
+                BigDecimal unitPrice = new BigDecimal(item.get("unitPrice").toString());
+                subTotal = subTotal.add(unitPrice.multiply(BigDecimal.valueOf(quantity)));
             }
             
             orderDto.setSubTotal(subTotal);
@@ -63,7 +69,7 @@ public class QRMenuOrderController {
             OrderRequestDto savedOrder = orderService.createOrder(orderDto);
 
             // Tạo order details
-            if (items != null && savedOrder.getOrderId() != null) {
+            if (savedOrder.getOrderId() != null) {
                 for (Map<String, Object> item : items) {
                     OrderDetail detail = new OrderDetail();
                     detail.setOrderId(savedOrder.getOrderId());
@@ -80,15 +86,22 @@ public class QRMenuOrderController {
 
             Map<String, Object> response = new HashMap<>();
             response.put("orderId", savedOrder.getOrderId());
-            response.put("message", "Đơn hàng đã được tạo thành công");
+            response.put("message", "Đặt món thành công! Đơn hàng của bạn đang được xử lý.");
             response.put("order", savedOrder);
             
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
+            
+        } catch (IllegalArgumentException e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Dữ liệu không hợp lệ");
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+            
         } catch (Exception e) {
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("error", "Không thể tạo đơn hàng");
-            errorResponse.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+            errorResponse.put("message", "Lỗi hệ thống: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
     }
 

@@ -106,8 +106,6 @@ export const fetchMenuItems = async (search?: string): Promise<MenuItem[]> => {
 export const orderApi = {
   create: async (orderData: CreateOrderRequest): Promise<CreateOrderResponse> => {
     try {
-      console.log('🚀 Sending order to API:', orderData);
-      
       const response = await fetch(`${API_URL}/create`, {
         method: 'POST',
         headers: {
@@ -126,31 +124,22 @@ export const orderApi = {
         })
       });
 
-      console.log('📡 API Response status:', response.status);
-      console.log('📡 API Response headers:', response.headers);
-
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ API Error Response:', errorText);
         throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
       }
 
       const result = await response.json();
-      console.log('✅ API Success Response:', result);
       
-      // Đảm bảo trả về đúng format CreateOrderResponse
       return {
         orderId: result.orderId || result.id,
         message: result.message || 'Đơn hàng đã được tạo thành công',
         order: result.order || result
       };
     } catch (error) {
-      console.error('💥 Order API Error:', error);
-      
       if (error instanceof TypeError && error.message.includes('fetch')) {
         throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
       }
-      
       throw error;
     }
   },
