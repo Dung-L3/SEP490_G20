@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { tableApi } from '../api/tableApi';
-import { getQRBaseURL, getLocalIP, displayLocalIPInfo } from '../utils/networkUtils';
+import { getQRBaseURL, displayLocalIPInfo } from '../utils/networkUtils';
+import { NETWORK_CONFIG } from '../config/networkConfig';
 import type { Table } from '../types/Table';
 
 interface QRDisplayProps {
@@ -51,19 +52,13 @@ const QRCodeManager: React.FC = () => {
   const [tables, setTables] = useState<Table[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [baseURL, setBaseURL] = useState('http://192.168.31.166:5173');
-  const [localIP, setLocalIP] = useState('192.168.31.166');
+  const [baseURL, setBaseURL] = useState(NETWORK_CONFIG.FRONTEND_URL);
 
   useEffect(() => {
     // Lấy IP local và hiển thị thông tin
     const initializeNetwork = async () => {
       try {
-        const [ip, baseUrl] = await Promise.all([
-          getLocalIP(),
-          getQRBaseURL()
-        ]);
-        
-        setLocalIP(ip);
+        const baseUrl = await getQRBaseURL();
         setBaseURL(baseUrl);
         
         // Log thông tin truy cập
@@ -146,10 +141,10 @@ const QRCodeManager: React.FC = () => {
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
           <h3 className="text-blue-800 font-medium mb-2">🌐 Thông tin truy cập:</h3>
           <div className="text-blue-700 text-sm space-y-1">
-            <p><strong>Trên máy tính:</strong> http://localhost:5173</p>
-            <p><strong>Trên điện thoại (cùng WiFi):</strong> http://192.168.31.166:5173</p>
-            <p><strong>QR Manager:</strong> http://192.168.31.166:5173/qr-manager</p>
-            <p><strong>Menu VD (Bàn 1):</strong> http://192.168.31.166:5173/menu/1</p>
+            <p><strong>Trên máy tính:</strong> {NETWORK_CONFIG.LOCALHOST_URL}</p>
+            <p><strong>Trên điện thoại (cùng WiFi):</strong> {NETWORK_CONFIG.FRONTEND_URL}</p>
+            <p><strong>QR Manager:</strong> {NETWORK_CONFIG.FRONTEND_URL}/qr-manager</p>
+            <p><strong>Menu VD (Bàn 1):</strong> {NETWORK_CONFIG.FRONTEND_URL}/menu/1</p>
             <p className="text-xs text-blue-600 mt-2">
               💡 Điện thoại và máy tính phải cùng mạng WiFi
             </p>
@@ -172,15 +167,15 @@ const QRCodeManager: React.FC = () => {
           <div className="text-green-700 text-sm space-y-2">
             <p><strong>Test trên máy tính:</strong></p>
             <ul className="ml-4 space-y-1">
-              <li>• QR Manager: <code className="bg-white px-2 py-1 rounded">http://localhost:5173/qr-manager</code></li>
-              <li>• Menu Bàn 1: <code className="bg-white px-2 py-1 rounded">http://localhost:5173/menu/1</code></li>
-              <li>• Test CORS: <code className="bg-white px-2 py-1 rounded">http://localhost:5173/api/test/cors</code></li>
+              <li>• QR Manager: <code className="bg-white px-2 py-1 rounded">{NETWORK_CONFIG.LOCALHOST_URL}/qr-manager</code></li>
+              <li>• Menu Bàn 1: <code className="bg-white px-2 py-1 rounded">{NETWORK_CONFIG.LOCALHOST_URL}/menu/1</code></li>
+              <li>• Test CORS: <code className="bg-white px-2 py-1 rounded">{NETWORK_CONFIG.LOCALHOST_URL}/api/test/cors</code></li>
             </ul>
             <p><strong>Test trên điện thoại:</strong></p>
             <ul className="ml-4 space-y-1">
-              <li>• QR Manager: <code className="bg-white px-2 py-1 rounded">http://192.168.31.166:5173/qr-manager</code></li>
-              <li>• Menu Bàn 1: <code className="bg-white px-2 py-1 rounded">http://192.168.31.166:5173/menu/1</code></li>
-              <li>• Test CORS: <code className="bg-white px-2 py-1 rounded">http://192.168.31.166:5173/api/test/cors</code></li>
+              <li>• QR Manager: <code className="bg-white px-2 py-1 rounded">{NETWORK_CONFIG.FRONTEND_URL}/qr-manager</code></li>
+              <li>• Menu Bàn 1: <code className="bg-white px-2 py-1 rounded">{NETWORK_CONFIG.FRONTEND_URL}/menu/1</code></li>
+              <li>• Test CORS: <code className="bg-white px-2 py-1 rounded">{NETWORK_CONFIG.FRONTEND_URL}/api/test/cors</code></li>
             </ul>
             <p className="text-xs text-green-600 mt-2">
               💡 Nếu test CORS trả về JSON thì CORS đã hoạt động
