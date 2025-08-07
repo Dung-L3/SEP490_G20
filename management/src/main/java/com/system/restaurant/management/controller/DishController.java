@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/dishes")
+@RequestMapping({"/api/dishes", "/api/v1/dishes"}) // Support both endpoints
 @RequiredArgsConstructor
 public class DishController {
     private final DishService dishService;

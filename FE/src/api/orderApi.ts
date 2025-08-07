@@ -17,7 +17,42 @@ export interface MenuItem {
   orderDetailId?: number;
 }
 
+export interface OrderItem {
+  dishId: number;
+  quantity: number;
+  notes?: string;
+  unitPrice: number;
+}
+
+export interface CreateOrderRequest {
+  tableId: number;
+  items: OrderItem[];
+  orderType?: string;
+}
+
+export interface CreateOrderResponse {
+  orderId: number;
+  message: string;
+  order?: Order;
+}
+
+export interface Order {
+  orderId: number;
+  orderType: string;
+  customerName?: string;
+  phone?: string;
+  subTotal: number;
+  discountAmount: number;
+  finalTotal: number;
+  tableId?: number;
+  createdAt: string;
+  statusId: number;
+  isRefunded: number;
+  notes?: string;
+}
+
 const BASE_URL = '/api';
+const API_URL = '/api/v1/orders';
 
 export const fetchOccupiedTables = async (): Promise<TableInfo[]> => {
   const response = await fetch(`${BASE_URL}/waiter/tables?status=Occupied`, {
@@ -68,46 +103,75 @@ export const fetchMenuItems = async (search?: string): Promise<MenuItem[]> => {
   return menuData.filter(item => item.status === true);
 };
 
-interface CreateOrderRequest {
-  tableId: number;
-  items: {
-    dishId: number;
-    quantity: number;
-    notes: string;
-    unitPrice: number;
-  }[];
-}
-
-interface OrderResponse {
-  orderId: number;
-  status: string;
-  message?: string;
-}
-
-export const createOrder = async (orderData: CreateOrderRequest): Promise<OrderResponse> => {
-  const response = await fetch(`${BASE_URL}/waiter/orders/dine-in`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json'
-    },
-    credentials: 'include',
-    body: JSON.stringify(orderData)
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
+export const orderApi = {
+  create: async (orderData: CreateOrderRequest): Promise<CreateOrderResponse> => {
     try {
-      const errorJson = JSON.parse(errorText);
-      throw new Error(errorJson.message || errorJson.error || 'Có lỗi xảy ra khi gửi đơn hàng');
-    } catch (e) {
-      throw new Error(errorText || 'Có lỗi xảy ra khi gửi đơn hàng');
+      const response = await fetch(`${API_URL}/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          orderType: orderData.orderType || 'DINE_IN',
+          tableId: orderData.tableId,
+          items: orderData.items.map(item => ({
+            dishId: item.dishId,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            notes: item.notes || ''
+          }))
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      return {
+        orderId: result.orderId || result.id,
+        message: result.message || 'Đơn hàng đã được tạo thành công',
+        order: result.order || result
+      };
+    } catch (error) {
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
+      }
+      throw error;
+    }
+  },
+
+  getAll: async (): Promise<Order[]> => {
+    try {
+      const response = await fetch(`${API_URL}/getAll`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      throw error;
+    }
+  },
+
+  getById: async (id: number): Promise<Order> => {
+    try {
+      const response = await fetch(`${API_URL}/getById/${id}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error(`Error fetching order ${id}:`, error);
+      throw error;
     }
   }
-
-  const result = await response.json();
-  return result;
 };
+
+export const createOrder = orderApi.create;
 
 export const updateTableStatus = async (tableId: number, status: string): Promise<TableInfo> => {
   const response = await fetch(`${BASE_URL}/waiter/tables/${tableId}/status?status=${status}`, {
@@ -130,8 +194,6 @@ export const updateTableStatus = async (tableId: number, status: string): Promis
 
   return response.json();
 };
-
-
 
 export const fetchOrderStatus = async (orderDetailId: number): Promise<string> => {
   const response = await fetch(`${BASE_URL}/waiter/orders/detail/${orderDetailId}/status`, {

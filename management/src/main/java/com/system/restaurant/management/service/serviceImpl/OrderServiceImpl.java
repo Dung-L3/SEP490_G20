@@ -1,12 +1,14 @@
 package com.system.restaurant.management.service.serviceImpl;
 
 import com.system.restaurant.management.dto.OrderDto;
+import com.system.restaurant.management.dto.OrderRequestDto;
 import com.system.restaurant.management.dto.TableOrderRequest;
 import com.system.restaurant.management.dto.TableOrderResponse;
 import com.system.restaurant.management.dto.OrderItemRequest;
 import com.system.restaurant.management.entity.Order;
 import com.system.restaurant.management.entity.OrderDetail;
 import com.system.restaurant.management.entity.OrderStatus;
+import com.system.restaurant.management.entity.Dish;
 import com.system.restaurant.management.exception.ResourceNotFoundException;
 import com.system.restaurant.management.repository.OrderRepository;
 import com.system.restaurant.management.repository.OrderDetailRepository;
@@ -20,8 +22,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 @Transactional
@@ -32,10 +37,101 @@ public class OrderServiceImpl implements OrderService {
     private final DishRepository dishRepository;
     private final OrderStatusRepository statusRepo;
 
+    // ====== QR MENU METHODS ======
+    @Override
+    public List<OrderDto> findAll() {
+        List<Order> orders = orderRepository.findAll();
+        return orders.stream()
+                .map(this::mapToDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public OrderRequestDto createOrder(OrderRequestDto orderDto) {
+        try {
+            // Tạo Order entity từ DTO
+            Order order = new Order();
+            order.setOrderType(orderDto.getOrderType() != null ? orderDto.getOrderType() : "DINE_IN");
+            order.setCustomerName(orderDto.getCustomerName());
+            order.setPhone(orderDto.getPhone());
+            order.setTableId(orderDto.getTableId());
+            order.setSubTotal(orderDto.getSubTotal() != null ? orderDto.getSubTotal() : BigDecimal.ZERO);
+            order.setDiscountAmount(orderDto.getDiscountAmount() != null ? orderDto.getDiscountAmount() : BigDecimal.ZERO);
+            order.setFinalTotal(orderDto.getFinalTotal() != null ? orderDto.getFinalTotal() : BigDecimal.ZERO);
+            order.setNotes(orderDto.getNotes());
+            order.setCreatedAt(LocalDateTime.now());
+            order.setStatusId(1); // Pending
+            order.setIsRefunded(0);
+
+            // Lưu order
+            Order savedOrder = orderRepository.save(order);
+
+            // Chuyển đổi ngược về DTO
+            OrderRequestDto result = new OrderRequestDto();
+            result.setOrderId(savedOrder.getOrderId());
+            result.setOrderType(savedOrder.getOrderType());
+            result.setCustomerName(savedOrder.getCustomerName());
+            result.setPhone(savedOrder.getPhone());
+            result.setTableId(savedOrder.getTableId());
+            result.setSubTotal(savedOrder.getSubTotal());
+            result.setDiscountAmount(savedOrder.getDiscountAmount());
+            result.setFinalTotal(savedOrder.getFinalTotal());
+            result.setNotes(savedOrder.getNotes());
+            result.setCreatedAt(savedOrder.getCreatedAt());
+            result.setStatus("Pending");
+
+            return result;
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Failed to create order: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public List<Object> getActiveOrderItemsByTable(Integer tableId) {
+        try {
+            // Tìm order đang active của bàn (status = 1 hoặc 2: Pending hoặc Processing)
+            List<Order> activeOrders = orderRepository.findByTableIdAndStatusIdIn(tableId, List.of(1, 2));
+            
+            if (activeOrders.isEmpty()) {
+                return List.of(); // Trả về danh sách rỗng nếu không có order
+            }
+
+            // Lấy order details từ các active orders
+            return activeOrders.stream()
+                    .flatMap(order -> {
+                        List<OrderDetail> details = orderDetailRepository.findByOrderId(order.getOrderId());
+                        return details.stream().map(detail -> {
+                            Map<String, Object> item = new HashMap<>();
+                            
+                            // Lấy thông tin dish
+                            Dish dish = dishRepository.findById(detail.getDishId()).orElse(null);
+                            
+                            item.put("orderDetailId", detail.getOrderDetailId());
+                            item.put("dishId", detail.getDishId());
+                            item.put("dishName", dish != null ? dish.getDishName() : "Unknown");
+                            item.put("quantity", detail.getQuantity());
+                            item.put("unitPrice", detail.getUnitPrice());
+                            item.put("imageUrl", dish != null ? dish.getImageUrl() : null);
+                            item.put("status", getStatusName(detail.getStatusId()).toLowerCase());
+                            item.put("orderStatus", getStatusName(detail.getStatusId()).toLowerCase());
+                            item.put("notes", detail.getNotes());
+                            
+                            return item;
+                        });
+                    })
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            System.err.println("Error fetching active order items for table " + tableId + ": " + e.getMessage());
+            return List.of(); // Trả về danh sách rỗng nếu có lỗi
+        }
+    }
+
+    // ====== EXISTING METHODS ======
     @Override
     public OrderDto findById(Integer id) {
-         Order order = orderRepository.findById(id).orElseThrow();
-                 return mapToDto(order);
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Order", "id", id));
+        return mapToDto(order);
     }
 
     @Override
