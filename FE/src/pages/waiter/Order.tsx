@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTableCart } from '../../contexts/TableCartContext';
 import type { TableInfo } from '../../api/orderApi.ts';
-import TaskbarWaiter from '../../components/TaskbarWaiter';
+import TaskbarWaiter from './TaskbarWaiter';
 import type { MenuItem } from '../../api/orderApi.ts';
 import { 
   fetchOccupiedTables, 

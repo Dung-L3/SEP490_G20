@@ -58,7 +58,7 @@ function App() {
           {/* QR Menu Routes */}
           <Route path="/menu/:tableId" element={<QRMenu />} /> {/* Route cho trang QR menu khách hàng */}
           <Route path="/qr-manager" element={<QRCodeManager />} /> {/* Route cho trang quản lý QR codes */}
-          
+
           {/* Receptionist Routes */}
           <Route path="/receptionist" element={<ReceptionistHome />} />
           <Route path="/receptionist/orders" element={<OrderList />} />
