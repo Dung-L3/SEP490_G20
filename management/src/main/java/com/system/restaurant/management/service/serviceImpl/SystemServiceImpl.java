@@ -20,15 +20,18 @@ import java.time.LocalDateTime;
 public class SystemServiceImpl implements SystemService {
 
     private final InvoiceRepository invoiceRepo;
+    //private final CustomerPointsService pointsSvc;
     private final NotificationRepository notifyRepo;
     private final KitchenTicketRepository ticketRepo;
 
     public SystemServiceImpl(InvoiceRepository invoiceRepo,
-                           NotificationRepository notifyRepo,
-                           KitchenTicketRepository ticketRepo) {
+                             //CustomerPointsService pointsSvc,
+                             NotificationRepository notifyRepo,
+                             KitchenTicketRepository ticketRepo) {
         this.invoiceRepo = invoiceRepo;
-        this.notifyRepo = notifyRepo;
-        this.ticketRepo = ticketRepo;
+        //this.pointsSvc   = pointsSvc;
+        this.notifyRepo  = notifyRepo;
+        this.ticketRepo  = ticketRepo;
     }
 
 

@@ -6,16 +6,12 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
 public class OrderRequestDto {
-    private Integer orderId;
-    private LocalDateTime createdAt;
-    private String status;
     private String orderType;
     private String customerName;
     private String phone;

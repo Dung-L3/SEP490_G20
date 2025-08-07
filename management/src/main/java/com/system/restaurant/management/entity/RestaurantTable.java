@@ -46,8 +46,8 @@ public class RestaurantTable {
     @Column(name = "CreatedAt", nullable = false)
     private LocalDateTime createdAt;
 
-    @OneToMany(mappedBy = "table", fetch = FetchType.LAZY)
-    @JsonIgnoreProperties("table")  // Thay đổi này thay thế @JsonManagedReference
+    @OneToMany(mappedBy = "tableId", fetch = FetchType.LAZY)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private List<Order> orders;
 
     @PrePersist
