@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { tableApi } from '../../api/tableApi';
 import { type UiTable } from '../../utils/tableMapping';
 import TaskbarWaiter from './TaskbarWaiter';
-import { useTableCart } from '../../contexts/TableCartContext';
+import { useTableCart } from '../../contexts/TableCartContext.tsx';
 
 export interface MenuItem {
   id: number;
@@ -28,7 +28,6 @@ const fetchMenuItems = async (): Promise<MenuItem[]> => {
 };
 
 const Order: React.FC = () => {
-  const { tableCarts, setTable, currentTable, addToCart, updateQuantity, removeFromCart, clearCart } = useTableCart();
   const [search, setSearch] = useState('');
   const [tableList, setTableList] = useState<UiTable[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
