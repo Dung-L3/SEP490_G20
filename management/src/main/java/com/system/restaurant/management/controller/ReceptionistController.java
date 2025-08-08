@@ -1,6 +1,8 @@
 package com.system.restaurant.management.controller;
 
-import com.system.restaurant.management.dto.*;
+import com.system.restaurant.management.dto.OrderRequestDto;
+import com.system.restaurant.management.dto.PaymentRequest;
+import com.system.restaurant.management.dto.ReservationRequestDto;
 import com.system.restaurant.management.entity.*;
 import com.system.restaurant.management.repository.InvoiceRepository;
 import com.system.restaurant.management.repository.OrderDetailRepository;
@@ -13,6 +15,7 @@ import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -31,11 +34,15 @@ public class ReceptionistController {
     private final InvoicePdfService invoicePdfService;
 
     @PostMapping("/orders/takeaway")
-    public ResponseEntity<TakeawayOrderResponse> createTakeawayOrder(
-            @Valid @RequestBody CreateTakeawayOrderRequest request
-    ) {
-        TakeawayOrderResponse resp = receptionistService.createTakeawayOrder(request);
-        return ResponseEntity.ok(resp);
+    public ResponseEntity<OrderRequestDto> placeTakeawayOrder(
+            @Valid @RequestBody OrderRequestDto orderDto) {
+
+        // service trả về DTO
+        OrderRequestDto savedDto = receptionistService.placeTakeawayOrder(orderDto);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(savedDto);
     }
 
     @PostMapping("/invoices/{orderId}")

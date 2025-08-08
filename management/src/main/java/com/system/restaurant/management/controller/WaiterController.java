@@ -47,10 +47,10 @@ public class WaiterController {
         return ResponseEntity.ok(waiterService.createDineInOrder(request));
     }
 
-//    @PostMapping("/orders/takeaway")
-//    public ResponseEntity<Order> createTakeawayOrder(@Valid @RequestBody CreateTakeawayOrderRequest request) {
-//        return ResponseEntity.ok(waiterService.createTakeawayOrder(request));
-//    }
+    @PostMapping("/orders/takeaway")
+    public ResponseEntity<Order> createTakeawayOrder(@Valid @RequestBody CreateTakeawayOrderRequest request) {
+        return ResponseEntity.ok(waiterService.createTakeawayOrder(request));
+    }
 
     @PostMapping("/reservations/{reservationId}/check-in")
     public ResponseEntity<CheckInResponse> checkInReservation(

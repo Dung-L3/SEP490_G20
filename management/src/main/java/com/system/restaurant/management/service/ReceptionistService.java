@@ -1,16 +1,15 @@
 package com.system.restaurant.management.service;
 
-import com.system.restaurant.management.dto.CreateTakeawayOrderRequest;
+import com.system.restaurant.management.dto.OrderRequestDto;
 import com.system.restaurant.management.dto.PaymentRequest;
 import com.system.restaurant.management.dto.ReservationRequestDto;
-import com.system.restaurant.management.dto.TakeawayOrderResponse;
 import com.system.restaurant.management.entity.*;
 import jakarta.servlet.http.HttpSession;
 
 import java.util.List;
 
 public interface ReceptionistService {
-    TakeawayOrderResponse createTakeawayOrder(CreateTakeawayOrderRequest dto);
+    OrderRequestDto placeTakeawayOrder(OrderRequestDto dto);
     Invoice generateInvoice(Integer orderId, HttpSession session);
     Invoice applyDiscount(Integer orderId, double amount);
     PaymentRecord processPayment(Integer orderId, PaymentRequest req);
@@ -21,4 +20,5 @@ public interface ReceptionistService {
     void cancelReservation(Integer reservationId);
     List<Reservation> viewReservationCalendar();
     Notification sendReservationReminder(Integer reservationId);
+
 }

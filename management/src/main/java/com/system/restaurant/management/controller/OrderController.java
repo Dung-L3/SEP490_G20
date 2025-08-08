@@ -1,9 +1,8 @@
 package com.system.restaurant.management.controller;
 
-import com.system.restaurant.management.dto.CreateTakeawayOrderRequest;
 import com.system.restaurant.management.dto.OrderDto;
 import com.system.restaurant.management.dto.OrderRequestDto;
-import com.system.restaurant.management.dto.TakeawayOrderResponse;
+import com.system.restaurant.management.entity.Order;
 import com.system.restaurant.management.service.OrderService;
 import com.system.restaurant.management.service.ReceptionistService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,9 +25,9 @@ public class OrderController {
     }
 
     @PostMapping
-    public ResponseEntity<TakeawayOrderResponse> createTakeawayOrder(@RequestBody CreateTakeawayOrderRequest request) {
-        TakeawayOrderResponse response = receptionistService.createTakeawayOrder(request);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<OrderRequestDto> placeTakeawayOrder(@RequestBody OrderRequestDto orderDto) {
+        OrderRequestDto savedOrder = receptionistService.placeTakeawayOrder(orderDto);
+        return ResponseEntity.ok(savedOrder);
     }
 
     @GetMapping("/unpaid")

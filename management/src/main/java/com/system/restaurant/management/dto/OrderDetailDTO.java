@@ -1,7 +1,6 @@
 // src/main/java/com/system/restaurant/management/dto/OrderDetailDTO.java
 package com.system.restaurant.management.dto;
 
-import com.system.restaurant.management.entity.OrderDetail;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -16,15 +15,13 @@ public class OrderDetailDTO {
     private String dishName;
     private Integer quantity;
     private BigDecimal unitPrice;
-    private String notes;
 
-    public static OrderDetailDTO fromEntity(OrderDetail detail) {
+    public static OrderDetailDTO fromEntity(com.system.restaurant.management.entity.OrderDetail detail) {
         return new OrderDetailDTO(
                 detail.getOrderDetailId(),
-                detail.getDish().getDishName(),   // sẽ không NPE nữa
+                detail.getDish().getDishName(),
                 detail.getQuantity(),
-                detail.getUnitPrice(),
-                detail.getNotes()
+                detail.getUnitPrice()
         );
     }
 }

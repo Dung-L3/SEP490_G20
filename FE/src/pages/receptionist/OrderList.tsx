@@ -24,7 +24,7 @@ const OrderList: React.FC = () => {
 
   // Load dữ liệu từ API
   useEffect(() => {
-    fetch('/api/receptionist/orders/unpaid', {
+    fetch('http://localhost:8080/api/receptionist/orders/unpaid', {
       credentials: 'include',
     })
       .then(res =>
