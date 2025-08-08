@@ -1,5 +1,5 @@
 export interface ComboDTO {
-  id: number;
+  comboId: number;
   comboName: string;
   description: string;
   price: number;
