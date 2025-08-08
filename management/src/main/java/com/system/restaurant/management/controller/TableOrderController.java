@@ -3,7 +3,7 @@ package com.system.restaurant.management.controller;
 import com.system.restaurant.management.dto.TableOrderRequest;
 import com.system.restaurant.management.dto.TableOrderResponse;
 import com.system.restaurant.management.entity.Order;
-import com.system.restaurant.management.service.OrderService;
+import com.system.restaurant.management.service.WaiterService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -16,42 +16,39 @@ import java.util.List;
 @RequestMapping("/api/tables")
 @RequiredArgsConstructor
 public class TableOrderController {
-    private final OrderService orderService;
+    private final WaiterService waiterService;
     // get all orders
-    @GetMapping("/{tableId}/active-orders")
+    @GetMapping("/{tableId}/active-orders") 
     public ResponseEntity<List<Order>> getActiveOrdersByTable(@PathVariable Integer tableId) {
-        // Status 1 = Pending, 2 = Processing
-        List<Integer> activeStatuses = Arrays.asList(1, 2);
-        List<Order> activeOrders = orderService.getOrdersByTableAndStatuses(tableId, activeStatuses);
-        return ResponseEntity.ok(activeOrders);
+        return ResponseEntity.ok(waiterService.getActiveOrdersByTable(tableId));
     }
-    // get all orders
+
     @PostMapping("/{tableId}/orders")
     public ResponseEntity<TableOrderResponse> addTableOrderItem(
             @PathVariable Integer tableId,
             @Valid @RequestBody TableOrderRequest request) {
         request.setTableId(tableId);
-        return ResponseEntity.ok(orderService.addTableOrderItem(request));
+        return ResponseEntity.ok(waiterService.addTableOrderItem(request));
     }
-    //update an existing order item
+
     @PutMapping("/{tableId}/orders/items/{dishId}")
     public ResponseEntity<TableOrderResponse> updateTableOrderItem(
             @PathVariable Integer tableId,
             @PathVariable Integer dishId,
             @RequestParam Integer quantity) {
-        return ResponseEntity.ok(orderService.updateTableOrderItem(tableId, dishId, quantity));
+        return ResponseEntity.ok(waiterService.updateTableOrderItem(tableId, dishId, quantity));
     }
-    //remove an order item
+
     @DeleteMapping("/{tableId}/orders/items/{dishId}")
     public ResponseEntity<TableOrderResponse> removeTableOrderItem(
             @PathVariable Integer tableId,
             @PathVariable Integer dishId) {
-        return ResponseEntity.ok(orderService.removeTableOrderItem(tableId, dishId));
+        return ResponseEntity.ok(waiterService.removeTableOrderItem(tableId, dishId));
     }
-    // cancel all orders
+
     @DeleteMapping("/{tableId}/orders")
     public ResponseEntity<Void> cancelTableOrder(@PathVariable Integer tableId) {
-        orderService.cancelTableOrder(tableId);
+        waiterService.cancelTableOrder(tableId);
         return ResponseEntity.ok().build();
     }
 }

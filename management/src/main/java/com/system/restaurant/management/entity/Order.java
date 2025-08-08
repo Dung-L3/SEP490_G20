@@ -44,9 +44,6 @@ public class Order {
     @Column(name = "TableID")
     private Integer tableId;
 
-    @Column(name = "TableGroupID")
-    private Integer tableGroupId;
-
     @Column(name = "CreatedAt", nullable = false)
     private LocalDateTime createdAt;
 

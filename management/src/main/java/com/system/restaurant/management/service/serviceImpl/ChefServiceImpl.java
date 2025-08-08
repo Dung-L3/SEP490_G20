@@ -137,8 +137,6 @@ public class ChefServiceImpl {
                         } else {
                             tableNumber = "Bàn " + detail.getOrder().getTableId();
                         }
-                    } else if (detail.getOrder().getTableGroupId() != null) {
-                        tableNumber = "Bàn ghép " + detail.getOrder().getTableGroupId();
                     }
                 }
                 orderMap.put("tableNumber", tableNumber);

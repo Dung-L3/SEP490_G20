@@ -10,10 +10,10 @@ import java.util.List;
 @Repository
 public interface ManageTableRepository extends JpaRepository<RestaurantTable, Integer> {
 
-    @Query("SELECT DISTINCT t.tableType FROM RestaurantTable t WHERE t.tableType IS NOT NULL")
-    List<String> findDistinctTableTypes();
+//    @Query("SELECT DISTINCT t.tableType FROM RestaurantTable t WHERE t.tableType IS NOT NULL")
+//    List<String> findDistinctTableTypes();
 
-    List<RestaurantTable> findByTableType(String tableType);
+    //List<RestaurantTable> findByTableType(String tableType);
     List<RestaurantTable> findByStatus(String status);
     List<RestaurantTable> findByAreaId(Integer areaId);
 }

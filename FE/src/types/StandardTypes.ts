@@ -24,7 +24,7 @@ export const convertDishToStandardMenuItem = (dish: any): StandardMenuItem => ({
   name: dish.dishName || dish.name,
   price: dish.price,
   image: dish.imageUrl || dish.image || '/placeholder-dish.jpg',
-  status: dish.status,
+  status: dish.isActive ?? true,
   categoryId: dish.categoryId,
   unit: dish.unit,
   dishId: dish.dishId,
@@ -36,5 +36,5 @@ export const convertOrderApiMenuItemToStandard = (item: any): StandardMenuItem =
   name: item.name,
   price: item.price,
   image: item.image,
-  status: item.status
+  status: item.status === 'AVAILABLE'
 });

@@ -31,9 +31,6 @@ public class RestaurantTable {
     @Column(name = "AreaID", nullable = false)
     private Integer areaId;
 
-    @Column(name = "TableType", length = 50)
-    private String tableType;
-
     @Column(name = "Status", length = 20, nullable = false)
     private String status;
 

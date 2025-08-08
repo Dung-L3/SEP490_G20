@@ -8,10 +8,10 @@ import java.util.List;
 
 @Data
 public class TableOrderRequest {
+    @NotNull(message = "Table ID is required")
     private Integer tableId;
-    private Integer tableGroupId;
     private List<OrderItem> items;
-    private String orderType;
+    private String orderType = "DINE_IN";
 
     @Data
     public static class OrderItem {

@@ -2,7 +2,6 @@ export interface Table {
   tableId: number;
   tableName: string;
   areaId: number;
-  tableType: string;
   status: string;
   isWindow: boolean;
   notes: string;

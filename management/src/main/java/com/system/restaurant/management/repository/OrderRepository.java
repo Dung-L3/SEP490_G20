@@ -39,23 +39,5 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
     @Query("SELECT o FROM Order o WHERE o.tableId = :tableId AND o.statusId IN (1, 2)")
     Optional<Order> findActiveOrderByTableId(@Param("tableId") Integer tableId);
 
-    // Methods for table group orders
-    @Query("SELECT o FROM Order o WHERE o.tableGroupId = :tableGroupId AND o.statusId IN :statusIds")
-    List<Order> findByTableGroupIdAndStatusIdIn(@Param("tableGroupId") Integer tableGroupId, @Param("statusIds") List<Integer> statusIds);
 
-    @Query("SELECT o FROM Order o WHERE o.tableGroupId = :tableGroupId")
-    List<Order> findByTableGroupId(@Param("tableGroupId") Integer tableGroupId);
-
-    @Query("SELECT o FROM Order o WHERE o.tableGroupId = :tableGroupId AND o.statusId IN (1, 2)")
-    Optional<Order> findActiveOrderByTableGroupId(@Param("tableGroupId") Integer tableGroupId);
-
-    // Update orders to set tableGroupId when merging tables
-    @Modifying
-    @Query("UPDATE Order o SET o.tableGroupId = :tableGroupId WHERE o.tableId IN :tableIds AND o.statusId IN (1, 2)")
-    void updateOrdersWithTableGroupId(@Param("tableGroupId") Integer tableGroupId, @Param("tableIds") List<Integer> tableIds);
-
-    // Transfer orders from group back to primary table when splitting
-    @Modifying
-    @Query("UPDATE Order o SET o.tableGroupId = null, o.tableId = :primaryTableId WHERE o.tableGroupId = :groupId")
-    void updateOrdersFromGroupToTable(@Param("groupId") Integer groupId, @Param("primaryTableId") Integer primaryTableId);
 }

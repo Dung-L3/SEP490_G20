@@ -1,11 +1,7 @@
 package com.system.restaurant.management.controller;
 
-import com.system.restaurant.management.dto.TableGroupRequest;
-import com.system.restaurant.management.dto.MergedTableDTO;
 import com.system.restaurant.management.entity.RestaurantTable;
-import com.system.restaurant.management.entity.TableGroup;
 import com.system.restaurant.management.service.ManageTableService;
-import com.system.restaurant.management.dto.request.TableStatusRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -48,29 +44,21 @@ public class ManageTableController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("getAllTypes")
-    public ResponseEntity<List<String>> getAllTypes() {
-        return ResponseEntity.ok(manageTableService.getAllTableTypes());
-    }
 
-    @GetMapping("/getByTableType/{type}")
-    public ResponseEntity<List<RestaurantTable>> getByType(@PathVariable String type) {
-        return ResponseEntity.ok(manageTableService.getByTableType(type));
-    }
 
     // Additional table management endpoints
-    @PutMapping("/{id}/status")
-    public ResponseEntity<RestaurantTable> updateTableStatus(@PathVariable Integer id,
-                                                             @RequestBody TableStatusRequest request) {
-        try {
-            System.out.println("Updating table " + id + " to status: " + request.getStatus());
-            RestaurantTable updatedTable = manageTableService.updateTableStatus(id, request.getStatus());
-            return ResponseEntity.ok(updatedTable);
-        } catch (Exception e) {
-            System.err.println("Error updating table status: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
-        }
-    }
+//    @PutMapping("/{id}/status")
+//    public ResponseEntity<RestaurantTable> updateTableStatus(@PathVariable Integer id,
+//                                                             @RequestBody TableStatusRequest request) {
+//        try {
+//            System.out.println("Updating table " + id + " to status: " + request.getStatus());
+//            RestaurantTable updatedTable = manageTableService.updateTableStatus(id, request.getStatus());
+//            return ResponseEntity.ok(updatedTable);
+//        } catch (Exception e) {
+//            System.err.println("Error updating table status: " + e.getMessage());
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+//        }
+//    }
 
     @GetMapping("/available")
     public ResponseEntity<List<RestaurantTable>> getAvailableTables() {
@@ -90,53 +78,7 @@ public class ManageTableController {
         return ResponseEntity.ok(tables);
     }
 
-    @PostMapping("/split")
-    public ResponseEntity<TableGroup> splitTable(@RequestBody TableGroupRequest request) {
-        TableGroup tableGroup = manageTableService.splitTable(request.getTableIds(), request.getCreatedBy(), request.getNotes());
-        return ResponseEntity.status(HttpStatus.CREATED).body(tableGroup);
-    }
 
-    @PostMapping("/merge")
-    public ResponseEntity<TableGroup> mergeTable(@RequestBody TableGroupRequest request) {
-        TableGroup tableGroup = manageTableService.mergeTable(request.getTableIds(), request.getCreatedBy(), request.getNotes());
-        return ResponseEntity.status(HttpStatus.CREATED).body(tableGroup);
-    }
-
-    @PostMapping("/group")
-    public ResponseEntity<TableGroup> createTableGroup(@RequestBody TableGroupRequest request) {
-        TableGroup tableGroup = manageTableService.createTableGroup(request.getTableIds(), request.getCreatedBy(), request.getNotes());
-        return ResponseEntity.status(HttpStatus.CREATED).body(tableGroup);
-    }
-
-    @DeleteMapping("/group/{groupId}")
-    public ResponseEntity<Void> disbandTableGroup(@PathVariable Integer groupId) {
-        manageTableService.disbandTableGroup(groupId);
-        return ResponseEntity.noContent().build();
-    }
-
-    @GetMapping("/group/{groupId}/tables")
-    public ResponseEntity<List<RestaurantTable>> getTablesInGroup(@PathVariable Integer groupId) {
-        List<RestaurantTable> tables = manageTableService.getTablesInGroup(groupId);
-        return ResponseEntity.ok(tables);
-    }
-
-    @GetMapping("/merged")
-    public ResponseEntity<List<MergedTableDTO>> getAllMergedTables() {
-        List<MergedTableDTO> mergedTables = manageTableService.getAllMergedTables();
-        return ResponseEntity.ok(mergedTables);
-    }
-
-    @GetMapping("/merged/{groupId}")
-    public ResponseEntity<MergedTableDTO> getMergedTableInfo(@PathVariable Integer groupId) {
-        MergedTableDTO mergedTable = manageTableService.getMergedTableInfo(groupId);
-        return ResponseEntity.ok(mergedTable);
-    }
-
-    @GetMapping("/for-order")
-    public ResponseEntity<List<Object>> getTablesForOrder() {
-        List<Object> tables = manageTableService.getTablesForOrder();
-        return ResponseEntity.ok(tables);
-    }
     @PostMapping("/initialize-reserved")
     public ResponseEntity<Void> initializeReservedTables() {
         manageTableService.initializeReservedTables();

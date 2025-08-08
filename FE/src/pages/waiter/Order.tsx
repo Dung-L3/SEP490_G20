@@ -10,8 +10,7 @@ import {
   createOrder, 
   updateTableStatus, 
   fetchOrderStatus,
-  fetchOrderItems,
-  fetchOrderItemsForMergedTable
+  fetchOrderItems
 } from '../../api/orderApi.ts';
 
 const Order: React.FC = () => {
@@ -77,21 +76,13 @@ const Order: React.FC = () => {
         const selectedTable = tableList.find(table => table.name === currentTable);
         if (!selectedTable) return;
 
-        let activeOrders: MenuItem[];
+        const tableId = typeof selectedTable.id === 'string' 
+          ? parseInt(selectedTable.id) 
+          : selectedTable.id;
+          
+        const activeOrders = await fetchOrderItems(tableId);
         
-        if (selectedTable.type === 'merged') {
-          // For merged tables, use groupId and special API
-          activeOrders = await fetchOrderItemsForMergedTable(selectedTable.groupId!);
-        } else {
-          // For individual tables, convert id to number
-          const tableId = typeof selectedTable.id === 'string' 
-            ? parseInt(selectedTable.id) 
-            : selectedTable.id;
-          activeOrders = await fetchOrderItems(tableId);
-        }
-
         if (activeOrders && activeOrders.length > 0) {
-          // Thêm các món từ đơn hàng hiện tại vào giỏ hàng với type conversion
           clearCart();
           activeOrders.forEach(item => {
             const standardItem = convertMenuItemToStandard({
@@ -403,19 +394,13 @@ const Order: React.FC = () => {
                         return;
                       }
                       
-                      if (selectedTable.status !== 'OCCUPIED' && selectedTable.status !== 'MERGED') {
+                      if (selectedTable.status !== 'OCCUPIED') {
                         try {
-                          // Convert id to number for updateTableStatus
-                          const numericId = typeof selectedTable.id === 'string' 
-                            ? parseInt(selectedTable.id.replace('group_', '')) 
+                          const tableId = typeof selectedTable.id === 'string' 
+                            ? parseInt(selectedTable.id) 
                             : selectedTable.id;
                           
-                          // Only update status for individual tables, not merged tables
-                          if (selectedTable.type !== 'merged') {
-                            await updateTableStatus(numericId, 'OCCUPIED');
-                          }
-                          
-                          // Refresh table list after status update
+                          await updateTableStatus(tableId, 'OCCUPIED');
                           const updatedTables = await fetchOccupiedTables();
                           setTableList(updatedTables);
                         } catch (error) {
@@ -424,26 +409,13 @@ const Order: React.FC = () => {
                           return;
                         }
                       }
-                      
-                      // Handle both individual and merged tables
-                      let tableId: number | undefined;
-                      let tableGroupId: number | undefined;
-                      
-                      if (selectedTable.type === 'merged') {
-                        tableGroupId = selectedTable.groupId;
-                        tableId = undefined;
-                      } else {
-                        // Convert string/number id to number for individual tables
-                        const numericId = typeof selectedTable.id === 'string' 
-                          ? parseInt(selectedTable.id) 
-                          : selectedTable.id;
-                        tableId = numericId;
-                        tableGroupId = undefined;
-                      }
+
+                      const tableId = typeof selectedTable.id === 'string' 
+                        ? parseInt(selectedTable.id) 
+                        : selectedTable.id;
 
                       const orderData = {
-                        ...(tableId && { tableId }),
-                        ...(tableGroupId && { tableGroupId }),
+                        tableId,
                         items: cart.map(item => ({
                           dishId: item.id,
                           quantity: item.quantity || 1,
