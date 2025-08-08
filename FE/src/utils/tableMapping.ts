@@ -1,48 +1,34 @@
-import type { Table as ApiTable } from '../types/Table';
+import { Table as ApiTable } from '../types/Table';
 
 export interface UiTable {
   id: number;
   name: string;
+  x: number;
+  y: number;
   status: string;
-  capacity: number;
-  areaId?: number;
-  type?: string;
-  groupId?: number;
+  capacity?: number;
+  estimatedTime?: string;
+  areaId: number;
+  isWindow: boolean;
+  notes: string;
+  type: string;
 }
 
-export const mapApiTableToUiTable = (apiTable: any): UiTable => {
+export const mapApiTableToUiTable = (apiTable: ApiTable): UiTable => {
   return {
-    id: apiTable.tableId || apiTable.id,
-    name: apiTable.tableName || apiTable.name || `Table ${apiTable.tableId || apiTable.id}`,
-    status: apiTable.status || 'AVAILABLE',
-    capacity: apiTable.capacity || 4,
-    areaId: apiTable.areaId || 1,
-    type: apiTable.type || 'individual',
-    groupId: apiTable.groupId
-  };
-};
-
-export const mapApiTableToUiTableFixed = (apiTable: any): UiTable => {
-  // Enhanced mapping with better status handling
-  let displayStatus = apiTable.status || 'AVAILABLE';
-  
-  // Normalize status values
-  if (displayStatus === 'Available' || displayStatus === 'AVAILABLE') {
-    displayStatus = 'Available';
-  } else if (displayStatus === 'Occupied' || displayStatus === 'OCCUPIED') {
-    displayStatus = 'Occupied';
-  } else if (displayStatus === 'Reserved' || displayStatus === 'RESERVED') {
-    displayStatus = 'Reserved';
-  }
-
-  return {
-    id: apiTable.tableId || apiTable.id,
-    name: apiTable.tableName || apiTable.name || `Bàn ${apiTable.tableId || apiTable.id}`,
-    status: displayStatus,
-    capacity: apiTable.capacity || 4,
-    areaId: apiTable.areaId || 1,
-    type: apiTable.type || 'individual',
-    groupId: apiTable.groupId
+    id: apiTable.tableId,
+    name: apiTable.tableName,
+    x: 0, // These will need to be persisted in the backend
+    y: 0, // These will need to be persisted in the backend
+    status: apiTable.status,
+    capacity: Number(apiTable.tableType.split(' ')[0]) || undefined,
+    estimatedTime: apiTable.notes.includes('Khách đến lúc') 
+      ? apiTable.notes.split('Khách đến lúc ')[1] 
+      : undefined,
+    areaId: apiTable.areaId,
+    isWindow: apiTable.isWindow,
+    notes: apiTable.notes,
+    type: apiTable.tableType
   };
 };
 
