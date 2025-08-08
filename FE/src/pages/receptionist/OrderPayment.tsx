@@ -35,12 +35,12 @@ export default function OrderPayment() {
   useEffect(() => {
     setLoading(true);
     const detailsFetch = fetch(
-      `http://localhost:8080/api/orders/${orderId}/details`,
+      `/api/orders/${orderId}/details`,
       { credentials: 'include' }
     ).then(res => res.ok ? res.json() : Promise.reject('Không lấy được chi tiết đơn'));
 
     const summaryFetch = fetch(
-      `http://localhost:8080/api/receptionist/orders/${orderId}`,
+      `/api/receptionist/orders/${orderId}`,
       { credentials: 'include' }
     ).then(res => res.ok ? res.json() : Promise.reject('Không lấy được thông tin đơn'));
 
@@ -58,7 +58,7 @@ const handleConfirm = () => {
   setConfirming(true);
 
   fetch(
-    `http://localhost:8080/api/waiter/orders/${orderId}/payment`,
+    `/api/waiter/orders/${orderId}/payment`,
     {
       method: 'POST',
       credentials: 'include',
@@ -69,7 +69,7 @@ const handleConfirm = () => {
     .then(res => {
       if (!res.ok) throw new Error('Xác nhận thất bại');
       // 1. Mở tab mới tải/in PDF
-      const pdfUrl = `http://localhost:8080/api/receptionist/${orderId}/invoice.pdf`;
+      const pdfUrl = `/api/receptionist/${orderId}/invoice.pdf`;
       window.open(pdfUrl, '_blank');
       return res.json();
     })

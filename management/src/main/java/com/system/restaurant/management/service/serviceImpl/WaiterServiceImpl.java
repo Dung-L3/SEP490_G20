@@ -365,7 +365,7 @@ public class WaiterServiceImpl implements WaiterService {
 
         if ("DINEIN".equalsIgnoreCase(order.getOrderType()) && order.getTable() != null) {
             RestaurantTable table = order.getTable();
-            table.setStatus("FREE");
+            table.setStatus(RestaurantTable.Status.AVAILABLE);
             restaurantTableRepository.save(table);
         }
 

@@ -59,6 +59,7 @@ public class ReservationController {
         List<Reservation> reservations = reservationService.getTodayReservations();
         return ResponseEntity.ok(reservations);
     }
+
     @PatchMapping("/{reservationId}/confirm")
     public ResponseEntity<Reservation> confirmReservation(
             @PathVariable Integer reservationId) {
