@@ -43,8 +43,8 @@ const TaskbarReceptionist = () => {
         }}
         onMouseOver={e => (e.currentTarget.style.background = '#e5e7eb')}
         onMouseOut={e => (e.currentTarget.style.background = 'none')}
-        onClick={() => navigate('/manager/table')}
-      >Quản lý bàn</button>
+        onClick={() => navigate('/receptionist/reservations')}
+      >Quản lý đặt bàn</button>
       <button
         style={{
           background: 'none',

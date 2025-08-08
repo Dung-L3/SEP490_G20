@@ -29,5 +29,4 @@ public class Notification {
     @Column(name = "Notes", length = 255)
     private String notes;
 
-
 }

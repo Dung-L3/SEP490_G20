@@ -1,11 +1,21 @@
 import React, { createContext, useContext, useState } from 'react';
+import type { MenuItem } from '../pages/waiter/Order';
 
-// Định nghĩa kiểu dữ liệu cho món ăn
+// Định nghĩa kiểu dữ liệu cho món ăn hoặc combo trong giỏ hàng
 export interface CartItem {
+  id: number;
   name: string;
   price: number;
-  image: string;
   quantity: number;
+  image?: string;
+  orderDetailId?: number;
+  orderStatus?: 'pending' | 'cooking' | 'completed';
+  isCombo?: boolean;
+  comboItems?: Array<{
+    dishId: number;
+    dishName: string;
+    quantity: number;
+  }>;
 }
 
 interface CartContextType {

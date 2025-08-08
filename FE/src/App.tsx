@@ -26,6 +26,12 @@ import ReceptionistHome from './pages/receptionist/ReceptionistHome';
 import Chef from './pages/chef/Chef';
 import QRMenu from './pages/QRMenu';
 import QRCodeManager from './pages/manager/QRCodeManager';
+import ReservationList from './pages/receptionist/ReservationList';
+import ForgotPassword from './pages/ForgotPassword';
+import VerifyOtp      from './pages/VerifyOtp';
+import ResetPassword  from './pages/ResetPassword';
+import TakeawayOrder from './pages/receptionist/TakeawayOrder';
+import ComboManager from './pages/manager/ComboManager';
 
 function App() {
   return (
@@ -47,10 +53,13 @@ function App() {
             <Route path="/manager/staff" element={<StaffManager />} /> {/* Route cho trang Quản lý nhân sự */}
             <Route path="/manager/workshift" element={<WorkshiftManager />} /> {/* Route cho trang Quản lý ca làm việc */}
             <Route path="/manager/dish" element={<DishManager />} /> {/* Route cho trang Quản lý món ăn */}
+            <Route path="/manager/combo" element={<ComboManager />} /> {/* Route cho trang Quản lý combo */}
             <Route path="/manager/order" element={<OrderManager />} /> {/* Route cho trang Quản lý đơn hàng */}
             <Route path="/manager/report" element={<ReportManager />} /> {/* Route cho trang Báo cáo */}
             <Route path="/manager/purchase-history" element={<PurchaseHistoryManager />} /> {/* Route cho trang Lịch sử mua hàng */}
-
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/verify-otp"    element={<VerifyOtp/>}     />
+            <Route path="/reset-password" element={<ResetPassword/>}  />
           <Route path="/waiter/orders" element={<WaiterOrder />} /> {/* Route cho waiter đặt món */}
           <Route path="/waiter/tables" element={<WaiterTableView />} /> {/* Route cho waiter xem bàn */}
           <Route path="/chef" element={<Chef />} /> {/* Route cho trang Chef (bếp trưởng) */}
@@ -58,8 +67,13 @@ function App() {
           {/* QR Menu Routes */}
           <Route path="/menu/:tableId" element={<QRMenu />} /> {/* Route cho trang QR menu khách hàng */}
           <Route path="/qr-manager" element={<QRCodeManager />} /> {/* Route cho trang quản lý QR codes */}
-          
+
           {/* Receptionist Routes */}
+            <Route path="/receptionist/orders/uppaid" element={<OrderList />} /> {/* Route cho trang xử lý thanh toán của order */}
+            <Route path="/receptionist/:orderId/payment" element={<OrderPayment />} />
+            <Route path="/receptionist"element={<ReceptionistHome/>} />
+            <Route path="/receptionist/reservations"element={<ReservationList/>} />
+              <Route path="/receptionist/takeaway" element={<TakeawayOrder />} /> {/* Route cho trang đơn hàng mang đi */}
           <Route path="/receptionist" element={<ReceptionistHome />} />
           <Route path="/receptionist/orders" element={<OrderList />} />
           <Route path="/receptionist/payment" element={<OrderPayment />} />

@@ -1,6 +1,7 @@
 package com.system.restaurant.management.repository;
 
 import com.system.restaurant.management.entity.OrderDetail;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -27,6 +28,7 @@ public interface OrderDetailRepository extends JpaRepository<OrderDetail, Intege
            "WHERE od.orderDetailId = :id")
     Optional<OrderDetail> findByIdWithDetails(Integer id);
 
+    @EntityGraph(attributePaths = {"dish"})
     List<OrderDetail> findByOrderId(Integer orderId);
     Optional<OrderDetail> findByOrderIdAndDishId(Integer orderId, Integer dishId);
     

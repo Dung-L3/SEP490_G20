@@ -24,7 +24,7 @@ const OrderList: React.FC = () => {
 
   // Load dữ liệu từ API
   useEffect(() => {
-    fetch('http://localhost:8080/api/receptionist/orders/unpaid', {
+    fetch('/api/receptionist/orders/unpaid', {
       credentials: 'include',
     })
       .then(res =>
@@ -161,7 +161,7 @@ const OrderList: React.FC = () => {
             <select
               value={modalPaymentMethod}
               onChange={e =>
-                setModalPaymentMethod(e.target.value as any)
+                setModalPaymentMethod(e.target.value as 'cash' | 'card' | 'bankTransfer')
               }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-6"
             >
@@ -170,8 +170,7 @@ const OrderList: React.FC = () => {
               <option value="bankTransfer">Bank Transfer</option>
             </select>
             <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setModalOpen(false)}
+              <button                onClick={() => setModalOpen(false)}
                 className="px-4 py-2 border rounded-lg"
               >
                 Huỷ
