@@ -37,11 +37,4 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 
     @Query("SELECT o FROM Order o WHERE o.tableId = :tableId AND o.statusId IN (1, 2)")
     Optional<Order> findActiveOrderByTableId(@Param("tableId") Integer tableId);
-
-    @EntityGraph(attributePaths = {
-            "orderDetails",
-            "orderDetails.dish"
-    })
-    Optional<Order> findWithDetailsAndDishByOrderId(Integer orderId);
-    List<Order> findByOrderTypeAndStatusId(String orderType, Integer statusId);
 }

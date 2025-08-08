@@ -30,41 +30,40 @@ public class ShiftAttendanceServiceImpl implements ShiftAttendanceService {
     private final UserRepository userRepository;
 
     @Override
-    public List<ShiftAttendanceDTO> getAllShiftAttendances() {
-        List<WorkShift> shifts = workShiftRepository.findAll();
+    public List<ShiftAttendanceDTO> getShiftAttendances(
+            Integer userId,
+            LocalDate fromDate,
+            LocalDate toDate
+    ) {
+        List<WorkShift> shifts = workShiftRepository.findByUser_IdAndShiftDateBetween(
+                userId, fromDate, toDate
+        );
+        LocalDateTime startOfDay = fromDate.atStartOfDay();
+        LocalDateTime endOfDay   = toDate.plusDays(1).atStartOfDay();
+        List<AttendanceRecord> records = attendanceRecordRepository.findByUser_IdAndClockInBetween(
+                userId, startOfDay, endOfDay
+        );
 
-        List<AttendanceRecord> records = attendanceRecordRepository.findAll();
-
-        Map<String, AttendanceRecord> recordMap = new HashMap<>();
-        for (AttendanceRecord ar : records) {
-            String key = ar.getUser().getId() + "_" + ar.getClockIn().toLocalDate();
-            recordMap.putIfAbsent(key, ar);
+        Map<LocalDate, AttendanceRecord> recordMap = new HashMap<>();
+        for (AttendanceRecord rec : records) {
+            LocalDate date = rec.getClockIn().toLocalDate();
+            recordMap.putIfAbsent(date, rec);
         }
 
         List<ShiftAttendanceDTO> result = new ArrayList<>();
         for (WorkShift ws : shifts) {
-            String key = ws.getUser().getId() + "_" + ws.getShiftDate();
-            AttendanceRecord ar = recordMap.get(key);
-
-            LocalDateTime in  = ar != null ? ar.getClockIn() : null;
-            LocalDateTime out = ar != null ? ar.getClockOut(): null;
-
-            result.add(new ShiftAttendanceDTO(
-                    ws.getShiftId(),
+            AttendanceRecord ar = recordMap.get(ws.getShiftDate());
+            ShiftAttendanceDTO dto = new ShiftAttendanceDTO(
                     ws.getShiftDate(),
                     ws.getStartTime(),
                     ws.getEndTime(),
-                    in,
-                    out,
-                    ws.getIsOverNight(),
-                    ws.getUser().getUsername()
-            ));
+                    ar != null ? ar.getClockIn()  : null,
+                    ar != null ? ar.getClockOut() : null
+            );
+            result.add(dto);
         }
-
         return result;
     }
-
-
 
     @Override
     @Transactional
