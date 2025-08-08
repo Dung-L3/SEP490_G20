@@ -1,6 +1,7 @@
 package com.system.restaurant.management.repository;
 
 import com.system.restaurant.management.entity.Order;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

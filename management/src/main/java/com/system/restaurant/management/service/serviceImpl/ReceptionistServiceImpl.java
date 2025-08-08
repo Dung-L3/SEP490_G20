@@ -1,20 +1,22 @@
 package com.system.restaurant.management.service.serviceImpl;
 
-import com.system.restaurant.management.dto.OrderRequestDto;
-import com.system.restaurant.management.dto.PaymentRequest;
-import com.system.restaurant.management.dto.ReservationRequestDto;
+import com.system.restaurant.management.dto.*;
 import com.system.restaurant.management.entity.*;
 import com.system.restaurant.management.repository.*;
 import com.system.restaurant.management.service.ReceptionistService;
+import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.persistence.PersistenceContext;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.system.restaurant.management.dto.OrderDetailDTO;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -29,8 +31,11 @@ public class ReceptionistServiceImpl implements ReceptionistService {
     private final ReservationRepository reservationRepo;
     private final NotificationRepository notificationRepo;
     private final UserRepository userRepo;
-    private final OrderStatusRepository statusRepo;
-    private final RestaurantTableRepository tableRepo;
+    private final OrderRepository orderRepository;
+    private final OrderDetailRepository orderDetailRepository;
+
+    @PersistenceContext
+    private EntityManager em;
 
     @Override
     @Transactional
@@ -65,6 +70,8 @@ public class ReceptionistServiceImpl implements ReceptionistService {
 
         // nếu dùng @EntityGraph hoặc eager fetch, gọi bình thường
         List<OrderDetail> detailEntities = orderDetailRepository.findByOrderId(saved.getOrderId());
+        // hoặc nếu dùng join fetch JPQL:
+        // List<OrderDetail> detailEntities = orderDetailRepo.findByOrderIdWithDish(saved.getOrderId());
 
         List<OrderDetailDTO> details = orderDetailRepository
                 .findByOrderId(saved.getOrderId())
@@ -80,37 +87,6 @@ public class ReceptionistServiceImpl implements ReceptionistService {
                 .items(details)
                 .subTotal(saved.getSubTotal())
                 .finalTotal(saved.getFinalTotal())
-    public OrderRequestDto placeTakeawayOrder(OrderRequestDto req) {
-        Order o = new Order();
-        o.setOrderType(req.getOrderType());
-        o.setCustomerName(req.getCustomerName());
-        o.setPhone(req.getPhone());
-        o.setSubTotal(req.getSubTotal());
-        o.setDiscountAmount(req.getDiscountAmount());
-        o.setFinalTotal(req.getFinalTotal());
-        o.setNotes(req.getNotes());
-        o.setCreatedAt(LocalDateTime.now());
-        o.setStatus(statusRepo.findByStatusName("Pending").orElseThrow());
-
-        if (req.getTableId() != null) {
-            RestaurantTable t = tableRepo.findById(req.getTableId())
-                    .orElseThrow(EntityNotFoundException::new);
-            o.setTable(t);
-        }
-        o = orderRepo.save(o);
-
-        return OrderRequestDto.builder()
-                .orderId(o.getOrderId())
-                .createdAt(o.getCreatedAt())
-                .status(o.getStatus().getStatusName())
-                .orderType(o.getOrderType())
-                .customerName(o.getCustomerName())
-                .phone(o.getPhone())
-                .subTotal(o.getSubTotal())
-                .discountAmount(o.getDiscountAmount())
-                .finalTotal(o.getFinalTotal())
-                .tableId(o.getTable()!=null ? o.getTable().getTableId() : null)
-                .notes(o.getNotes())
                 .build();
     }
 

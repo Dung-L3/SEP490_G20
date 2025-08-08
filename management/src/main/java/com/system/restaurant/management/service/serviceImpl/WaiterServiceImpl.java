@@ -255,24 +255,24 @@ public class WaiterServiceImpl implements WaiterService {
         return orderRepository.save(order);
     }
 
-    @Override
-    public Order createTakeawayOrder(CreateTakeawayOrderRequest request) {
-        if (request.getCustomerPhone() == null || request.getCustomerPhone().trim().isEmpty()) {
-            throw new IllegalArgumentException("Số điện thoại khách hàng là bắt buộc cho đơn mang đi");
-        }
-        if (request.getCustomerName() == null || request.getCustomerName().trim().isEmpty()) {
-            throw new IllegalArgumentException("Tên khách hàng là bắt buộc cho đơn mang đi");
-        }
-
-        CreateOrderRequest orderRequest = new CreateOrderRequest();
-        orderRequest.setOrderType("TAKEAWAY");
-        orderRequest.setCustomerName(request.getCustomerName());
-        orderRequest.setCustomerPhone(request.getCustomerPhone());
-        orderRequest.setNotes(request.getNotes());
-        orderRequest.setItems(request.getOrderItems());
-
-        return createOrderWithReservationTracking(orderRequest);
-    }
+//    @Override
+//    public Order createTakeawayOrder(CreateTakeawayOrderRequest request) {
+//        if (request.getCustomerPhone() == null || request.getCustomerPhone().trim().isEmpty()) {
+//            throw new IllegalArgumentException("Số điện thoại khách hàng là bắt buộc cho đơn mang đi");
+//        }
+//        if (request.getCustomerName() == null || request.getCustomerName().trim().isEmpty()) {
+//            throw new IllegalArgumentException("Tên khách hàng là bắt buộc cho đơn mang đi");
+//        }
+//
+//        CreateOrderRequest orderRequest = new CreateOrderRequest();
+//        orderRequest.setOrderType("TAKEAWAY");
+//        orderRequest.setCustomerName(request.getCustomerName());
+//        orderRequest.setCustomerPhone(request.getCustomerPhone());
+//        orderRequest.setNotes(request.getNotes());
+//        orderRequest.setItems(request.getOrderItems());
+//
+//        return createOrderWithReservationTracking(orderRequest);
+//    }
 
     @Override
     public CheckInResponse checkInReservation(Integer reservationId, Integer tableId) {
@@ -365,7 +365,7 @@ public class WaiterServiceImpl implements WaiterService {
 
         if ("DINEIN".equalsIgnoreCase(order.getOrderType()) && order.getTable() != null) {
             RestaurantTable table = order.getTable();
-            table.setStatus("FREE");
+            table.setStatus(RestaurantTable.Status.AVAILABLE);
             restaurantTableRepository.save(table);
         }
 
