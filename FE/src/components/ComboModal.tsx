@@ -7,15 +7,15 @@ interface ComboModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (combo: CreateComboRequest) => Promise<void>;
-  combo?: ComboDTO;
   dishes: MenuItem[];
+  initialData?: ComboDTO;
 }
 
 export const ComboModal: React.FC<ComboModalProps> = ({
   isOpen,
   onClose,
   onSave,
-  combo,
+  initialData,
   dishes,
 }) => {
   const [name, setName] = useState('');
@@ -25,18 +25,18 @@ export const ComboModal: React.FC<ComboModalProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (combo) {
-      setName(combo.comboName || '');
-      setDescription(combo.description || '');
-      setPrice(combo.price || 0);
-      setSelectedItems(combo.comboItems || []);
+    if (initialData) {
+      setName(initialData.comboName || '');
+      setDescription(initialData.description || '');
+      setPrice(initialData.price || 0);
+      setSelectedItems(initialData.comboItems || []);
     } else {
       setName('');
       setDescription('');
       setPrice(0);
       setSelectedItems([]);
     }
-  }, [combo]);
+  }, [initialData]);
 
   const handleAddItem = (dishId: number) => {
     const dish = dishes.find(d => d.id === dishId);
@@ -108,7 +108,7 @@ export const ComboModal: React.FC<ComboModalProps> = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg w-full max-w-2xl p-6">
           <h2 className="text-2xl font-bold mb-4">
-          {combo ? 'Chỉnh sửa Combo' : 'Tạo Combo Mới'}
+          {initialData ? 'Chỉnh sửa Combo' : 'Tạo Combo Mới'}
         </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (

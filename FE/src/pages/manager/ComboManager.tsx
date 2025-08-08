@@ -12,6 +12,13 @@ const ComboManager: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedCombo, setSelectedCombo] = useState<ComboDTO | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  const handleComboClick = (combo: ComboDTO) => {
+    setSelectedCombo(combo);
+    setIsEditModalOpen(true);
+  };
 
   const loadCombos = async () => {
     try {
@@ -63,8 +70,27 @@ const ComboManager: React.FC = () => {
     }
   };
 
+  const handleUpdateCombo = async (comboData: CreateComboRequest) => {
+    if (!selectedCombo) return;
+    
+    try {
+      await comboApi.updateCombo(selectedCombo.comboId, {
+        ...comboData,
+        status: true
+      });
+      await loadCombos();
+      setIsEditModalOpen(false);
+      setSelectedCombo(null);
+      setError(null); // Xóa lỗi nếu có
+      alert('Cập nhật combo thành công');
+    } catch (error) {
+      console.error('Error updating combo:', error);
+      setError('Lỗi khi cập nhật combo');
+    }
+  };
+
   const handleDeleteCombo = async (combo: ComboDTO) => {
-    if (!combo?.id) {
+    if (!combo?.comboId) {
       console.error('Missing combo ID:', combo);
       setError('Không thể xóa combo: Thiếu thông tin');
       return;
@@ -74,8 +100,8 @@ const ComboManager: React.FC = () => {
     if (!window.confirm(`Bạn có chắc muốn xóa combo "${combo.comboName}"?`)) return;
     
     try {
-      console.log('Starting delete operation for combo ID:', combo.id, 'name:', combo.comboName);
-      await comboApi.deleteCombo(combo.id, combo.comboName);
+      console.log('Starting delete operation for combo ID:', combo.comboId, 'name:', combo.comboName);
+      await comboApi.deleteCombo(combo.comboId, combo.comboName);
       console.log('Delete operation completed successfully');
       await loadCombos();
       setError(null); // Clear any existing errors after successful deletion
@@ -131,25 +157,36 @@ const ComboManager: React.FC = () => {
         <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
           {combos.map((combo, index) => (
             <div
-              key={`combo-${combo.id || index}`}
-              className="border rounded-lg p-4 bg-white shadow-sm"
+              key={`combo-${combo.comboId || index}`}
+              className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow"
             >
-              <h3 className="text-xl font-semibold mb-2">{combo.comboName}</h3>
-              <p className="text-gray-600 mb-2">{combo.description}</p>
-              <p className="font-bold mb-2">
-                Giá: {combo.price.toLocaleString()}đ
-              </p>
-              <div className="mb-4">
-                <h4 className="font-semibold mb-1">Món ăn trong combo:</h4>
-                <ul className="list-disc list-inside">
-                  {combo.comboItems?.map((item, itemIndex) => (
-                    <li key={`${combo.id}-item-${item.dishId || itemIndex}`}>
-                      {item.dishName} x{item.quantity}
-                    </li>
-                  ))}
-                </ul>
+              <div 
+                className="cursor-pointer hover:bg-gray-50 transition-colors p-2 rounded-lg"
+                onClick={() => handleComboClick(combo)}
+              >
+                <h3 className="text-xl font-semibold mb-2">{combo.comboName}</h3>
+                <p className="text-gray-600 mb-2">{combo.description}</p>
+                <p className="font-bold mb-2">
+                  Giá: {combo.price.toLocaleString()}đ
+                </p>
+                <div className="mb-4">
+                  <h4 className="font-semibold mb-1">Món ăn trong combo:</h4>
+                  <ul className="list-disc list-inside">
+                    {combo.comboItems?.map((item, itemIndex) => (
+                      <li key={`${combo.comboId}-item-${item.dishId || itemIndex}`}>
+                        {item.dishName} x{item.quantity}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
-              <div className="flex justify-end">
+              <div className="flex justify-end space-x-2">
+                <button
+                  onClick={() => handleComboClick(combo)}
+                  className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                >
+                  Sửa
+                </button>
                 <button
                   onClick={() => handleDeleteCombo(combo)}
                   className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
@@ -161,11 +198,24 @@ const ComboManager: React.FC = () => {
           ))}
         </div>
 
+        {/* Modal tạo mới combo */}
         <ComboModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           onSave={handleCreateCombo}
           dishes={dishes}
+        />
+
+        {/* Modal chỉnh sửa combo */}
+        <ComboModal
+          isOpen={isEditModalOpen}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setSelectedCombo(null);
+          }}
+          onSave={handleUpdateCombo}
+          dishes={dishes}
+          initialData={selectedCombo || undefined}
         />
       </div>
     </div>

@@ -146,14 +146,29 @@ const QRMenu: FC = () => {
     try {
       setOrderLoading(true);
       
-      const orderItems = cart.map(item => ({
-        dishId: item.id,
-        quantity: item.quantity,
-        notes: item.notes || '',
-        unitPrice: item.price,
-        isCombo: item.isCombo || false,
-        comboItems: item.comboItems || []
-      }));
+      const orderItems = cart.map(item => {
+        if (item.isCombo) {
+          // Nếu là combo
+          return {
+            dishId: null,
+            comboId: item.id,
+            quantity: item.quantity,
+            notes: item.notes || '',
+            unitPrice: item.price,
+            isCombo: true
+          };
+        } else {
+          // Nếu là món thường
+          return {
+            dishId: item.id,
+            comboId: null,
+            quantity: item.quantity,
+            notes: item.notes || '',
+            unitPrice: item.price,
+            isCombo: false
+          };
+        }
+      });
 
       const orderData = {
         tableId: parseInt(tableId!),
