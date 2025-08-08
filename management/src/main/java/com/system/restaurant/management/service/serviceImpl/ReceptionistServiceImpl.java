@@ -33,6 +33,53 @@ public class ReceptionistServiceImpl implements ReceptionistService {
     private final RestaurantTableRepository tableRepo;
 
     @Override
+    @Transactional
+    public TakeawayOrderResponse createTakeawayOrder(CreateTakeawayOrderRequest req) {
+        BigDecimal subTotal = req.getItems().stream()
+                .map(i -> i.getUnitPrice().multiply(BigDecimal.valueOf(i.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        Order order = Order.builder()
+                .customerName(req.getCustomerName())
+                .phone(req.getPhone())
+                .orderType("TAKEAWAY")
+                .notes(req.getNotes())
+                .subTotal(subTotal)
+                .finalTotal(subTotal)
+                .build();
+
+        Order saved = orderRepo.save(order);
+
+        req.getItems().forEach(i -> {
+            OrderDetail od = new OrderDetail();
+            od.setOrderId(saved.getOrderId());
+            od.setDishId(i.getDishId());
+            od.setQuantity(i.getQuantity());
+            od.setUnitPrice(i.getUnitPrice());
+            od.setNotes(i.getNotes());
+            orderDetailRepository.save(od);
+        });
+
+        em.flush();
+        em.clear();
+
+        // nếu dùng @EntityGraph hoặc eager fetch, gọi bình thường
+        List<OrderDetail> detailEntities = orderDetailRepository.findByOrderId(saved.getOrderId());
+
+        List<OrderDetailDTO> details = orderDetailRepository
+                .findByOrderId(saved.getOrderId())
+                .stream()
+                .map(OrderDetailDTO::fromEntity)
+                .collect(Collectors.toList());
+
+        return TakeawayOrderResponse.builder()
+                .orderId(saved.getOrderId())
+                .customerName(saved.getCustomerName())
+                .phone(saved.getPhone())
+                .notes(saved.getNotes())
+                .items(details)
+                .subTotal(saved.getSubTotal())
+                .finalTotal(saved.getFinalTotal())
     public OrderRequestDto placeTakeawayOrder(OrderRequestDto req) {
         Order o = new Order();
         o.setOrderType(req.getOrderType());
@@ -65,6 +112,48 @@ public class ReceptionistServiceImpl implements ReceptionistService {
                 .tableId(o.getTable()!=null ? o.getTable().getTableId() : null)
                 .notes(o.getNotes())
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TakeawayOrderResponse> getPendingTakeawayOrders() {
+        // Lấy các đơn TAKEAWAY đang statusId = 1 (PENDING)
+        List<Order> orders = orderRepo.findByOrderTypeAndStatusId("TAKEAWAY", 1);
+
+        return orders.stream().map(o -> {
+            // load details có dish (dùng @EntityGraph trong repo của bạn)
+            List<OrderDetailDTO> details = orderDetailRepository.findByOrderId(o.getOrderId())
+                    .stream()
+                    .map(OrderDetailDTO::fromEntity)
+                    .collect(Collectors.toList());
+
+            return TakeawayOrderResponse.builder()
+                    .orderId(o.getOrderId())
+                    .customerName(o.getCustomerName())
+                    .phone(o.getPhone())
+                    .notes(o.getNotes())
+                    .items(details)
+                    .subTotal(o.getSubTotal())
+                    .finalTotal(o.getFinalTotal())
+                    .build();
+        }).collect(Collectors.toList());
+    }
+
+    @Override
+    public void confirmTakeawayOrder(Integer orderId) {
+        Order order = orderRepo.findById(orderId)
+                .orElseThrow(() -> new EntityNotFoundException("Order not found: " + orderId));
+
+        if (!"TAKEAWAY".equalsIgnoreCase(order.getOrderType())) {
+            throw new IllegalStateException("Order " + orderId + " không phải TAKEAWAY");
+        }
+        if (order.getStatusId() != null && order.getStatusId() == 2) {
+            return;
+        }
+
+        // Cập nhật trạng thái: 1 = PENDING, 2 = CONFIRMED (bạn có thể đổi theo bảng status)
+        order.setStatusId(2);
+        orderRepo.save(order);
     }
 
     @Override
