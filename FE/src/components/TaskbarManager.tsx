@@ -151,24 +151,6 @@ const TaskbarManager = () => {
         }}
         onMouseOver={e => (e.currentTarget.style.background = '#e5e7eb')}
         onMouseOut={e => (e.currentTarget.style.background = 'none')}
-        onClick={() => navigate('/manager/combo')}
-      >Quản lý combo</button>
-      <button
-        style={{
-          background: 'none',
-          border: 'none',
-          color: '#111827',
-          fontSize: '16px',
-          padding: '10px 0',
-          textAlign: 'left',
-          width: '100%',
-          cursor: 'pointer',
-          marginBottom: '8px',
-          borderRadius: '4px',
-          transition: 'background 0.2s'
-        }}
-        onMouseOver={e => (e.currentTarget.style.background = '#e5e7eb')}
-        onMouseOut={e => (e.currentTarget.style.background = 'none')}
         onClick={() => navigate('/manager/order')}
       >Quản lý đơn hàng</button>
       <button

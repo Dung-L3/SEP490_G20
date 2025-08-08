@@ -39,6 +39,6 @@ public class WorkShift {
     private String handOverNotes;
 
     @Column(name = "IsOverNight", nullable = true)
-    private Integer isOverNight;
+    private int isOverNight;
 
 }

@@ -41,7 +41,7 @@ public class SystemServiceImpl implements SystemService {
                 .subTotal(BigDecimal.valueOf(0.0))
                 .discountAmount(BigDecimal.valueOf(0.0))
                 .finalTotal(BigDecimal.valueOf(0.0))
-                .issuedBy(0)
+                .issuedBy(null)
                 .issuedAt(LocalDateTime.now())
                 .build();
 

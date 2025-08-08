@@ -11,4 +11,5 @@ public interface SystemService {
     KitchenTicket triggerKitchenTicket(Long orderId);
     void lockReservationEdit(Long reservationId);
     void lockOrderEdit(Long orderId);
+
 }

@@ -37,7 +37,7 @@ export async function registerEmployeeApi(data: RegisterRequest) {
     roleName: data.roleName?.toUpperCase()
   };
 
-  const res = await fetch('http://localhost:8080/api/auth/register/employee', {
+  const res = await fetch('/api/auth/register/employee', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(requestData),

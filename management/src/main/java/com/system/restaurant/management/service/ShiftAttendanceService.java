@@ -9,7 +9,10 @@ import java.time.LocalTime;
 import java.util.List;
 
 public interface ShiftAttendanceService {
-    List<ShiftAttendanceDTO> getAllShiftAttendances(
+    List<ShiftAttendanceDTO> getShiftAttendances(
+            Integer userId,
+            LocalDate fromDate,
+            LocalDate toDate
     );
 
     WorkShift createWorkShift(WorkShiftRequest request);

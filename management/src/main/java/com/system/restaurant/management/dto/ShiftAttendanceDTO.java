@@ -10,12 +10,9 @@ import java.time.LocalTime;
 @Data
 @AllArgsConstructor
 public class ShiftAttendanceDTO {
-    private Integer id;
     private LocalDate shiftDate;
     private LocalTime startTime;
     private LocalTime endTime;
     private LocalDateTime clockIn;
     private LocalDateTime clockOut;
-    private Integer isOverNight;
-    private String username;
 }

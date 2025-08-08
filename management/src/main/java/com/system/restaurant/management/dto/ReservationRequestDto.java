@@ -19,4 +19,5 @@ public class ReservationRequestDto {
     private Integer tableId;
     private LocalDateTime reservationAt;
     private String notes;
+
 }

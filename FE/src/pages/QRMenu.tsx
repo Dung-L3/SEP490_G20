@@ -8,27 +8,17 @@ import { categoryApi, type Category } from '../api/categoryApi';
 import { createOrder, type CreateOrderResponse } from '../api/orderApi';
 import { type UiTable, mapApiTableToUiTable } from '../utils/tableMapping';
 import { Plus, Minus, ShoppingCart } from 'lucide-react';
-import { comboApi, type ComboDTO } from '../api/comboApi';
 
 interface CartItem {
-  id: number;
-  name: string;
-  price: number;
+  dish: Dish;
   quantity: number;
   notes?: string;
-  isCombo?: boolean;
-  comboItems?: Array<{
-    dishId: number;
-    dishName: string;
-    quantity: number;
-  }>;
 }
 
 const QRMenu: FC = () => {
   const { tableId } = useParams();
   const [table, setTable] = useState<UiTable | null>(null);
   const [dishes, setDishes] = useState<Dish[]>([]);
-  const [combos, setCombos] = useState<ComboDTO[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,18 +38,16 @@ const QRMenu: FC = () => {
         setLoading(true);
         
         // Fetch table info, dishes and categories simultaneously
-        const [tableResponse, dishesResponse, categoriesResponse, comboResponse] = await Promise.all([
+        const [tableResponse, dishesResponse, categoriesResponse] = await Promise.all([
           tableApi.getById(parseInt(tableId)),
           dishApi.getByStatus(true), // Only active dishes
-          categoryApi.getAll(),
-          comboApi.getAllCombos()
+          categoryApi.getAll()
         ]);
 
         const uiTable = mapApiTableToUiTable(tableResponse);
         setTable(uiTable);
         setDishes(dishesResponse);
         setCategories(categoriesResponse);
-        setCombos(comboResponse);
       } catch (err) {
         console.error('Lỗi khi tải dữ liệu:', err);
         setError(err instanceof Error ? err.message : 'Không thể tải dữ liệu');
@@ -71,61 +59,38 @@ const QRMenu: FC = () => {
     fetchData();
   }, [tableId]);
 
-  const addToCart = (item: Dish | ComboDTO, isCombo = false) => {
+  const addToCart = (dish: Dish) => {
     setCart(prevCart => {
-      const existingItem = prevCart.find(cartItem => cartItem.id === (isCombo ? (item as ComboDTO).comboId : (item as Dish).dishId));
+      const existingItem = prevCart.find(item => item.dish.dishId === dish.dishId);
       if (existingItem) {
-        return prevCart.map(cartItem =>
-          cartItem.id === (isCombo ? (item as ComboDTO).comboId : (item as Dish).dishId)
-            ? { ...cartItem, quantity: cartItem.quantity + 1 }
-            : cartItem
+        return prevCart.map(item =>
+          item.dish.dishId === dish.dishId
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
         );
       } else {
-        if (isCombo) {
-          const combo = item as ComboDTO;
-          return [...prevCart, {
-            id: combo.comboId,
-            name: combo.comboName,
-            price: combo.price,
-            quantity: 1,
-            isCombo: true,
-            comboItems: combo.comboItems.map(comboItem => ({
-              dishId: comboItem.dishId,
-              dishName: comboItem.dishName || '',
-              quantity: comboItem.quantity
-            }))
-          }];
-        } else {
-          const dish = item as Dish;
-          return [...prevCart, {
-            id: dish.dishId,
-            name: dish.dishName,
-            price: dish.price,
-            quantity: 1,
-            isCombo: false
-          }];
-        }
+        return [...prevCart, { dish, quantity: 1 }];
       }
     });
   };
 
-  const removeFromCart = (itemId: number) => {
+  const removeFromCart = (dishId: number) => {
     setCart(prevCart => {
       return prevCart.map(item =>
-        item.id === itemId
+        item.dish.dishId === dishId
           ? { ...item, quantity: Math.max(0, item.quantity - 1) }
           : item
       ).filter(item => item.quantity > 0);
     });
   };
 
-  const getItemQuantity = (itemId: number) => {
-    const item = cart.find(item => item.id === itemId);
+  const getItemQuantity = (dishId: number) => {
+    const item = cart.find(item => item.dish.dishId === dishId);
     return item ? item.quantity : 0;
   };
 
   const getTotalAmount = () => {
-    return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+    return cart.reduce((total, item) => total + (item.dish.price * item.quantity), 0);
   };
 
   const getTotalItems = () => {
@@ -146,29 +111,12 @@ const QRMenu: FC = () => {
     try {
       setOrderLoading(true);
       
-      const orderItems = cart.map(item => {
-        if (item.isCombo) {
-          // Nếu là combo
-          return {
-            dishId: null,
-            comboId: item.id,
-            quantity: item.quantity,
-            notes: item.notes || '',
-            unitPrice: item.price,
-            isCombo: true
-          };
-        } else {
-          // Nếu là món thường
-          return {
-            dishId: item.id,
-            comboId: null,
-            quantity: item.quantity,
-            notes: item.notes || '',
-            unitPrice: item.price,
-            isCombo: false
-          };
-        }
-      });
+      const orderItems = cart.map(item => ({
+        dishId: item.dish.dishId,
+        quantity: item.quantity,
+        notes: item.notes || '',
+        unitPrice: item.dish.price
+      }));
 
       const orderData = {
         tableId: parseInt(tableId!),
@@ -243,72 +191,8 @@ const QRMenu: FC = () => {
           </div>
         </div>
 
-        {/* Combo Section */}
-        {combos.length > 0 && (
-          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-            <h2 className="text-xl font-semibold mb-4 flex items-center">
-              <svg className="w-6 h-6 mr-2 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-              </svg>
-              Combo đặc biệt
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {combos.map((combo) => (
-                <div key={combo.comboId} className="border-2 border-yellow-100 rounded-lg p-4 hover:shadow-md transition-shadow">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-medium text-gray-900">{combo.comboName}</h3>
-                    <span className="text-lg font-bold text-yellow-600">
-                      {combo.price.toLocaleString()}đ
-                    </span>
-                  </div>
-                  
-                  <div className="bg-yellow-50 rounded-lg p-3 mb-3">
-                    <p className="text-sm text-gray-600 mb-2">{combo.description}</p>
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-700 mb-1">Bao gồm:</h4>
-                      <ul className="space-y-1">
-                        {combo.comboItems.map((item, index) => (
-                          <li key={index} className="text-sm text-gray-600 flex items-center">
-                            <svg className="w-3 h-3 mr-1 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                            {item.dishName} x{item.quantity}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => removeFromCart(combo.comboId)}
-                        disabled={getItemQuantity(combo.comboId) === 0}
-                        className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <Minus size={16} />
-                      </button>
-                      
-                      <span className="w-8 text-center font-medium">
-                        {getItemQuantity(combo.comboId)}
-                      </span>
-                      
-                      <button
-                        onClick={() => addToCart(combo, true)}
-                        className="w-8 h-8 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center"
-                      >
-                        <Plus size={16} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Menu Categories */}
-        {Object.keys(groupedDishes).length === 0 && combos.length === 0 ? (
+        {Object.keys(groupedDishes).length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-500">Hiện tại chưa có món ăn nào.</p>
           </div>
@@ -417,40 +301,23 @@ const QRMenu: FC = () => {
             
             <div className="space-y-3">
               {cart.map((item) => (
-                <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div key={item.dish.dishId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div className="flex-1">
-                    <div className="flex items-center">
-                      <h4 className="font-medium">{item.name}</h4>
-                      {item.isCombo && (
-                        <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
-                          Combo
-                        </span>
-                      )}
-                    </div>
+                    <h4 className="font-medium">{item.dish.dishName}</h4>
                     <p className="text-sm text-gray-600">
-                      {item.price.toLocaleString()}đ x {item.quantity}
+                      {item.dish.price.toLocaleString()}đ x {item.quantity}
                     </p>
-                    {item.isCombo && item.comboItems && item.comboItems.length > 0 && (
-                      <div className="mt-1">
-                        <p className="text-xs text-gray-500">Bao gồm:</p>
-                        <ul className="text-xs text-gray-500 ml-2">
-                          {item.comboItems.map((comboItem, idx) => (
-                            <li key={idx}>{comboItem.dishName} x{comboItem.quantity}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
                   </div>
                   <div className="flex items-center space-x-2">
                     <button
-                      onClick={() => removeFromCart(item.id)}
+                      onClick={() => removeFromCart(item.dish.dishId)}
                       className="w-6 h-6 rounded-full bg-red-100 text-red-600 flex items-center justify-center"
                     >
                       <Minus size={12} />
                     </button>
                     <span className="w-8 text-center text-sm">{item.quantity}</span>
                     <button
-                      onClick={() => addToCart(item.isCombo ? combos.find(c => c.comboId === item.id)! : dishes.find(d => d.dishId === item.id)!, item.isCombo)}
+                      onClick={() => addToCart(item.dish)}
                       className="w-6 h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center"
                     >
                       <Plus size={12} />

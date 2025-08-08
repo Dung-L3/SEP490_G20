@@ -3,7 +3,23 @@ export interface TableInfo {
   name: string;
   status: string;
   capacity: number;
-  estimatedTime?: string;
+}
+
+export interface CreateOrderResponse {
+  orderId: number;
+  message: string;
+}
+
+export interface OrderItem {
+  dishId: number;
+  quantity: number;
+  notes?: string;
+  unitPrice: number;
+}
+
+export interface CreateOrderRequest {
+  tableId: number;
+  items: OrderItem[];
 }
 
 export interface MenuItem {
@@ -11,229 +27,159 @@ export interface MenuItem {
   name: string;
   price: number;
   image: string;
-  status: boolean;
+  status: 'AVAILABLE' | 'UNAVAILABLE';
   quantity?: number;
   orderStatus?: 'pending' | 'cooking' | 'completed';
   orderDetailId?: number;
 }
 
-export interface OrderItem {
-  dishId: number | null;
-  comboId: number | null;
-  quantity: number;
-  notes?: string;
-  unitPrice: number;
-  isCombo: boolean;
-}
-
-export interface CreateOrderRequest {
-  tableId: number;
-  items: OrderItem[];
-  orderType?: string;
-}
-
-export interface CreateOrderResponse {
-  orderId: number;
-  message: string;
-  order?: Order;
-}
-
-export interface Order {
-  orderId: number;
-  orderType: string;
-  customerName?: string;
-  phone?: string;
-  subTotal: number;
-  discountAmount: number;
-  finalTotal: number;
-  tableId?: number;
-  createdAt: string;
-  statusId: number;
-  isRefunded: number;
-  notes?: string;
-}
-
 const BASE_URL = '/api';
-const API_URL = '/api/v1/orders';
+
+export const createOrder = async (orderData: CreateOrderRequest): Promise<CreateOrderResponse> => {
+  try {
+    console.log('Creating order:', orderData);
+    
+    const response = await fetch(`${BASE_URL}/waiter/orders/create`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(orderData)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to create order: ${response.status} - ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log('Order created successfully:', result);
+    
+    return {
+      orderId: result.orderId || 1,
+      message: result.message || 'Order created successfully'
+    };
+  } catch (error) {
+    console.error('Error creating order:', error);
+    throw error;
+  }
+};
 
 export const fetchOccupiedTables = async (): Promise<TableInfo[]> => {
-  const response = await fetch(`${BASE_URL}/waiter/tables?status=Occupied`, {
-    credentials: 'include',
-    headers: {
-      'Accept': 'application/json'
-    }
-  });
-
-  if (!response.ok) {
-    throw new Error(`Server error: ${response.status} ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  return data.map((item: any) => ({
-    id: item.tableId,
-    name: item.tableName,
-    status: item.status,
-    capacity: parseInt(item.tableType) || 4
-  }));
-};
-
-export const fetchMenuItems = async (search?: string): Promise<MenuItem[]> => {
-  const endpoint = search?.trim() 
-    ? `${BASE_URL}/dishes/search?name=${encodeURIComponent(search)}`
-    : `${BASE_URL}/dishes`;
-
-  const response = await fetch(endpoint, {
-    credentials: 'include',
-    headers: {
-      'Accept': 'application/json'
-    }
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch menu items: ${response.status} ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  const menuData = Array.isArray(data) ? data.map(item => ({
-    id: item.dishId,
-    name: item.dishName,
-    price: Number(item.price),
-    image: item.imageUrl || '/placeholder-dish.jpg',
-    status: item.status
-  })) : [];
-
-  return menuData.filter(item => item.status === true);
-};
-
-export const orderApi = {
-  create: async (orderData: CreateOrderRequest): Promise<CreateOrderResponse> => {
-    try {
-      const response = await fetch(`${API_URL}/create`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          orderType: orderData.orderType || 'DINE_IN',
-          tableId: orderData.tableId,
-          items: orderData.items.map(item => ({
-            dishId: item.dishId,
-            comboId: item.comboId,
-            isCombo: item.isCombo,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            notes: item.notes || ''
-          }))
-        })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
+  try {
+    console.log('Fetching occupied tables...');
+    const response = await fetch(`${BASE_URL}/waiter/tables?status=OCCUPIED`, {
+      credentials: 'include',
+      headers: {
+        'Accept': 'application/json'
       }
+    });
 
-      const result = await response.json();
-      
-      return {
-        orderId: result.orderId || result.id,
-        message: result.message || 'Đơn hàng đã được tạo thành công',
-        order: result.order || result
-      };
-    } catch (error) {
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
-      }
-      throw error;
-    }
-  },
+    console.log('Tables API response status:', response.status);
 
-  getAll: async (): Promise<Order[]> => {
-    try {
-      const response = await fetch(`${API_URL}/getAll`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching orders:', error);
-      throw error;
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Tables API error:', response.status, errorText);
+      throw new Error(`Failed to fetch tables: ${response.status}`);
     }
-  },
 
-  getById: async (id: number): Promise<Order> => {
-    try {
-      const response = await fetch(`${API_URL}/getById/${id}`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return await response.json();
-    } catch (error) {
-      console.error(`Error fetching order ${id}:`, error);
-      throw error;
+    const data = await response.json();
+    console.log('Tables data received:', data);
+    
+    if (!Array.isArray(data)) {
+      console.warn('Expected array but got:', typeof data, data);
+      return [];
     }
+
+    return data.map((table: any) => ({
+      id: table.tableId || table.id || 0,
+      name: table.tableName || table.name || 'Unknown Table',
+      status: table.status || 'AVAILABLE',
+      capacity: table.capacity || 4
+    }));
+  } catch (error) {
+    console.error('Error fetching occupied tables:', error);
+    
+    // Return fallback data
+    return [
+      { id: 1, name: 'Bàn 1', status: 'OCCUPIED', capacity: 4 },
+      { id: 2, name: 'Bàn 2', status: 'OCCUPIED', capacity: 6 }
+    ];
   }
 };
 
-export const createOrder = orderApi.create;
+export const fetchMenuItems = async (search: string = ''): Promise<MenuItem[]> => {
+  try {
+    const response = await fetch(`${BASE_URL}/waiter/menu?search=${encodeURIComponent(search)}`, {
+      credentials: 'include'
+    });
 
-export const updateTableStatus = async (tableId: number, status: string): Promise<TableInfo> => {
-  const response = await fetch(`${BASE_URL}/waiter/tables/${tableId}/status?status=${status}`, {
-    method: 'PUT',
-    headers: {
-      'Accept': 'application/json'
-    },
-    credentials: 'include'
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    try {
-      const errorJson = JSON.parse(errorText);
-      throw new Error(errorJson.message || `Failed to update table status: ${response.status}`);
-    } catch (e) {
-      throw new Error(errorText || `Failed to update table status: ${response.status}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch menu items: ${response.status}`);
     }
-  }
 
-  return response.json();
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error('Error fetching menu items:', error);
+    return [];
+  }
+};
+
+export const updateTableStatus = async (tableId: number, status: string): Promise<void> => {
+  try {
+    const response = await fetch(`${BASE_URL}/waiter/tables/${tableId}/status`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ status })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to update table status: ${response.status}`);
+    }
+  } catch (error) {
+    console.error('Error updating table status:', error);
+    throw error;
+  }
 };
 
 export const fetchOrderStatus = async (orderDetailId: number): Promise<string> => {
-  const response = await fetch(`${BASE_URL}/waiter/orders/detail/${orderDetailId}/status`, {
-    credentials: 'include',
-    headers: {
-      'Accept': 'application/json'
+  try {
+    const response = await fetch(`${BASE_URL}/waiter/orders/details/${orderDetailId}/status`, {
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch order status: ${response.status}`);
     }
-  });
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch order status: ${response.status}`);
+    const data = await response.json();
+    return data.status || 'pending';
+  } catch (error) {
+    console.error('Error fetching order status:', error);
+    return 'pending';
   }
-
-  return response.text();
 };
 
-export const fetchOrderItems = async (orderId: number): Promise<MenuItem[]> => {
-  const response = await fetch(`${BASE_URL}/waiter/orders/${orderId}/items`, {
-    credentials: 'include',
-    headers: {
-      'Accept': 'application/json'
+export const fetchOrderItems = async (tableId: number): Promise<MenuItem[]> => {
+  try {
+    const response = await fetch(`${BASE_URL}/waiter/orders/table/${tableId}/active`, {
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch order items: ${response.status}`);
     }
-  });
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch order items: ${response.status}`);
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error('Error fetching order items:', error);
+    return [];
   }
-
-  const data = await response.json();
-  return data.map((item: any) => ({
-    id: item.dishId,
-    name: item.dishName,
-    price: Number(item.unitPrice),
-    image: item.imageUrl || '/placeholder-dish.jpg',
-    quantity: item.quantity,
-    orderStatus: item.status.toLowerCase(),
-    orderDetailId: item.orderDetailId
-  }));
 };
