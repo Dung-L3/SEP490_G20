@@ -5,20 +5,20 @@ export interface UiTable {
   name: string;
   status: string;
   capacity: number;
-  areaId: number;
-  isWindow?: boolean;
-  notes?: string;
+  areaId?: number;
+  type?: string;
+  groupId?: number;
 }
 
 export const mapApiTableToUiTable = (apiTable: any): UiTable => {
   return {
     id: apiTable.tableId || apiTable.id,
-    name: apiTable.tableName || apiTable.name || `Bàn ${apiTable.tableId || apiTable.id}`,
+    name: apiTable.tableName || apiTable.name || `Table ${apiTable.tableId || apiTable.id}`,
     status: apiTable.status || 'AVAILABLE',
-    capacity: 4,
+    capacity: apiTable.capacity || 4,
     areaId: apiTable.areaId || 1,
-    isWindow: apiTable.isWindow || false,
-    notes: apiTable.notes || ''
+    type: apiTable.type || 'individual',
+    groupId: apiTable.groupId
   };
 };
 
@@ -40,7 +40,9 @@ export const mapApiTableToUiTableFixed = (apiTable: any): UiTable => {
     name: apiTable.tableName || apiTable.name || `Bàn ${apiTable.tableId || apiTable.id}`,
     status: displayStatus,
     capacity: apiTable.capacity || 4,
-    areaId: apiTable.areaId || 1
+    areaId: apiTable.areaId || 1,
+    type: apiTable.type || 'individual',
+    groupId: apiTable.groupId
   };
 };
 
@@ -48,9 +50,10 @@ export const mapUiTableToApiTable = (uiTable: UiTable): Omit<ApiTable, 'tableId'
   return {
     tableName: uiTable.name,
     areaId: uiTable.areaId,
+    tableType: uiTable.type,
     status: uiTable.status,
-    isWindow: uiTable.isWindow || false,
-    notes: uiTable.notes || '',
+    isWindow: uiTable.isWindow,
+    notes: uiTable.notes,
     createdAt: new Date().toISOString(),
     orders: []
   };

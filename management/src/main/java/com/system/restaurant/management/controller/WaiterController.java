@@ -40,7 +40,10 @@ public class WaiterController {
         return ResponseEntity.ok(waiterService.getFreeWindowTables());
     }
 
-
+    @GetMapping("/tables/type/{tableType}")
+    public ResponseEntity<List<RestaurantTable>> getTablesByType(@PathVariable String tableType) {
+        return ResponseEntity.ok(waiterService.getTablesByType(tableType));
+    }
 
     @PostMapping("/orders/dine-in")
     public ResponseEntity<Order> createDineInOrder(@Valid @RequestBody CreateDineInOrderRequest request) {
@@ -178,21 +181,52 @@ public class WaiterController {
         }
     }
 
-
+    // Get order items for merged table
+    @GetMapping("/orders/group/{groupId}/items")
+    public ResponseEntity<List<Object>> getOrderItemsByMergedTable(@PathVariable Integer groupId) {
+        try {
+            List<Object> items = orderService.getActiveOrderItemsByMergedTable(groupId);
+            return ResponseEntity.ok(items);
+        } catch (Exception e) {
+            System.err.println("Error getting order items for merged table: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ArrayList<>());
+        }
+    }
 
     // Create order for table or merged table
     @PostMapping("/orders/create")
     public ResponseEntity<?> createOrderForTable(@RequestBody TableOrderRequest request) {
         try {
-            if (request.getTableId() == null) {
-                return ResponseEntity.badRequest().body(Map.of("error", "TableId must be provided"));
+            System.out.println("Creating order: " + request);
+            
+            if (request.getTableGroupId() != null) {
+                // Create order for merged table - handle multiple items
+                Integer orderId = null;
+                for (var item : request.getItems()) {
+                    TableOrderResponse response = orderService.addMergedTableOrderItem(
+                        request.getTableGroupId(), 
+                        item.getDishId(), 
+                        item.getQuantity()
+                    );
+                    if (orderId == null) {
+                        orderId = response.getOrderId();
+                    }
+                }
+                return ResponseEntity.ok(Map.of(
+                    "orderId", orderId,
+                    "message", "Order created for merged table successfully"
+                ));
+            } else if (request.getTableId() != null) {
+                // Create order for individual table
+                TableOrderResponse response = orderService.addTableOrderItem(request);
+                return ResponseEntity.ok(Map.of(
+                    "orderId", response.getOrderId(),
+                    "message", "Order created successfully"
+                ));
+            } else {
+                return ResponseEntity.badRequest().body(Map.of("error", "Either tableId or tableGroupId must be provided"));
             }
-            // Create order for individual table
-            Order order = waiterService.createDineInOrder(new CreateDineInOrderRequest(request));
-            return ResponseEntity.ok(Map.of(
-                "orderId", order.getOrderId(),
-                "message", "Order created successfully"
-            ));
+            
         } catch (Exception e) {
             System.err.println("Error creating order: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

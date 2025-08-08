@@ -39,7 +39,7 @@ public class WaiterServiceImpl implements WaiterService {
     private final ComboRepository comboRepository;
     private final InvoicePrintRepository invoicePrintRepository;
     private final LoyaltyTransactionRepository loyaltyTransactionRepository;
-
+    private final TableGroupRepository tableGroupRepository;
 
 
 
@@ -141,7 +141,10 @@ public class WaiterServiceImpl implements WaiterService {
         return restaurantTableRepository.getFreeWindowTables();
     }
 
-
+    @Override
+    public List<RestaurantTable> getTablesByType(String tableType) {
+        return restaurantTableRepository.findByTableType(tableType);
+    }
     @Autowired
     private HttpServletRequest request;
 
@@ -431,9 +434,34 @@ public class WaiterServiceImpl implements WaiterService {
     @Override
     public List<RestaurantTable> getTablesByStatus(String status) {
         try {
-            return restaurantTableRepository.findByStatus(status);
+            System.out.println("Getting tables by status: " + status);
+            
+            // Get regular tables by status
+            List<RestaurantTable> regularTables = restaurantTableRepository.findByStatus(status);
+            List<RestaurantTable> result = new ArrayList<>(regularTables);
+            
+            // If status is OCCUPIED, also include merged tables
+            if ("OCCUPIED".equalsIgnoreCase(status)) {
+                List<TableGroup> activeGroups = tableGroupRepository.findByStatus("ACTIVE");
+                
+                for (TableGroup group : activeGroups) {
+                    // Create a virtual table representing the merged group
+                    RestaurantTable mergedTable = new RestaurantTable();
+                    mergedTable.setTableId(-group.getGroupId()); // Negative ID to distinguish
+                    mergedTable.setTableName(group.getGroupName());
+                    mergedTable.setStatus("MERGED");
+                    mergedTable.setCapacity(group.getTotalCapacity());
+                    
+                    result.add(mergedTable);
+                }
+            }
+            
+            System.out.println("Found " + result.size() + " tables");
+            return result;
+            
         } catch (Exception e) {
             System.err.println("Error getting tables by status: " + e.getMessage());
+            e.printStackTrace();
             return new ArrayList<>();
         }
     }
@@ -469,136 +497,6 @@ public class WaiterServiceImpl implements WaiterService {
         return restaurantTableRepository.findFreeTablesByArea(areaId);
     }
 
-    @Override
-    public RestaurantTable updateTableStatus(Integer tableId, String status) {
-        RestaurantTable table = restaurantTableRepository.findById(tableId)
-                .orElseThrow(() -> new ResourceNotFoundException("Table not found with id: " + tableId));
-        
-        // Validate status
-        if (!isValidStatus(status)) {
-            throw new IllegalArgumentException("Invalid table status: " + status);
-        }
-
-        table.setStatus(status.toUpperCase());
-        return restaurantTableRepository.save(table);
-    }
-
-    private boolean isValidStatus(String status) {
-        return status != null && (
-            status.equalsIgnoreCase("AVAILABLE") ||
-            status.equalsIgnoreCase("OCCUPIED") ||
-            status.equalsIgnoreCase("RESERVED") ||
-            status.equalsIgnoreCase("MERGED") ||
-            status.equalsIgnoreCase("FREE")
-        );
-    }
-
-    @Override
-    public TableOrderResponse addTableOrderItem(TableOrderRequest request) {
-        Order order = findOrCreatePendingOrder(request.getTableId());
-        
-        List<OrderDetail> details = request.getItems().stream()
-            .map(item -> {
-                Dish dish = dishRepository.findById(item.getDishId())
-                    .orElseThrow(() -> new IllegalArgumentException("Dish not found: " + item.getDishId()));
-                
-                OrderDetail detail = OrderDetail.builder()
-                    .order(order)
-                    .dish(dish)
-                    .quantity(item.getQuantity())
-                    .unitPrice(dish.getPrice())
-                    .notes(item.getNotes())
-                    .statusId(1) // Pending
-                    .build();
-                
-                return orderDetailRepository.save(detail);
-            })
-            .collect(Collectors.toList());
-
-        updateOrderTotal(order, details);
-        
-        return new TableOrderResponse(
-            order.getOrderId(),
-            details.get(details.size()-1).getOrderDetailId(),
-            "Items added successfully"
-        );
-    }
-
-    @Override
-    public TableOrderResponse updateTableOrderItem(Integer tableId, Integer dishId, Integer quantity) {
-        Order order = orderRepository.findPendingOrderByTableId(tableId)
-            .orElseThrow(() -> new ResourceNotFoundException("No pending order found"));
-
-        OrderDetail detail = orderDetailRepository.findByOrderIdAndDishId(order.getOrderId(), dishId)
-            .orElseThrow(() -> new ResourceNotFoundException("Order item not found"));
-
-        detail.setQuantity(quantity);
-        orderDetailRepository.save(detail);
-        
-        List<OrderDetail> details = orderDetailRepository.findByOrderId(order.getOrderId());
-        updateOrderTotal(order, details);
-
-        return new TableOrderResponse(
-            order.getOrderId(),
-            detail.getOrderDetailId(),
-            "Item updated successfully"
-        );
-    }
-
-    @Override
-    public TableOrderResponse removeTableOrderItem(Integer tableId, Integer dishId) {
-        Order order = orderRepository.findPendingOrderByTableId(tableId)
-            .orElseThrow(() -> new ResourceNotFoundException("No pending order found"));
-
-        OrderDetail detail = orderDetailRepository.findByOrderIdAndDishId(order.getOrderId(), dishId)
-            .orElseThrow(() -> new ResourceNotFoundException("Order item not found"));
-
-        orderDetailRepository.delete(detail);
-        
-        List<OrderDetail> details = orderDetailRepository.findByOrderId(order.getOrderId());
-        updateOrderTotal(order, details);
-
-        return new TableOrderResponse(
-            order.getOrderId(),
-            null,
-            "Item removed successfully"
-        );
-    }
-
-    @Override
-    public void cancelTableOrder(Integer tableId) {
-        Order order = orderRepository.findPendingOrderByTableId(tableId)
-            .orElseThrow(() -> new ResourceNotFoundException("No pending order found"));
-        order.setStatusId(4); // Cancelled
-        orderRepository.save(order);
-    }
-
-    private Order findOrCreatePendingOrder(Integer tableId) {
-        return orderRepository.findPendingOrderByTableId(tableId)
-            .orElseGet(() -> {
-                Order newOrder = Order.builder()
-                    .orderType("DINE_IN")
-                    .tableId(tableId)
-                    .statusId(1) // Pending
-                    .subTotal(BigDecimal.ZERO)
-                    .discountAmount(BigDecimal.ZERO)
-                    .finalTotal(BigDecimal.ZERO)
-                    .createdAt(LocalDateTime.now())
-                    .build();
-                return orderRepository.save(newOrder);
-            });
-    }
-
-    private void updateOrderTotal(Order order, List<OrderDetail> details) {
-        BigDecimal subTotal = details.stream()
-            .map(detail -> detail.getUnitPrice().multiply(BigDecimal.valueOf(detail.getQuantity())))
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
-        
-        order.setSubTotal(subTotal);
-        order.setFinalTotal(subTotal.subtract(order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO));
-        orderRepository.save(order);
-    }
-
     private BigDecimal calculateSubTotal(List<OrderItemRequest> items) {
         if (items == null || items.isEmpty()) {
             return BigDecimal.ZERO;
@@ -621,35 +519,5 @@ public class WaiterServiceImpl implements WaiterService {
                     "orderDetailId",
                     orderDetailId
                 ));
-    }
-
-    @Override
-    public CustomerPurchaseHistoryResponse getCustomerPurchaseHistoryByPhone(String phone) {
-        // Get all orders for the customer
-        List<Order> orders = orderRepository.findByPhone(phone);
-        
-        if (orders.isEmpty()) {
-            CustomerPurchaseHistoryResponse response = new CustomerPurchaseHistoryResponse();
-            response.setPhone(phone);
-            response.setOrders(new ArrayList<>());
-            response.setTotalOrders(0);
-            response.setTotalSpent(BigDecimal.ZERO);
-            return response;
-        }
-
-        // Calculate total spent
-        BigDecimal totalSpent = orders.stream()
-                .map(Order::getFinalTotal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        // Build response
-        CustomerPurchaseHistoryResponse response = new CustomerPurchaseHistoryResponse();
-        response.setPhone(phone);
-        response.setCustomerName(orders.get(0).getCustomerName()); // Get name from first order
-        response.setOrders(orders);
-        response.setTotalOrders(orders.size());
-        response.setTotalSpent(totalSpent);
-
-        return response;
     }
 }

@@ -24,7 +24,7 @@ public interface RestaurantTableRepository extends JpaRepository<RestaurantTable
 
     Optional<RestaurantTable> findByTableName(String tableName);
 
-
+    List<RestaurantTable> findByTableType(String tableType);
 
     @Query("SELECT t FROM RestaurantTable t WHERE t.isWindow = true")
     List<RestaurantTable> findWindowTables();
@@ -42,6 +42,17 @@ public interface RestaurantTableRepository extends JpaRepository<RestaurantTable
             @Param("startTime") LocalDateTime startTime,
             @Param("endTime") LocalDateTime endTime);
 
+    // Lấy bàn không bị merge (không có trong TableGroupMembers)
+    @Query("SELECT rt FROM RestaurantTable rt " +
+           "WHERE rt.tableId NOT IN " +
+           "(SELECT tgm.table.tableId FROM TableGroupMember tgm)")
+    List<RestaurantTable> findTablesNotInGroup();
 
+    // Lấy bàn theo status và không bị merge
+    @Query("SELECT rt FROM RestaurantTable rt " +
+           "WHERE rt.status = :status " +
+           "AND rt.tableId NOT IN " +
+           "(SELECT tgm.table.tableId FROM TableGroupMember tgm)")
+    List<RestaurantTable> findByStatusAndNotInGroup(@Param("status") String status);
 
 }

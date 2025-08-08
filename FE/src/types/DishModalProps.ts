@@ -1,14 +1,14 @@
 import type { ChangeEvent } from 'react';
 
 export interface DishModalProps {
-  dish: {
-    name: string;
-    price: string | number;
-    image: string;
-    status: string;
+  monAn: {
+    ten: string;
+    gia: string;
+    anh: string;
+    trangThai: string;
   };
-  onChange: (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
-  onImageUrl: (value: string) => void;
-  onCancel: () => void;
-  onSave: () => Promise<void>;
+  khiThayDoi: (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+  khiThayDoiUrlAnh: (giaTri: string) => void;
+  khiHuy: () => void;
+  khiLuu: () => Promise<void>;
 }

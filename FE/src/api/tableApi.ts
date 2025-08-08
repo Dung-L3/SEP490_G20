@@ -78,6 +78,7 @@ export const tableApi = {
           tableId: table.tableId,
           tableName: table.tableName,
           areaId: table.areaId,
+          tableType: table.tableType,
           status: table.status,
           isWindow: table.isWindow,
           notes: table.notes || '',

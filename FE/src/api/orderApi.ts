@@ -2,6 +2,8 @@ export interface TableInfo {
   id: number;
   name: string;
   status: string;
+  type: string;
+  groupId?: number;
   capacity: number;
 }
 
@@ -19,18 +21,8 @@ export interface OrderItem {
 
 export interface CreateOrderRequest {
   tableId: number;
+  tableGroupId?: number;
   items: OrderItem[];
-}
-
-export interface MenuItem {
-  id: number;
-  name: string;
-  price: number;
-  image: string;
-  status: 'AVAILABLE' | 'UNAVAILABLE';
-  quantity?: number;
-  orderStatus?: 'pending' | 'cooking' | 'completed';
-  orderDetailId?: number;
 }
 
 const BASE_URL = '/api';
@@ -97,6 +89,8 @@ export const fetchOccupiedTables = async (): Promise<TableInfo[]> => {
       id: table.tableId || table.id || 0,
       name: table.tableName || table.name || 'Unknown Table',
       status: table.status || 'AVAILABLE',
+      type: table.type || 'individual',
+      groupId: table.groupId,
       capacity: table.capacity || 4
     }));
   } catch (error) {
@@ -104,82 +98,8 @@ export const fetchOccupiedTables = async (): Promise<TableInfo[]> => {
     
     // Return fallback data
     return [
-      { id: 1, name: 'Bàn 1', status: 'OCCUPIED', capacity: 4 },
-      { id: 2, name: 'Bàn 2', status: 'OCCUPIED', capacity: 6 }
+      { id: 1, name: 'Bàn 1', status: 'OCCUPIED', type: 'individual', capacity: 4 },
+      { id: 2, name: 'Bàn 2', status: 'OCCUPIED', type: 'individual', capacity: 6 }
     ];
-  }
-};
-
-export const fetchMenuItems = async (search: string = ''): Promise<MenuItem[]> => {
-  try {
-    const response = await fetch(`${BASE_URL}/waiter/menu?search=${encodeURIComponent(search)}`, {
-      credentials: 'include'
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch menu items: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error('Error fetching menu items:', error);
-    return [];
-  }
-};
-
-export const updateTableStatus = async (tableId: number, status: string): Promise<void> => {
-  try {
-    const response = await fetch(`${BASE_URL}/waiter/tables/${tableId}/status`, {
-      method: 'PUT',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ status })
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to update table status: ${response.status}`);
-    }
-  } catch (error) {
-    console.error('Error updating table status:', error);
-    throw error;
-  }
-};
-
-export const fetchOrderStatus = async (orderDetailId: number): Promise<string> => {
-  try {
-    const response = await fetch(`${BASE_URL}/waiter/orders/details/${orderDetailId}/status`, {
-      credentials: 'include'
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch order status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data.status || 'pending';
-  } catch (error) {
-    console.error('Error fetching order status:', error);
-    return 'pending';
-  }
-};
-
-export const fetchOrderItems = async (tableId: number): Promise<MenuItem[]> => {
-  try {
-    const response = await fetch(`${BASE_URL}/waiter/orders/table/${tableId}/active`, {
-      credentials: 'include'
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch order items: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error('Error fetching order items:', error);
-    return [];
   }
 };

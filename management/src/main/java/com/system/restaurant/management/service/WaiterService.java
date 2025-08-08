@@ -37,11 +37,6 @@ public interface WaiterService {
     List<RestaurantTable> getFreeTablesByArea(Integer areaId);
     List<RestaurantTable> getWindowTables();
     List<RestaurantTable> getFreeWindowTables();
+    List<RestaurantTable> getTablesByType(String tableType);
     RestaurantTable getTableByName(String tableName);
-    
-    // Table order methods
-    TableOrderResponse addTableOrderItem(TableOrderRequest request);
-    TableOrderResponse updateTableOrderItem(Integer tableId, Integer dishId, Integer quantity);
-    TableOrderResponse removeTableOrderItem(Integer tableId, Integer dishId);
-    void cancelTableOrder(Integer tableId);
 }
