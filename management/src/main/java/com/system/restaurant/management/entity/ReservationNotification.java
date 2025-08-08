@@ -28,5 +28,4 @@ public class ReservationNotification {
 
     @Column(name = "Notes", length = 255)
     private String notes;
-
 }

@@ -36,7 +36,6 @@ public class Invoice {
     @Column(name = "IssuedBy")
     private Integer issuedBy;
 
-
     @Column(name = "IssuedAt", nullable = false)
     private LocalDateTime issuedAt;
 
