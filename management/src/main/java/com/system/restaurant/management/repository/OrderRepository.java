@@ -44,5 +44,5 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
             "orderDetails.dish"
     })
     Optional<Order> findWithDetailsAndDishByOrderId(Integer orderId);
-
+    List<Order> findByOrderTypeAndStatusId(String orderType, Integer statusId);
 }

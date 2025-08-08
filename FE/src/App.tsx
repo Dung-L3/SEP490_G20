@@ -30,6 +30,7 @@ import ReservationList from './pages/receptionist/ReservationList';
 import ForgotPassword from './pages/ForgotPassword';
 import VerifyOtp      from './pages/VerifyOtp';
 import ResetPassword  from './pages/ResetPassword';
+import TakeawayOrder from './pages/receptionist/TakeawayOrder';
 
 function App() {
   return (
@@ -70,6 +71,7 @@ function App() {
             <Route path="/receptionist/:orderId/payment" element={<OrderPayment />} />
             <Route path="/receptionist"element={<ReceptionistHome/>} />
             <Route path="/receptionist/reservations"element={<ReservationList/>} />
+              <Route path="/receptionist/takeaway" element={<TakeawayOrder />} /> {/* Route cho trang đơn hàng mang đi */}
             </Routes>
           </AuthProvider>
         </Router>
