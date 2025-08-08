@@ -27,6 +27,7 @@ import Chef from './pages/chef/Chef';
 import QRMenu from './pages/QRMenu';
 import QRCodeManager from './pages/manager/QRCodeManager';
 import ReservationList from './pages/receptionist/ReservationList';
+import TakeawayOrder from './pages/receptionist/TakeawayOrder';
 
 function App() {
   return (
@@ -64,7 +65,8 @@ function App() {
             <Route path="/receptionist/orders/uppaid" element={<OrderList />} /> {/* Route cho trang xử lý thanh toán của order */}
             <Route path="/receptionist/:orderId/payment" element={<OrderPayment />} />
             <Route path="/receptionist"element={<ReceptionistHome/>} />
-            <Route path="/receptionist/reservations"element={<ReservationList/>} />
+            <Route path="/receptionist/reservations" element={<ReservationList/>} />
+              <Route path="/receptionist/takeaway" element={<TakeawayOrder />} /> {/* Route cho trang đơn hàng mang đi */}
             </Routes>
           </AuthProvider>
         </Router>

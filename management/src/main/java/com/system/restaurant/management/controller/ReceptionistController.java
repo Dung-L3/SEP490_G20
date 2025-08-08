@@ -38,6 +38,18 @@ public class ReceptionistController {
         return ResponseEntity.ok(resp);
     }
 
+    @GetMapping("/orders/takeaway/pending")
+    public List<TakeawayOrderResponse> getPendingTakeawayOrders() {
+        return receptionistService.getPendingTakeawayOrders();
+    }
+
+    // === NEW: confirm & gửi bếp (cập nhật statusId = 2)
+    @PostMapping({"/orders/{orderId}/confirm-to-kitchen", "/orders/{orderId}/confirm"})
+    public ResponseEntity<Void> confirmTakeawayOrder(@PathVariable Integer orderId) {
+        receptionistService.confirmTakeawayOrder(orderId);
+        return ResponseEntity.ok().build();
+    }
+
     @PostMapping("/invoices/{orderId}")
     public Invoice generateInvoice(@PathVariable Integer orderId, HttpSession session) {
         return receptionistService.generateInvoice(orderId, session);

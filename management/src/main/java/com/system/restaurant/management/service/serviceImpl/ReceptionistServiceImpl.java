@@ -70,8 +70,6 @@ public class ReceptionistServiceImpl implements ReceptionistService {
 
         // nếu dùng @EntityGraph hoặc eager fetch, gọi bình thường
         List<OrderDetail> detailEntities = orderDetailRepository.findByOrderId(saved.getOrderId());
-        // hoặc nếu dùng join fetch JPQL:
-        // List<OrderDetail> detailEntities = orderDetailRepo.findByOrderIdWithDish(saved.getOrderId());
 
         List<OrderDetailDTO> details = orderDetailRepository
                 .findByOrderId(saved.getOrderId())
@@ -88,6 +86,48 @@ public class ReceptionistServiceImpl implements ReceptionistService {
                 .subTotal(saved.getSubTotal())
                 .finalTotal(saved.getFinalTotal())
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TakeawayOrderResponse> getPendingTakeawayOrders() {
+        // Lấy các đơn TAKEAWAY đang statusId = 1 (PENDING)
+        List<Order> orders = orderRepo.findByOrderTypeAndStatusId("TAKEAWAY", 1);
+
+        return orders.stream().map(o -> {
+            // load details có dish (dùng @EntityGraph trong repo của bạn)
+            List<OrderDetailDTO> details = orderDetailRepository.findByOrderId(o.getOrderId())
+                    .stream()
+                    .map(OrderDetailDTO::fromEntity)
+                    .collect(Collectors.toList());
+
+            return TakeawayOrderResponse.builder()
+                    .orderId(o.getOrderId())
+                    .customerName(o.getCustomerName())
+                    .phone(o.getPhone())
+                    .notes(o.getNotes())
+                    .items(details)
+                    .subTotal(o.getSubTotal())
+                    .finalTotal(o.getFinalTotal())
+                    .build();
+        }).collect(Collectors.toList());
+    }
+
+    @Override
+    public void confirmTakeawayOrder(Integer orderId) {
+        Order order = orderRepo.findById(orderId)
+                .orElseThrow(() -> new EntityNotFoundException("Order not found: " + orderId));
+
+        if (!"TAKEAWAY".equalsIgnoreCase(order.getOrderType())) {
+            throw new IllegalStateException("Order " + orderId + " không phải TAKEAWAY");
+        }
+        if (order.getStatusId() != null && order.getStatusId() == 2) {
+            return;
+        }
+
+        // Cập nhật trạng thái: 1 = PENDING, 2 = CONFIRMED (bạn có thể đổi theo bảng status)
+        order.setStatusId(2);
+        orderRepo.save(order);
     }
 
     @Override
