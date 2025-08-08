@@ -100,6 +100,9 @@ const Login = () => {
             <span className="text-gray-300 mr-2">Chưa có tài khoản?</span>
             <a href="/register" className="text-yellow-400 hover:underline font-semibold">Đăng ký</a>
           </div>
+          <div className="text-center">
+            <a href="/forgot-password" className="text-yellow-400 hover:underline font-semibold">Quên mật khẩu</a>
+          </div>
         </form>
       </div>
       <Footer />

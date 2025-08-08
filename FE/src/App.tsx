@@ -27,6 +27,9 @@ import Chef from './pages/chef/Chef';
 import QRMenu from './pages/QRMenu';
 import QRCodeManager from './pages/manager/QRCodeManager';
 import ReservationList from './pages/receptionist/ReservationList';
+import ForgotPassword from './pages/ForgotPassword';
+import VerifyOtp      from './pages/VerifyOtp';
+import ResetPassword  from './pages/ResetPassword';
 
 function App() {
   return (
@@ -51,7 +54,9 @@ function App() {
             <Route path="/manager/order" element={<OrderManager />} /> {/* Route cho trang Quản lý đơn hàng */}
             <Route path="/manager/report" element={<ReportManager />} /> {/* Route cho trang Báo cáo */}
             <Route path="/manager/purchase-history" element={<PurchaseHistoryManager />} /> {/* Route cho trang Lịch sử mua hàng */}
-
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/verify-otp"    element={<VerifyOtp/>}     />
+            <Route path="/reset-password" element={<ResetPassword/>}  />
           <Route path="/waiter/orders" element={<WaiterOrder />} /> {/* Route cho waiter đặt món */}
           <Route path="/waiter/tables" element={<WaiterTableView />} /> {/* Route cho waiter xem bàn */}
           <Route path="/chef" element={<Chef />} /> {/* Route cho trang Chef (bếp trưởng) */}

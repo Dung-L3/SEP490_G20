@@ -44,11 +44,8 @@ public class ReportController {
 
     @GetMapping("/shift/attendance/staff")
     public List<ShiftAttendanceDTO> getShifts(
-            @RequestParam Integer userId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate
     ) {
-        return shiftAttendanceService.getShiftAttendances(userId, fromDate, toDate);
+        return shiftAttendanceService.getAllShiftAttendances();
     }
 
     @PostMapping("/create/shift")
