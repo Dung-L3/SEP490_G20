@@ -20,5 +20,7 @@ public interface ReceptionistService {
     void cancelReservation(Integer reservationId);
     List<Reservation> viewReservationCalendar();
     Notification sendReservationReminder(Integer reservationId);
+    List<TakeawayOrderResponse> getPendingTakeawayOrders();
+    void confirmTakeawayOrder(Integer orderId);
 
 }
