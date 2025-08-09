@@ -254,4 +254,5 @@ public class ReceptionistServiceImpl implements ReceptionistService {
 
         return notificationRepo.save(n);
     }
+
 }

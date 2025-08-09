@@ -2,10 +2,22 @@ import { useState, useEffect, useCallback } from 'react';
 import { Search, Plus, Edit2, Trash2, Users } from 'lucide-react';
 import TaskbarManager from '../../components/TaskbarManager';
 import { staffApi } from '../../api/staffApi';
-import type { Staff, StaffRequest } from '../../types/Staff';
+import { registerEmployeeApi } from '../../api/registerApi';
+import { StaffAddModal } from '../../components/StaffAddModal';
+import type { Staff } from '../../types/Staff';
 
 interface StaffDisplay extends Staff {
   avatar: string;
+}
+
+interface StaffRequest {
+  fullName: string;
+  email: string;
+  phone: string;
+  username: string;
+  passwordHash: string;
+  roleNames: string[];
+  status: boolean;
 }
 
 const StaffManager = () => {
@@ -15,15 +27,45 @@ const StaffManager = () => {
   const [addOpen, setAddOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
-
   const [newStaff, setNewStaff] = useState<StaffRequest>({
-    username: '',
     fullName: '',
     email: '',
     phone: '',
-    status: true,
-    roleNames: []
+    username: '',
+    passwordHash: '',
+    roleNames: [],
+    status: true
   });
+
+  const handleAddStaff = async (staffData: {
+    username: string;
+    password: string;
+    fullName: string;
+    email: string;
+    phone: string;
+    roleName: string;
+  }) => {
+    try {
+      setLoading(true);
+      // Đảm bảo roleName không null và chuyển đổi sang định dạng phù hợp
+      const processedStaffData = {
+        ...staffData,
+        roleName: staffData.roleName || 'staff' // Giá trị mặc định nếu roleName là null
+      };
+      
+      await registerEmployeeApi(processedStaffData);
+      // Reload staff list
+      const response = await staffApi.getAll();
+      setStaff(response.map(mapStaffToDisplay));
+      setAddOpen(false);
+      setError(''); // Clear any previous errors
+    } catch (error) {
+      console.error('Error registering employee:', error);
+      setError('Lỗi khi thêm nhân viên: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Convert API Staff to display format
   const mapStaffToDisplay = useCallback((apiStaff: Staff): StaffDisplay => {
@@ -62,11 +104,16 @@ const StaffManager = () => {
     fetchStaff();
   }, [mapStaffToDisplay]);
 
-  const filteredStaff = staff.filter(s => 
-    s.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.roleNames.some(role => role.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    s.phone.includes(searchTerm)
-  );
+  const filteredStaff = staff.filter(s => {
+    if (!searchTerm) return true;
+    const searchTermLower = searchTerm.toLowerCase();
+    return (
+      s.fullName.toLowerCase().includes(searchTermLower) ||
+      s.roleNames.some(role => role.toLowerCase().includes(searchTermLower)) ||
+      s.phone.includes(searchTerm) ||
+      s.email.toLowerCase().includes(searchTermLower)
+    );
+  });
 
 
 
@@ -88,7 +135,8 @@ const StaffManager = () => {
         email: editStaff.email,
         phone: editStaff.phone,
         status: editStaff.status,
-        roleNames: editStaff.roleNames
+        roleNames: editStaff.roleNames,
+        passwordHash: '' // Empty password means no change
       };
 
       const updated = await staffApi.update(editStaff.id, staffRequest);
@@ -122,8 +170,9 @@ const StaffManager = () => {
         fullName: '',
         email: '',
         phone: '',
-        status: true,
-        roleNames: []
+        passwordHash: '',
+        roleNames: [],
+        status: true
       });
       setError('');
     } catch (err) {
@@ -177,30 +226,48 @@ const StaffManager = () => {
         )}
 
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Quản lý nhân sự</h1>
+        <div className="mb-8 flex justify-between items-center">
+          <h1 className="text-3xl font-bold text-gray-900">Quản lý nhân sự</h1>
+          <button
+            onClick={() => setAddOpen(true)}
+            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Thêm nhân viên
+          </button>
         </div>
 
         {/* Controls */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Tìm kiếm theo tên, chức vụ, số điện thoại..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-            />
-          </div>
+        <StaffAddModal
+          isOpen={addOpen}
+          onClose={() => setAddOpen(false)}
+          onSave={handleAddStaff}
+        />
 
-          <button
-            onClick={() => setAddOpen(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            Thêm nhân viên
-          </button>
+        <div className="flex items-center gap-4 mb-6">
+          <div className="flex-1 flex items-center gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Tìm kiếm theo tên, chức vụ, số điện thoại..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              />
+            </div>
+            <button
+              onClick={() => {
+                // Thực hiện tìm kiếm trực tiếp trên state staff gốc
+                // Không cần setStaff vì đã dùng filteredStaff cho render
+                setSearchTerm(searchTerm);
+              }}
+              className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+            >
+              <Search className="w-5 h-5" />
+              Tìm kiếm
+            </button>
+          </div>
         </div>
 
         {/* Staff Table */}
@@ -361,6 +428,7 @@ const StaffManager = () => {
                         fullName: '',
                         email: '',
                         phone: '',
+                        passwordHash: '',
                         status: true,
                         roleNames: []
                       });
@@ -416,10 +484,11 @@ const StaffManager = () => {
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                     >
                       <option value="">Chọn chức vụ</option>
-                      <option value="manager">Quản lý</option>
-                      <option value="waiter">Phục vụ</option>
-                      <option value="chef">Bếp</option>
-                      <option value="cashier">Thu ngân</option>
+                      <option value="MANAGER">Quản lý</option>
+                      <option value="CUSTOMER">Khách hàng</option>
+                      <option value="WAITER">Phục vụ</option>
+                      <option value="CHEF">Đầu bếp</option>
+                      <option value="RECEPTIONIST">Thu ngân</option>
                     </select>
                   </div>
                   <div>

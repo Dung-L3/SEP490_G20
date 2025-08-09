@@ -3,6 +3,8 @@ import { useTableCart } from '../../contexts/TableCartContext';
 import type { TableInfo } from '../../api/orderApi.ts';
 import TaskbarWaiter from './TaskbarWaiter';
 import type { MenuItem } from '../../api/orderApi.ts';
+import type { ComboDTO } from '../../api/comboApi';
+import { comboApi } from '../../api/comboApi';
 import { 
   fetchOccupiedTables, 
   fetchMenuItems, 
@@ -17,6 +19,7 @@ const Order: React.FC = () => {
   const [search, setSearch] = useState('');
   const [tableList, setTableList] = useState<TableInfo[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [combos, setCombos] = useState<ComboDTO[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Fetch tables
@@ -37,24 +40,33 @@ const Order: React.FC = () => {
 
 
 
-  // Fetch menu items
+  // Fetch menu items and combos
   useEffect(() => {
-    const loadMenu = async () => {
+    const loadData = async () => {
       setLoading(true);
       try {
-        const items = await fetchMenuItems(search);
+        const [items, comboList] = await Promise.all([
+          fetchMenuItems(search),
+          comboApi.getAllCombos()
+        ]);
+        
         console.log('Menu items:', items);
+        console.log('Combos:', comboList);
+        
         setMenuItems(items);
+        const activeComboList = Array.isArray(comboList) ? comboList : [];
+        setCombos(activeComboList); // Lấy tất cả combo
       } catch (error) {
-        console.error('Error fetching menu items:', error);
+        console.error('Error fetching menu items and combos:', error);
         setMenuItems([]);
-        alert('Không thể lấy danh sách món. Vui lòng thử lại sau.');
+        setCombos([]);
+        alert('Không thể lấy danh sách món và combo. Vui lòng thử lại sau.');
       } finally {
         setLoading(false);
       }
     };
 
-    loadMenu();
+    loadData();
   }, [search]);
 
   // Lấy bàn từ query string nếu có
@@ -203,51 +215,122 @@ const Order: React.FC = () => {
           </div>
         </div>
 
-        {/* Menu món ăn với grid responsive */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+        {/* Phần Combo */}
+        <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+          <svg className="w-8 h-8 mr-3 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+          </svg>
+          Combo đặc biệt
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
           {loading ? (
             <div className="col-span-full flex justify-center items-center py-8">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500"></div>
             </div>
-          ) : filteredMenu.map(item => (
-            <div key={item.name} className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden">
-              <div className="relative">
-                <img 
-                  src={item.image} 
-                  alt={item.name} 
-                  className="w-full h-48 object-cover"
-                />
-                <div className="absolute top-4 right-4 bg-white rounded-full p-2 shadow-lg">
-                  <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                  </svg>
-                </div>
-              </div>
+          ) : combos.map(combo => (
+            <div key={combo.comboId} className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden border-2 border-yellow-100">
               <div className="p-6">
-                <h3 className="font-bold text-lg text-gray-800 mb-2">{item.name}</h3>
+                <h3 className="font-bold text-xl text-gray-800 mb-3">{combo.comboName}</h3>
+                <p className="text-gray-600 mb-4 text-sm">{combo.description}</p>
+                <div className="bg-yellow-50 rounded-xl p-4 mb-4">
+                  <h4 className="font-semibold text-gray-700 mb-2">Món trong combo:</h4>
+                  <ul className="space-y-1">
+                    {combo.comboItems.map((item, index) => (
+                      <li key={index} className="text-gray-600 text-sm flex items-center">
+                        <svg className="w-4 h-4 mr-2 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        {item.dishName} x{item.quantity}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
                 <div className="flex items-center justify-between mb-4">
-                  <span className="text-2xl font-bold text-blue-600">{item.price.toLocaleString()} đ</span>
-                  <div className="flex items-center text-yellow-500">
-                    <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
-                      <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/>
-                    </svg>
-                    <span className="ml-1 text-sm text-gray-600">4.5</span>
+                  <span className="text-2xl font-bold text-yellow-600">{combo.price.toLocaleString()} đ</span>
+                  <div className="bg-yellow-100 text-yellow-800 text-sm font-medium px-3 py-1 rounded-full">
+                    Combo
                   </div>
                 </div>
                 <button
-                  className="w-full py-3 bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold rounded-xl hover:from-green-600 hover:to-green-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
-                  onClick={() => addToCart(item)}
+                  className="w-full py-3 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white font-semibold rounded-xl hover:from-yellow-600 hover:to-yellow-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
+                  onClick={() => addToCart({
+                    id: combo.comboId,
+                    name: combo.comboName,
+                    price: combo.price,
+                    quantity: 1,
+                    isCombo: true,
+                    comboItems: combo.comboItems.map(item => ({
+                      dishId: item.dishId,
+                      dishName: item.dishName || '',
+                      quantity: item.quantity
+                    }))
+                  })}
                 >
                   <span className="flex items-center justify-center">
                     <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
-                    Thêm vào giỏ
+                    Thêm combo vào giỏ
                   </span>
                 </button>
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Menu món ăn */}
+        <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+          <svg className="w-8 h-8 mr-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+          Menu món lẻ
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+          {loading ? (
+            <div className="col-span-full flex justify-center items-center py-8">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+            </div>
+          ) : (
+            filteredMenu.map(item => (
+              <div key={item.name} className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden">
+                <div className="relative">
+                  <img 
+                    src={item.image} 
+                    alt={item.name} 
+                    className="w-full h-48 object-cover"
+                  />
+                  <div className="absolute top-4 right-4 bg-white rounded-full p-2 shadow-lg">
+                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
+                  </div>
+                </div>
+                <div className="p-6">
+                  <h3 className="font-bold text-lg text-gray-800 mb-2">{item.name}</h3>
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-2xl font-bold text-blue-600">{item.price.toLocaleString()} đ</span>
+                    <div className="flex items-center text-yellow-500">
+                      <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                        <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/>
+                      </svg>
+                      <span className="ml-1 text-sm text-gray-600">4.5</span>
+                    </div>
+                  </div>
+                  <button
+                    className="w-full py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-xl hover:from-blue-600 hover:to-blue-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
+                    onClick={() => addToCart(item)}
+                  >
+                    <span className="flex items-center justify-center">
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                      Thêm vào giỏ
+                    </span>
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
 
         {/* Giỏ hàng với thiết kế hiện đại */}
@@ -404,10 +487,10 @@ const Order: React.FC = () => {
                       };
                       
                       try {
-                        const response = await createOrder(orderData);
+                        const response = await createOrder(orderData) as { message?: string; id?: number; orderId?: number; };
                         // Xử lý response từ orderApi mới
-                        const message = (response as any)?.message || 'Đơn hàng đã được gửi thành công!';
-                        const orderId = (response as any)?.orderId || (response as any)?.id;
+                        const message = response?.message || 'Đơn hàng đã được gửi thành công!';
+                        const orderId = response?.orderId || response?.id;
                         
                         alert(message);
                         
@@ -424,9 +507,9 @@ const Order: React.FC = () => {
                         
                         const tables = await fetchOccupiedTables();
                         setTableList(tables);
-                      } catch (error: any) {
+                      } catch (error) {
                         console.error('Error submitting order:', error);
-                        const errorMessage = error.message || 'Có lỗi xảy ra khi gửi đơn hàng!';
+                        const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra khi gửi đơn hàng!';
                         alert(errorMessage);
                       }
                     }}

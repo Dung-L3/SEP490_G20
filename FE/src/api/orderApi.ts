@@ -18,10 +18,12 @@ export interface MenuItem {
 }
 
 export interface OrderItem {
-  dishId: number;
+  dishId: number | null;
+  comboId: number | null;
   quantity: number;
   notes?: string;
   unitPrice: number;
+  isCombo: boolean;
 }
 
 export interface CreateOrderRequest {
@@ -117,6 +119,8 @@ export const orderApi = {
           tableId: orderData.tableId,
           items: orderData.items.map(item => ({
             dishId: item.dishId,
+            comboId: item.comboId,
+            isCombo: item.isCombo,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
             notes: item.notes || ''
