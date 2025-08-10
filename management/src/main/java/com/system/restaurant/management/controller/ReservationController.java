@@ -62,9 +62,9 @@ public class ReservationController {
 
     @PatchMapping("/{reservationId}/confirm")
     public ResponseEntity<Reservation> confirmReservation(
-            @PathVariable Integer reservationId) {
+            @PathVariable Integer reservationId, @RequestParam Integer tableId) {
         // Assign actual table
-        manageTableService.assignTableForConfirmation(reservationId);
+        manageTableService.assignTableForConfirmation(reservationId, tableId);
         // Update reservation status
         Reservation updatedReservation = reservationService.updateReservationStatus(
                 reservationId, "CONFIRMED");

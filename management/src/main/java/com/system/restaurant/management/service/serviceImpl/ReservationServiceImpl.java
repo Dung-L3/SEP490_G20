@@ -9,6 +9,7 @@ import com.system.restaurant.management.service.ManageTableService;
 import com.system.restaurant.management.service.ReservationService;
 import com.system.restaurant.management.service.ReservationTimeValidator;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,7 +57,9 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     public List<Reservation> getReservationsByStatus(String status) {
         int statusId = Reservation.Status.getIdByName(status);
-        return reservationRepository.findByStatusId(statusId);
+        return reservationRepository.findByStatusId(
+                statusId,
+                Sort.by(Sort.Direction.DESC, "reservationId"));
     }
 
     @Override

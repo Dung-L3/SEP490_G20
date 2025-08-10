@@ -209,7 +209,6 @@ const WorkshiftManager: FC = () => {
                   <div className="flex-1"><label className="block text-sm">Bắt đầu</label><input type="time" value={editShift.startTime} onChange={e=>setEditShift(s=>({...s,startTime:e.target.value}))} className="w-full border px-2 py-1 rounded"/></div>
                   <div className="flex-1"><label className="block text-sm">Kết thúc</label><input type="time" value={editShift.endTime} onChange={e=>setEditShift(s=>({...s,endTime:e.target.value}))} className="w-full border px-2 py-1 rounded"/></div>
                 </div>
-                <div className="flex items-center"><input type="checkbox" checked={editShift.isOverNight} onChange={e=>setEditShift(s=>({...s,isOverNight:e.target.checked}))} className="mr-2"/><label className="text-sm">Overnight</label></div>
               </div>
               <div className="mt-4 flex justify-end gap-2"><button onClick={()=>setIsEditModalOpen(false)} className="px-4 py-2 border rounded">Huỷ</button><button onClick={handleUpdate} className="px-4 py-2 bg-blue-600 text-white rounded">Lưu</button></div>
             </div>
