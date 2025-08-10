@@ -13,6 +13,11 @@ export async function loginApi(data: { username: string; password: string }) {
   const text = await res.text();
   try {
     result = text ? JSON.parse(text) : {};
+    // Ensure role is in correct format from database
+    if (result.role) {
+      result.role = result.role.toUpperCase();
+      console.log('Normalized role:', result.role);
+    }
   } catch {
     result = {};
   }
