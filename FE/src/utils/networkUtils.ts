@@ -1,17 +1,19 @@
-// Network utilities for QR Menu - UPDATED WITH FIXED IP
-export const getLocalIP = async (): Promise<string> => {
-  // Trả về IP cố định của máy bạn
-  return '192.168.31.166';
+// Network utilities for QR Menu - USING CONFIG FILE
+import { NETWORK_CONFIG } from '../config/networkConfig';
+
+// Hàm lấy URL cho QR code
+export const getQRBaseURL = (): string => {
+  return `http://${NETWORK_CONFIG.LOCAL_IP}:${NETWORK_CONFIG.FRONTEND_PORT}`;
 };
 
-export const getQRBaseURL = async (): Promise<string> => {
-  // Sử dụng IP cố định với port 5173
-  return 'http://192.168.31.166:5173';
-};
-
-export const displayLocalIPInfo = () => {
-  console.log('🌐 Network Info (Fixed IP):');
-  console.log('📱 Mobile access: http://192.168.31.166:5173');
-  console.log('🖥️  Desktop access: http://localhost:5173');
-  console.log('📋 QR Manager: http://192.168.31.166:5173/qr-manager');
+// Kiểm tra cấu hình mạng khi khởi động
+export const checkNetworkConfig = () => {
+  const config = {
+    ip: NETWORK_CONFIG.LOCAL_IP,
+    frontendPort: NETWORK_CONFIG.FRONTEND_PORT,
+    qrUrl: getQRBaseURL()
+  };
+  
+  console.log('Network Configuration:', config);
+  return config;
 };
