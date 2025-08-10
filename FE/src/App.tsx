@@ -32,6 +32,7 @@ import VerifyOtp      from './pages/VerifyOtp';
 import ResetPassword  from './pages/ResetPassword';
 import TakeawayOrder from './pages/receptionist/TakeawayOrder';
 import ComboManager from './pages/manager/ComboManager';
+import PromotionsManager from './pages/manager/PromotionsManager';
 
 function App() {
   return (
@@ -57,6 +58,8 @@ function App() {
             <Route path="/manager/order" element={<OrderManager />} /> {/* Route cho trang Quản lý đơn hàng */}
             <Route path="/manager/report" element={<ReportManager />} /> {/* Route cho trang Báo cáo */}
             <Route path="/manager/purchase-history" element={<PurchaseHistoryManager />} /> {/* Route cho trang Lịch sử mua hàng */}
+            <Route path="/manager/promotions" element={<PromotionsManager />} />
+
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/verify-otp"    element={<VerifyOtp/>}     />
             <Route path="/reset-password" element={<ResetPassword/>}  />

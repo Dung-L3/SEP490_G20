@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 // src/pages/OrderManager.tsx
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -14,24 +15,39 @@ interface Order {
   createdAt: string;
 }
 
+interface Promotion {
+  promoId: number;
+  promoCode: string;
+  promoName: string;
+  discountPercent: number | null;
+  discountAmount: number | null;
+  startDate: string;
+  endDate: string;
+  usageLimit: number | null;
+  isActive: boolean;
+}
+
 const OrderList: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [modalPaymentMethod, setModalPaymentMethod] = useState<'cash' | 'card' | 'bankTransfer'>('cash');
+
+  // NEW: promo state
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [promosLoading, setPromosLoading] = useState(false);
+  const [promosError, setPromosError] = useState<string | null>(null);
+  const [selectedPromoCode, setSelectedPromoCode] = useState<string>(''); // '' = không áp dụng
+
+  const [modalPaymentMethod, setModalPaymentMethod] =
+    useState<'cash' | 'card' | 'bankTransfer'>('cash');
+
   const navigate = useNavigate();
 
-  // Load dữ liệu từ API
+  // Load danh sách đơn chưa thanh toán
   useEffect(() => {
-    fetch('/api/receptionist/orders/unpaid', {
-      credentials: 'include',
-    })
-      .then(res =>
-        res.ok
-          ? res.json()
-          : Promise.reject('Không tải được danh sách đơn')
-      )
+    fetch('/api/receptionist/orders/unpaid', { credentials: 'include' })
+      .then(res => (res.ok ? res.json() : Promise.reject('Không tải được danh sách đơn')))
       .then((data: Order[]) => setOrders(data))
       .catch(err => {
         console.error(err);
@@ -49,19 +65,69 @@ const OrderList: React.FC = () => {
     );
   });
 
+  // NEW: mở modal + load promotions hợp lệ
   const handleRowClick = (order: Order) => {
     setSelectedOrder(order);
     setModalPaymentMethod('cash'); // reset mặc định
+    setSelectedPromoCode('');      // mặc định không áp mã
+    setPromosError(null);
     setModalOpen(true);
+
+    setPromosLoading(true);
+    fetch('/api/promotions/validPromotions', { credentials: 'include' })
+      .then(res => (res.ok ? res.json() : Promise.reject('Không tải được danh sách mã khuyến mãi')))
+      .then((list: Promotion[]) => {
+        // chuẩn hoá null -> 0 cho hiển thị
+        setPromotions(
+          (list || []).map(p => ({
+            ...p,
+            discountPercent: p.discountPercent ?? 0,
+            discountAmount: p.discountAmount ?? 0,
+          }))
+        );
+      })
+      .catch((err: unknown) => {
+        console.error(err);
+        setPromotions([]);
+        setPromosError(typeof err === 'string' ? err : 'Không tải được danh sách mã');
+      })
+      .finally(() => setPromosLoading(false));
   };
 
-  const handleProceed = () => {
+  // NEW: Tiếp tục = apply mã (nếu chọn) rồi giữ flow cũ (đi tới màn payment)
+  const handleProceed = async () => {
     if (!selectedOrder) return;
+
+    // 1) Gọi API apply nếu có chọn mã
+    if (selectedPromoCode) {
+      try {
+        const res = await fetch('/api/promotions/applyPromo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            orderId: selectedOrder.orderId,
+            promoCode: selectedPromoCode,
+          }),
+        });
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(text || `Apply promo thất bại (${res.status})`);
+        }
+        // (tuỳ bạn) có thể đọc response để show thông tin giảm giá
+        // const applied = await res.json();
+      } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
+        // Giữ modal lại để người dùng chọn lại/huỷ
+        return;
+      }
+    }
+
+    // 2) Flow hiện tại (đi tới trang thanh toán)
     setModalOpen(false);
-    navigate(
-      `/receptionist/${selectedOrder.orderId}/payment`,
-      { state: { paymentMethod: modalPaymentMethod } }
-    );
+    navigate(`/receptionist/${selectedOrder.orderId}/payment`, {
+      state: { paymentMethod: modalPaymentMethod },
+    });
   };
 
   return (
@@ -100,21 +166,11 @@ const OrderList: React.FC = () => {
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
-                    Mã đơn
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
-                    Khách hàng
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
-                    Bàn
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
-                    Tổng tiền
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
-                    Thời gian
-                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Mã đơn</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Khách hàng</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Bàn</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Tổng tiền</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Thời gian</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -124,9 +180,7 @@ const OrderList: React.FC = () => {
                     className="hover:bg-gray-50 transition-colors cursor-pointer"
                     onClick={() => handleRowClick(order)}
                   >
-                    <td className="px-6 py-4 font-semibold text-blue-700">
-                      #{order.orderId}
-                    </td>
+                    <td className="px-6 py-4 font-semibold text-blue-700">#{order.orderId}</td>
                     <td className="px-6 py-4">{order.customerName}</td>
                     <td className="px-6 py-4">{order.tableName}</td>
                     <td className="px-6 py-4 font-semibold text-green-700">
@@ -151,33 +205,54 @@ const OrderList: React.FC = () => {
         )}
       </div>
 
-      {/* Payment Method Modal */}
+      {/* Payment + Promotion Modal */}
       {modalOpen && selectedOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-lg w-80">
+          <div className="bg-white p-6 rounded-lg w-96">
             <h3 className="text-lg font-semibold mb-4">
-              Chọn phương thức thanh toán
+              Thanh toán cho đơn #{selectedOrder.orderId}
             </h3>
+
+            {/* Payment method */}
+            <label className="block text-sm mb-1">Phương thức thanh toán</label>
             <select
               value={modalPaymentMethod}
               onChange={e =>
                 setModalPaymentMethod(e.target.value as 'cash' | 'card' | 'bankTransfer')
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-6"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-4"
             >
               <option value="cash">Cash</option>
               <option value="card">Card</option>
               <option value="bankTransfer">Bank Transfer</option>
             </select>
-            <div className="flex justify-end gap-2">
-              <button                onClick={() => setModalOpen(false)}
-                className="px-4 py-2 border rounded-lg"
-              >
+
+            {/* NEW: Promotion list */}
+            <label className="block text-sm mb-1">Mã khuyến mãi (đang hiệu lực)</label>
+            <select
+              value={selectedPromoCode}
+              onChange={e => setSelectedPromoCode(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-2"
+              disabled={promosLoading}
+            >
+              <option value="">-- Không áp dụng --</option>
+              {promotions.map(p => (
+                <option key={p.promoId} value={p.promoCode}>
+                  {p.promoCode} — {p.promoName} ({p.discountPercent ?? 0}% | {(p.discountAmount ?? 0).toLocaleString()}đ)
+                </option>
+              ))}
+            </select>
+            {promosLoading && <div className="text-sm text-gray-500 mb-2">Đang tải danh sách mã…</div>}
+            {promosError && <div className="text-sm text-red-600 mb-2">{promosError}</div>}
+
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => setModalOpen(false)} className="px-4 py-2 border rounded-lg">
                 Huỷ
               </button>
               <button
                 onClick={handleProceed}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                disabled={promosLoading}
               >
                 Tiếp tục
               </button>
@@ -190,3 +265,7 @@ const OrderList: React.FC = () => {
 };
 
 export default OrderList;
+function setError(_arg0: string) {
+  throw new Error('Function not implemented.');
+}
+

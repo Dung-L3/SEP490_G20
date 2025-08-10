@@ -1,5 +1,6 @@
 package com.system.restaurant.management.service;
 
+import com.system.restaurant.management.entity.Area;
 import com.system.restaurant.management.entity.RestaurantTable;
 import com.system.restaurant.management.entity.TableGroup;
 import com.system.restaurant.management.dto.MergedTableDTO;
@@ -13,6 +14,8 @@ public interface ManageTableService {
     List<RestaurantTable> findAll();
     RestaurantTable update(Integer id, RestaurantTable table);
     void delete(Integer id);
+    List<Area> findAllAreas();
+    List<RestaurantTable> getTablesAvailableByArea(Integer areaId);
 
     //waiter
     RestaurantTable updateTableStatus(Integer tableId, String status);
@@ -27,8 +30,7 @@ public interface ManageTableService {
     void disbandTableGroup(Integer groupId);
     List<RestaurantTable> getTablesInGroup(Integer groupId);
     List<String> getAllTableTypes();
-    List<RestaurantTable> getByTableType(String tableType);
-    
+
     // Merged table info
     MergedTableDTO getMergedTableInfo(Integer groupId);
     List<MergedTableDTO> getAllMergedTables();
@@ -39,7 +41,7 @@ public interface ManageTableService {
     //Reservation
     void initializeReservedTables();
     RestaurantTable assignTableForReservation(LocalDateTime reservationTime);
-    RestaurantTable assignTableForConfirmation(Integer reservationId);
+    void assignTableForConfirmation(Integer reservationId, Integer tableId);
     boolean hasAvailableReservedTables(LocalDateTime reservationTime);
 }
 
