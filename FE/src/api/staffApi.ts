@@ -12,7 +12,8 @@ interface StaffResponse {
   email: string;
   phone: string;
   status: boolean;
-  roles: Array<{roleName: string}>;
+  createdAt?: string;
+  roleName: string;  // Changed from roles array to single roleName
 }
 
 const mapToStaff = (data: StaffResponse): Staff => {
@@ -26,7 +27,7 @@ const mapToStaff = (data: StaffResponse): Staff => {
     email: data.email || '',
     phone: data.phone || '',
     status: data.status ?? false,
-    roleNames: data.roles?.map(role => role.roleName) || []
+    roleNames: data.roleName ? [`ROLE_${data.roleName.toUpperCase()}`] : [] // Convert to array and add ROLE_ prefix
   };
 };
 
@@ -36,11 +37,18 @@ export const staffApi = {
       console.log('Fetching staff from:', `${API_URL}/getAllStaffs`);
       const response = await axiosClient.get(`${API_URL}/getAllStaffs`);
       console.log('Staff response:', response.data);
+
       if (!Array.isArray(response.data)) {
         console.error('Expected array of staff but got:', response.data);
         return [];
       }
-      return response.data.map((item: StaffResponse) => mapToStaff(item));
+
+      return response.data.map((item: StaffResponse) => {
+        console.log('Mapping staff item:', item);
+        const mapped = mapToStaff(item);
+        console.log('Mapped staff:', mapped);
+        return mapped;
+      });
     } catch (error) {
       console.error('Error fetching staff:', error);
       throw new Error('Không thể tải danh sách nhân viên');
@@ -66,7 +74,7 @@ export const staffApi = {
         fullName: request.fullName,
         email: request.email,
         phone: request.phone,
-        roleName: request.roleNames?.[0] || 'ROLE_STAFF' // Lấy role đầu tiên, mặc định là STAFF
+        roleName: request.roleNames?.[0]?.replace('ROLE_', '').toLowerCase() || 'staff' // Remove ROLE_ prefix and convert to lowercase
       };
 
       const response = await axiosClient.post(`${AUTH_API_URL}/register/employee`, registerRequest);
@@ -118,16 +126,26 @@ export const staffApi = {
         email: request.email,
         phone: request.phone,
         status: request.status,
-        roleName: request.roleNames?.[0] // Lấy role đầu tiên
+        roleName: request.roleNames?.[0]?.replace('ROLE_', '') || 'staff' // Remove ROLE_ prefix, leave case as is
       };
 
+      console.log('Update request data:', updateRequest);
       const response = await axiosClient.put(`${API_URL}/${id}`, updateRequest);
+      console.log('Update response:', response.data);
+
+      if (!response.data) {
+        throw new Error('Không nhận được phản hồi từ server');
+      }
+
       return mapToStaff(response.data);
     } catch (error: unknown) {
       console.error('Error updating staff:', error);
       
       if (error && typeof error === 'object' && 'response' in error) {
         const axiosError = error as { response?: { data?: { error?: string; trace?: string; message?: string } } };
+        
+        // Log full error response for debugging
+        console.log('Error response:', axiosError.response?.data);
         
         if (axiosError.response?.data?.error === 'Internal Server Error') {
           const trace = axiosError.response.data.trace;
@@ -137,6 +155,9 @@ export const staffApi = {
             }
             if (trace.includes('Email đã tồn tại')) {
               throw new Error('Email đã tồn tại');
+            }
+            if (trace.includes('Username đã tồn tại')) {
+              throw new Error('Username đã tồn tại');
             }
           }
         }
@@ -168,19 +189,34 @@ export const staffApi = {
 
   delete: async (id: number): Promise<void> => {
     try {
-      const response = await fetch(`${API_URL}/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        }
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-    } catch (error) {
+      console.log('Deleting staff with ID:', id);
+      await axiosClient.delete(`${API_URL}/${id}`);
+    } catch (error: unknown) {
       console.error('Error deleting staff:', error);
-      throw new Error('Failed to delete staff');
+      
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: { error?: string; trace?: string; message?: string } } };
+        
+        // Check for specific error messages in the trace
+        if (axiosError.response?.data?.trace) {
+          const trace = axiosError.response.data.trace;
+          if (typeof trace === 'string') {
+            if (trace.includes('WorkShifts')) {
+              throw new Error('Không thể xóa nhân viên vì họ đã có ca làm việc trong hệ thống. Vui lòng xóa ca làm việc trước.');
+            }
+            if (trace.includes('Orders')) {
+              throw new Error('Không thể xóa nhân viên vì họ đã có đơn hàng trong hệ thống.');
+            }
+            if (trace.includes('REFERENCE constraint')) {
+              throw new Error('Không thể xóa nhân viên vì họ đang được liên kết với dữ liệu khác trong hệ thống.');
+            }
+          }
+        }
+        
+        throw new Error(axiosError.response?.data?.message || 'Không thể xóa nhân viên');
+      }
+      
+      throw new Error('Không thể xóa nhân viên');
     }
   },
 
