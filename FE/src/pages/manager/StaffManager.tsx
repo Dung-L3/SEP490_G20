@@ -70,6 +70,23 @@ const StaffManager = () => {
     }
   };
 
+    const formatRole = (role: string): string => {
+    console.log('Formatting role:', role);
+    if (!role) return '';
+    // Remove 'ROLE_' prefix if exists
+    const baseRole = role.replace('ROLE_', '');
+    
+    switch (baseRole.toUpperCase()) {
+      case 'MANAGER': return 'Quản lý';
+      case 'WAITER': return 'Phục vụ';
+      case 'CHEF': return 'Đầu bếp';
+      case 'RECEPTIONIST': return 'Thu ngân';
+      case 'STAFF': return 'Nhân viên';
+      case 'CUSTOMER': return 'Khách hàng';
+      default: return baseRole;
+    }
+  };
+
   // Convert API Staff to display format
   const mapStaffToDisplay = useCallback((apiStaff: Staff): StaffDisplay => {
     return {
@@ -80,11 +97,13 @@ const StaffManager = () => {
 
   const getAvatarForRole = (role: string): string => {
     if (!role) return '👤'; // Default avatar if no role
-    switch (role.toLowerCase()) {
-      case 'manager': return '👨‍💼';
-      case 'waiter': return '👨‍🍽️';
-      case 'chef': return '👨‍🍳';
-      case 'thu ngân': return '👩‍💻';
+    const baseRole = role.replace('ROLE_', '').toUpperCase();
+    switch (baseRole) {
+      case 'MANAGER': return '👨‍💼';
+      case 'WAITER': return '👨‍🍽️';
+      case 'CHEF': return '👨‍🍳';
+      case 'RECEPTIONIST': return '👩‍💻';
+      case 'STAFF': return '👤';
       default: return '👤';
     }
   };
@@ -94,6 +113,7 @@ const StaffManager = () => {
       try {
         setLoading(true);
         const response = await staffApi.getAll();
+        console.log('Staff data from API:', response);
         setStaff(response.map(mapStaffToDisplay));
         setError('');
       } catch (err) {
@@ -133,24 +153,37 @@ const StaffManager = () => {
       return;
     }
 
+    // Validate input
+    if (!editStaff.fullName.trim() || !editStaff.email.trim() || !editStaff.phone.trim() || !editStaff.username.trim()) {
+      setError('Vui lòng điền đầy đủ thông tin');
+      return;
+    }
+
     try {
       setLoading(true);
+      setError(''); // Reset error state
+
+      console.log('Current staff data:', editStaff);
       const staffRequest: StaffRequest = {
-        username: editStaff.username,
-        fullName: editStaff.fullName,
-        email: editStaff.email,
-        phone: editStaff.phone,
+        username: editStaff.username.trim(),
+        fullName: editStaff.fullName.trim(),
+        email: editStaff.email.trim(),
+        phone: editStaff.phone.trim(),
         status: editStaff.status,
-        roleNames: editStaff.roleNames,
+        roleNames: editStaff.roleNames,  // Keep existing roles
         passwordHash: '' // Empty password means no change
       };
+      console.log('Sending update request:', staffRequest);
 
       const updated = await staffApi.update(editStaff.id, staffRequest);
+      console.log('Update response:', updated);
+
       setStaff(staff => staff.map(s => 
         s.id === editStaff.id ? mapStaffToDisplay(updated) : s
       ));
       setEditStaff(null);
-      setError('');
+      // Show success message
+      alert('Cập nhật thông tin nhân viên thành công');
     } catch (err) {
       console.error('Error updating staff:', err);
       if (err instanceof Error) {
@@ -194,16 +227,28 @@ const StaffManager = () => {
   };
 
   const handleDelete = async (id: number) => {
+    if (!id) {
+      setError('ID nhân viên không hợp lệ');
+      return;
+    }
+
     if (!window.confirm('Bạn có chắc chắn muốn xóa nhân viên này?')) return;
 
     try {
       setLoading(true);
+      setError('');
+      console.log('Deleting staff with ID:', id);
       await staffApi.delete(id);
       setStaff(staff => staff.filter(s => s.id !== id));
-      setError('');
+      // Show success message
+      alert('Xóa nhân viên thành công');
     } catch (err) {
-      setError('Không thể xóa nhân viên');
       console.error('Error deleting staff:', err);
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Không thể xóa nhân viên');
+      }
     } finally {
       setLoading(false);
     }
@@ -309,9 +354,18 @@ const StaffManager = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                        {s.roleNames.join(', ')}
-                      </span>
+                      {s.roleNames && s.roleNames.length > 0 ? (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                          {s.roleNames.map(role => {
+                            console.log('Role before formatting:', role);
+                            return formatRole(role);
+                          }).join(', ')}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                          Chưa có chức vụ
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-gray-900">{s.email}</td>
                     <td className="px-6 py-4 text-gray-900">{s.phone}</td>
@@ -401,10 +455,10 @@ const StaffManager = () => {
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                     >
                       <option value="">Chọn chức vụ</option>
-                      <option value="manager">Quản lý</option>
-                      <option value="waiter">Phục vụ</option>
-                      <option value="chef">Bếp</option>
-                      <option value="cashier">Thu ngân</option>
+                      <option value="ROLE_MANAGER">Quản lý</option>
+                      <option value="ROLE_WAITER">Phục vụ</option>
+                      <option value="ROLE_CHEF">Đầu bếp</option>
+                      <option value="ROLE_RECEPTIONIST">Thu ngân</option>
                     </select>
                   </div>
                   <div>
@@ -484,22 +538,6 @@ const StaffManager = () => {
                       onChange={(e) => setEditStaff(prev => ({ ...prev!, email: e.target.value }))}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                     />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Chức vụ</label>
-                    <select
-                      name="role"
-                      value={editStaff.roleNames[0] || ''}
-                      onChange={(e) => setEditStaff(prev => ({ ...prev!, roleNames: [e.target.value] }))}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                    >
-                      <option value="">Chọn chức vụ</option>
-                      <option value="MANAGER">Quản lý</option>
-                      <option value="CUSTOMER">Khách hàng</option>
-                      <option value="WAITER">Phục vụ</option>
-                      <option value="CHEF">Đầu bếp</option>
-                      <option value="RECEPTIONIST">Thu ngân</option>
-                    </select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Số điện thoại</label>
