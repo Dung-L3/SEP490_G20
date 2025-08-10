@@ -3,6 +3,7 @@ package com.system.restaurant.management.controller;
 import com.system.restaurant.management.dto.TableGroupRequest;
 import com.system.restaurant.management.dto.TableStatusRequest;
 import com.system.restaurant.management.dto.MergedTableDTO;
+import com.system.restaurant.management.entity.Area;
 import com.system.restaurant.management.entity.RestaurantTable;
 import com.system.restaurant.management.entity.TableGroup;
 import com.system.restaurant.management.service.ManageTableService;
@@ -53,9 +54,14 @@ public class ManageTableController {
         return ResponseEntity.ok(service.getAllTableTypes());
     }
 
-    @GetMapping("/getByTableType/{type}")
-    public ResponseEntity<List<RestaurantTable>> getByType(@PathVariable String type) {
-        return ResponseEntity.ok(service.getByTableType(type));
+    @GetMapping("/getAllAreas")
+    public ResponseEntity<List<Area>> listArea() {
+        return ResponseEntity.ok(service.findAllAreas());
+    }
+
+    @GetMapping("/getTablesAvailableByArea/{areaId}")
+    public ResponseEntity<List<RestaurantTable>> getByAreaWithAvailableTables(@PathVariable Integer areaId) {
+        return ResponseEntity.ok(service.getTablesAvailableByArea(areaId));
     }
 
     // Additional table management endpoints
@@ -152,10 +158,10 @@ public class ManageTableController {
         return ResponseEntity.ok(table);
     }
 
-    @PostMapping("/confirm-reservation/{reservationId}")
-    public ResponseEntity<RestaurantTable> confirmReservation(
-            @PathVariable Integer reservationId) {
-        RestaurantTable table = service.assignTableForConfirmation(reservationId);
-        return ResponseEntity.ok(table);
-    }
+//    @PostMapping("/confirm-reservation/{reservationId}")
+//    public ResponseEntity<RestaurantTable> confirmReservation(
+//            @PathVariable Integer reservationId) {
+//        RestaurantTable table = service.assignTableForConfirmation(reservationId);
+//        return ResponseEntity.ok(table);
+//    }
 }

@@ -1,14 +1,9 @@
 package com.system.restaurant.management.service.serviceImpl;
 
-import com.system.restaurant.management.entity.RestaurantTable;
-import com.system.restaurant.management.entity.TableGroup;
-import com.system.restaurant.management.entity.TableGroupMember;
+import com.system.restaurant.management.entity.*;
 import com.system.restaurant.management.dto.MergedTableDTO;
 import com.system.restaurant.management.exception.ResourceNotFoundException;
-import com.system.restaurant.management.repository.ManageTableRepository;
-import com.system.restaurant.management.repository.RestaurantTableRepository;
-import com.system.restaurant.management.repository.TableGroupRepository;
-import com.system.restaurant.management.repository.TableGroupMemberRepository;
+import com.system.restaurant.management.repository.*;
 import com.system.restaurant.management.service.ManageTableService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -26,6 +21,8 @@ public class ManageTableServiceImpl implements ManageTableService {
     private final TableGroupRepository tableGroupRepository;
     private final TableGroupMemberRepository tableGroupMemberRepository;
     private final RestaurantTableRepository tableRepository;
+    private final AreaRepository areaRepository;
+    private final ReservationRepository reservationRepository;
 
     @Override
     public RestaurantTable create(RestaurantTable table) {
@@ -44,6 +41,12 @@ public class ManageTableServiceImpl implements ManageTableService {
     @Transactional(readOnly = true)
     public List<RestaurantTable> findAll() {
         return repo.findAll();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Area> findAllAreas() {
+        return areaRepository.findAll();
     }
 
     @Override
@@ -72,9 +75,10 @@ public class ManageTableServiceImpl implements ManageTableService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<RestaurantTable> getByTableType(String tableType) {
-        return repo.findByTableType(tableType);
+    public List<RestaurantTable> getTablesAvailableByArea(Integer areaId) {
+        return repo.findByAreaIdAndStatusIgnoreCase(areaId, "Available");
     }
+
     @Override
     public RestaurantTable updateTableStatus(Integer tableId, String status) {
         RestaurantTable table = findById(tableId);
@@ -236,17 +240,32 @@ public class ManageTableServiceImpl implements ManageTableService {
     }
 
     @Override
-    public RestaurantTable assignTableForConfirmation(Integer reservationId) {
-        List<RestaurantTable> availableTables = tableRepository.findByStatus(RestaurantTable.Status.AVAILABLE);
+    @Transactional
+    public void assignTableForConfirmation(Integer reservationId, Integer newTableId) {
+        Reservation res = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new IllegalStateException("Reservation not found: " + reservationId));
 
-        if (availableTables.isEmpty()) {
-            throw new IllegalStateException("No available tables for seating customers");
+        RestaurantTable newTable = tableRepository.findById(newTableId)
+                .orElseThrow(() -> new IllegalStateException("Table not found: " + newTableId));
+
+        RestaurantTable currentTable = null;
+        if (res.getTableId() != null) {
+            currentTable = tableRepository.findById(res.getTableId()).orElse(null);
         }
 
-        RestaurantTable selectedTable = availableTables.get(0);
-        selectedTable.setStatus(RestaurantTable.Status.OCCUPIED);
-        return tableRepository.save(selectedTable);
+        if (currentTable != null && !currentTable.getTableId().equals(newTableId)) {
+            if (currentTable.getStatus().equals(RestaurantTable.Status.OCCUPIED)) {
+                currentTable.setStatus(RestaurantTable.Status.AVAILABLE);
+                tableRepository.save(currentTable);
+            }
+        }
+
+        newTable.setStatus(RestaurantTable.Status.OCCUPIED);
+        tableRepository.save(newTable);
+        res.setTableId(newTableId);
+        reservationRepository.save(res);
     }
+
 
     @Override
     public boolean hasAvailableReservedTables(LocalDateTime reservationTime) {

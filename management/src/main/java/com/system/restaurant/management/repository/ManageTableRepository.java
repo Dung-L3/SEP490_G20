@@ -12,8 +12,7 @@ public interface ManageTableRepository extends JpaRepository<RestaurantTable, In
 
     @Query("SELECT DISTINCT t.tableType FROM RestaurantTable t WHERE t.tableType IS NOT NULL")
     List<String> findDistinctTableTypes();
-
-    List<RestaurantTable> findByTableType(String tableType);
+    List<RestaurantTable> findByAreaIdAndStatusIgnoreCase(Integer areaId, String status);
     List<RestaurantTable> findByStatus(String status);
     List<RestaurantTable> findByAreaId(Integer areaId);
 }
