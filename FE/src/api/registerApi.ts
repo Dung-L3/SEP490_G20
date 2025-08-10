@@ -1,3 +1,5 @@
+import axiosClient from './axiosClient';
+
 interface RegisterRequest {
   username: string;
   password: string;
@@ -7,56 +9,32 @@ interface RegisterRequest {
   roleName?: string;
 }
 
-async function handleApiResponse(res: Response) {
-  const text = await res.text();
-  let result: any = {};
-  
-  try {
-    if (text) {
-      result = JSON.parse(text);
-    }
-  } catch (error) {
-    console.error('Error parsing response:', error);
-  }
-
-  if (!res.ok) {
-    console.error('API Error:', text);
-    throw new Error(
-      result?.message || 
-      result?.error || 
-      'Có lỗi xảy ra, vui lòng thử lại'
-    );
-  }
-
-  return result;
-}
-
 export async function registerEmployeeApi(data: RegisterRequest) {
-  const requestData = {
-    ...data,
-    roleName: data.roleName?.toUpperCase()
-  };
+  try {
+    const requestData = {
+      ...data,
+      roleName: data.roleName // Đã được format trong StaffAddModal
+    };
 
-  const res = await fetch('http://localhost:8080/api/auth/register/employee', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(requestData),
-  });
-
-  return handleApiResponse(res);
+    const response = await axiosClient.post('/auth/register/employee', requestData);
+    return response.data;
+  } catch (error) {
+    console.error('Error registering employee:', error);
+    throw error;
+  }
 }
 
 export async function registerCustomerApi(data: RegisterRequest) {
-  const requestData = {
-    ...data,
-    roleName: 'CUSTOMER'  // Backend sẽ thêm prefix ROLE_ nếu cần
-  };
+  try {
+    const requestData = {
+      ...data,
+      roleName: 'CUSTOMER'  // Backend sẽ thêm prefix ROLE_ nếu cần
+    };
 
-  const res = await fetch('/api/auth/register/customer', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(requestData),
-  });
-
-  return handleApiResponse(res);
+    const response = await axiosClient.post('/auth/register/customer', requestData);
+    return response.data;
+  } catch (error) {
+    console.error('Error registering customer:', error);
+    throw error;
+  }
 }

@@ -30,11 +30,10 @@ export const StaffAddModal: React.FC<StaffAddModalProps> = ({
   const [error, setError] = useState<string>('');
 
   const roles = [
-    { value: 'MANAGER', label: 'Quản lý' },
-    { value: 'CUSTOMER', label: 'Khách hàng' },
-    { value: 'WAITER', label: 'Phục vụ' },
-    { value: 'CHEF', label: 'Đầu bếp' },
-    { value: 'RECEPTIONIST', label: 'Thu ngân' }
+    { value: 'ROLE_MANAGER', label: 'Quản lý' },
+    { value: 'ROLE_WAITER', label: 'Phục vụ' },
+    { value: 'ROLE_CHEF', label: 'Đầu bếp' },
+    { value: 'ROLE_RECEPTIONIST', label: 'Thu ngân' }
   ];
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
