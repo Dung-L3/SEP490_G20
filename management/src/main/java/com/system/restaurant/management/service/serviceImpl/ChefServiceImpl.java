@@ -53,7 +53,7 @@ public class ChefServiceImpl implements ChefService {
     private KitchenOrderDTO convertToDTO(OrderDetail orderDetail) {
         KitchenOrderDTO dto = new KitchenOrderDTO();
         dto.setOrderDetailId(orderDetail.getOrderDetailId());
-        dto.setOrderId(orderDetail.getOrderId());
+        dto.setOrderId(orderDetail.getOrder() != null ? orderDetail.getOrder().getOrderId() : orderDetail.getOrderId());
         
         // Xử lý dish name an toàn
         String dishName = "Món không xác định";
@@ -76,6 +76,17 @@ public class ChefServiceImpl implements ChefService {
                     if (orderDetail.getOrder().getTable().getTableName() != null) {
                         tableName = orderDetail.getOrder().getTable().getTableName();
                         log.debug("Table name: {}", tableName);
+                        var o = orderDetail.getOrder();
+
+                        // ƯU TIÊN: nếu là TAKEAWAY -> luôn hiển thị "Mang đi"
+                        if ("TAKEAWAY".equalsIgnoreCase(o.getOrderType())) {
+                            tableName = "Mang đi";
+                        } else if (o.getTable() != null && o.getTable().getTableName() != null) {
+                            // DINE-IN có bàn
+                            tableName = o.getTable().getTableName();
+                        }
+
+                        dto.setOrderTime(o.getCreatedAt());
                     } else {
                         log.warn("Table name is null for table ID: {}", orderDetail.getOrder().getTable().getTableId());
                     }
