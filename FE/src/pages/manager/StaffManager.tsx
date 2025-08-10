@@ -50,18 +50,21 @@ const StaffManager = () => {
       // Đảm bảo roleName không null và chuyển đổi sang định dạng phù hợp
       const processedStaffData = {
         ...staffData,
-        roleName: staffData.roleName || 'staff' // Giá trị mặc định nếu roleName là null
+        roleName: staffData.roleName || 'ROLE_STAFF' // Giá trị mặc định nếu roleName là null
       };
       
-      await registerEmployeeApi(processedStaffData);
-      // Reload staff list
-      const response = await staffApi.getAll();
-      setStaff(response.map(mapStaffToDisplay));
+      const newStaff = await registerEmployeeApi(processedStaffData);
+      // Thêm nhân viên mới vào danh sách
+      setStaff(prev => [...prev, mapStaffToDisplay(newStaff)]);
       setAddOpen(false);
       setError(''); // Clear any previous errors
     } catch (error) {
       console.error('Error registering employee:', error);
-      setError('Lỗi khi thêm nhân viên: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('Không thể thêm nhân viên mới');
+      }
     } finally {
       setLoading(false);
     }
@@ -125,7 +128,10 @@ const StaffManager = () => {
 
 
   const handleEditSave = async () => {
-    if (!editStaff) return;
+    if (!editStaff || editStaff.id === 0) {
+      setError('Không tìm thấy thông tin nhân viên');
+      return;
+    }
 
     try {
       setLoading(true);
@@ -146,8 +152,12 @@ const StaffManager = () => {
       setEditStaff(null);
       setError('');
     } catch (err) {
-      setError('Không thể cập nhật thông tin nhân viên');
       console.error('Error updating staff:', err);
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Không thể cập nhật thông tin nhân viên');
+      }
     } finally {
       setLoading(false);
     }
