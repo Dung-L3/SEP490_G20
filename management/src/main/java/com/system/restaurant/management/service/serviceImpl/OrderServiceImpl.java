@@ -161,9 +161,9 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public List<OrderDto> getUnpaidOrders() {
-        OrderStatus pending = statusRepo.findByStatusName("Processing")
+        OrderStatus pending = statusRepo.findByStatusName("Pending")
                 .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Processing status not found"));
+                        HttpStatus.NOT_FOUND, "Pending status not found"));
 
         Integer pendingId = pending.getStatusId();
         List<Order> orders = orderRepository.findByStatusId(pendingId);
