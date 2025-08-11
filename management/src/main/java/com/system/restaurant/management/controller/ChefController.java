@@ -31,4 +31,14 @@ public class ChefController {
             return ResponseEntity.badRequest().body("Failed to update order status: " + e.getMessage());
         }
     }
+
+    @PutMapping("/chef/orders/{orderDetailId}/cancel")
+    public ResponseEntity<String> cancelOrder(@PathVariable Integer orderDetailId) {
+        try {
+            chefService.updateOrderStatus(orderDetailId, "CANCELLED");
+            return ResponseEntity.ok("Order cancelled successfully");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Failed to cancel order: " + e.getMessage());
+        }
+    }
 }

@@ -2,13 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, ChefHat, Utensils, AlertCircle } from 'lucide-react';
 import type { KitchenOrderItem, OrderStatus } from '../../api/chefApi';
-import { fetchPendingOrders, statusList, updateOrderStatus } from '../../api/chefApi';
+import { fetchPendingOrders, statusList, updateOrderStatus, cancelOrder } from '../../api/chefApi';
 
 interface OrderCardProps {
   orderIdx: number;
   order: KitchenOrderItem;
   currentTime: Date;
-  onStatusChange: (orderDetailId: number, status: string) => void;
 }
 
 const Chef = () => {
@@ -83,7 +82,28 @@ const Chef = () => {
           <EmptySection />
         ) : (
           <div className="space-y-8">
-            <OrderSection title="Đơn chờ xử lý" orders={pendingOrders} currentTime={currentTime} />
+            <OrderSection 
+              title="Đơn chờ xử lý" 
+              orders={pendingOrders.filter(order => {
+                const status = order.status.toLowerCase();
+                return status === 'pending' || status === 'processing';
+              })} 
+              currentTime={currentTime} 
+            />
+            {/* Hiển thị đơn hủy */}
+            <OrderSection 
+              title="Đơn đã hủy" 
+              orders={pendingOrders.filter(order => {
+                const status = order.status.toLowerCase();
+                if (status !== 'cancelled') return false;
+                
+                // Kiểm tra thời gian chờ
+                const orderTime = new Date(order.orderTime);
+                const waitingMinutes = Math.floor((currentTime.getTime() - orderTime.getTime()) / (1000 * 60));
+                return waitingMinutes < 30;
+              })} 
+              currentTime={currentTime} 
+            />
           </div>
         )}
       </div>
@@ -119,8 +139,10 @@ const EmptySection = () => (
 );
 
 const OrderSection = ({ title, orders, currentTime }: { title: string; orders: KitchenOrderItem[]; currentTime: Date }) => (
-  <div>
-    <h2 className="text-xl font-semibold text-slate-800 mb-4">{title} ({orders.length})</h2>
+  <div className={`${title.includes('hủy') ? 'mt-8 pt-8 border-t-2 border-red-100' : ''}`}>
+    <h2 className={`text-xl font-semibold mb-4 ${title.includes('hủy') ? 'text-red-800' : 'text-slate-800'}`}>
+      {title} ({orders.length})
+    </h2>
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
       {orders.map((order, idx) => (
         <OrderCard 
@@ -128,14 +150,14 @@ const OrderSection = ({ title, orders, currentTime }: { title: string; orders: K
           orderIdx={idx} 
           order={order} 
           currentTime={currentTime} 
-          onStatusChange={() => {}} // Không cần gọi API
+
         />
       ))}
     </div>
   </div>
 );
 
-const OrderCard = ({ orderIdx, order, currentTime, onStatusChange }: OrderCardProps) => {
+const OrderCard = ({ orderIdx, order, currentTime }: OrderCardProps) => {
   const [status, setStatus] = useState(order.status.toLowerCase());
   const [updating, setUpdating] = useState(false);
 
@@ -148,13 +170,19 @@ const OrderCard = ({ orderIdx, order, currentTime, onStatusChange }: OrderCardPr
   const seconds = elapsedTime % 60;
 
   const handleStatusChange = async (newStatus: string) => {
+    if (!confirm('Bạn có chắc chắn muốn thay đổi trạng thái?')) return;
+    
     try {
       setUpdating(true);
       
-      // Gọi API để cập nhật status trong database
-      await updateOrderStatus(order.orderDetailId, newStatus.toUpperCase());
+      if (newStatus === 'cancelled') {
+        await cancelOrder(order.orderDetailId);
+        // Force refresh the orders list
+        window.location.reload();
+      } else {
+        await updateOrderStatus(order.orderDetailId, newStatus.toUpperCase());
+      }
       
-      // Cập nhật local state
       setStatus(newStatus);
       
     } catch (error) {
@@ -165,8 +193,7 @@ const OrderCard = ({ orderIdx, order, currentTime, onStatusChange }: OrderCardPr
     }
   };
 
-  // Ẩn món khi đã processing hoặc completed
-  if (status === 'processing' || status === 'completed') return null;
+  // Đã bỏ phần ẩn để cho phép hiển thị đơn hủy
 
   return (
     <div className={`bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-slate-200 overflow-hidden ${currentStatus?.bgColor}`}>
@@ -205,7 +232,14 @@ const OrderCard = ({ orderIdx, order, currentTime, onStatusChange }: OrderCardPr
         >
           {statusList
             .filter(s => {
-              if (status === 'pending') return ['pending', 'processing'].includes(s.value);
+              // Chỉ hiện option hủy khi đơn đang pending hoặc processing
+              const canCancel = ['pending', 'processing'].includes(status);
+              if (status === 'pending') {
+                return ['pending', 'processing'].concat(canCancel ? ['cancelled'] : []).includes(s.value);
+              }
+              if (status === 'processing') {
+                return ['processing', 'completed'].concat(canCancel ? ['cancelled'] : []).includes(s.value);
+              }
               return false;
             })
             .map(s => (

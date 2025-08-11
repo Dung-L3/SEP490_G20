@@ -16,6 +16,9 @@ public interface RestaurantTableRepository extends JpaRepository<RestaurantTable
 
     List<RestaurantTable> findByStatus(String status);
 
+    @Query("SELECT rt FROM RestaurantTable rt WHERE rt.status IN :statuses")
+    List<RestaurantTable> findByStatusIn(@Param("statuses") List<String> statuses);
+
     @Query("SELECT rt FROM RestaurantTable rt WHERE rt.areaId = :areaId")
     List<RestaurantTable> findByAreaId(@Param("areaId") Integer areaId);
 
@@ -55,4 +58,6 @@ public interface RestaurantTableRepository extends JpaRepository<RestaurantTable
            "(SELECT tgm.table.tableId FROM TableGroupMember tgm)")
     List<RestaurantTable> findByStatusAndNotInGroup(@Param("status") String status);
 
+    @Query("SELECT rt FROM RestaurantTable rt WHERE UPPER(rt.status) IN :statuses")
+    List<RestaurantTable> findByMultipleStatuses(@Param("statuses") List<String> statuses);
 }

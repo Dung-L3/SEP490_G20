@@ -440,6 +440,18 @@ public class WaiterServiceImpl implements WaiterService {
     }
 
     @Override
+    public List<RestaurantTable> getTablesByStatuses(List<String> statuses) {
+        if (statuses == null || statuses.isEmpty()) {
+            return List.of();
+        }
+        // Chuẩn hóa các status để tránh lỗi case-sensitive
+        List<String> normalizedStatuses = statuses.stream()
+                .map(String::toUpperCase)
+                .toList();
+        return restaurantTableRepository.findByMultipleStatuses(normalizedStatuses);
+    }
+
+    @Override
     public RestaurantTable updateTableStatus(Integer tableId, String status) {
         RestaurantTable table = restaurantTableRepository.findById(tableId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy bàn với ID: " + tableId));

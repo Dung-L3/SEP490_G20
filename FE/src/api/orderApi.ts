@@ -69,7 +69,7 @@ const BASE_URL = '/api';
 const API_URL = '/api/v1/orders';
 
 export const fetchOccupiedTables = async (): Promise<TableInfo[]> => {
-  const response = await fetch(`${BASE_URL}/waiter/tables?status=Đang phục vụ`, {
+  const response = await fetch(`${BASE_URL}/waiter/tables?status=Đang phục vụ,OCCUPIED`, {
     credentials: 'include',
     headers: {
       'Accept': 'application/json'
