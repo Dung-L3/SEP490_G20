@@ -2,14 +2,20 @@
 import { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import { useNavigate } from 'react-router-dom';  // Thêm hook useNavigate từ react-router-dom
-import { useCart } from '../contexts/CartContext';
+import { useNavigate } from 'react-router-dom';
+import { dishApi } from '../api/dishApi';
 
 const Home = () => {
-  const [currentSlide, setCurrentSlide] = useState(0);  // Loại bỏ isMenuOpen và setIsMenuOpen
-  const navigate = useNavigate();  // Khai báo hook navigate
-  const { addToCart } = useCart();
-  const [showAlert, setShowAlert] = useState<{name: string, quantity: number} | null>(null);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const navigate = useNavigate();
+  
+  // State để lưu món ăn ngẫu nhiên
+  const [randomDishes, setRandomDishes] = useState<Array<{
+    name: string;
+    price: string;
+    image: string;
+    description: string;
+  }>>([]);
 
   const heroSlides = [
     {
@@ -29,33 +35,28 @@ const Home = () => {
     }
   ];
 
-  const bestSellers = [
-    {
-      name: "Cơm Tấm Sườn Nướng",
-      price: "65.000đ",
-      image: "https://i1-giadinh.vnecdn.net/2024/03/07/7-Hoan-thien-thanh-pham-1-6244-1709800134.jpg?w=1020&h=0&q=100&dpr=1&fit=crop&s=Y03-BsY4ORbpVkG4zm_DcA",
-      description: "Cơm tấm thơm ngon với sườn nướng đậm đà"
-    },
-    {
-      name: "Bánh Xèo Miền Tây",
-      price: "45.000đ",
-      image: "https://images.unsplash.com/photo-1567620832903-9fc6debc209f?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80",
-      description: "Bánh xèo giòn tan với nhân tôm thịt đầy đặn"
-    },
-    {
-      name: "Lẩu Cá Kèo",
-      price: "180.000đ",
-      image: "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80",
-      description: "Lẩu cá kèo chua cay đặc sản miền Tây"
-    },
-    {
-      name: "Gỏi Cuốn Tôm Thịt",
-      price: "35.000đ",
-      image: "https://images.unsplash.com/photo-1539136788836-5699e78bfc75?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80",
-      description: "Gỏi cuốn tươi mát với tôm thịt tươi ngon"
-    },
+  // Load random dishes khi component mount
+  useEffect(() => {
+    const loadRandomDishes = async () => {
+      try {
+        const allDishes = await dishApi.getAll();
+        // Lọc món active và lấy random 4 món
+        const activeDishes = allDishes.filter(dish => dish.status);
+        const shuffled = [...activeDishes].sort(() => 0.5 - Math.random());
+        const formatted = shuffled.slice(0, 4).map(dish => ({
+          name: dish.dishName,
+          price: `${dish.price.toLocaleString()}đ`,
+          image: dish.imageUrl || '/placeholder-dish.jpg',
+          description: `Món ${dish.dishName} đặc biệt`
+        }));
+        setRandomDishes(formatted);
+      } catch (error) {
+        console.error('Error loading dishes:', error);
+      }
+    };
     
-  ];
+    loadRandomDishes();
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -130,12 +131,12 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Best Seller Section */}
+      {/* Featured Dishes Section */}
       <section className="py-20 bg-gray-800">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="text-4xl font-bold text-yellow-400 mb-8">Món Ăn Bán Chạy</h2>
+          <h2 className="text-4xl font-bold text-yellow-400 mb-8">Món Ăn Nổi Bật</h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {bestSellers.map((dish, index) => (
+            {randomDishes.map((dish, index) => (
               <div key={index} className="bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-2xl hover:shadow-red-600/20 transition-all duration-300 transform hover:-translate-y-2 border border-gray-700">
                 <div className="relative overflow-hidden">
                   <img 
@@ -152,17 +153,9 @@ const Home = () => {
                   <p className="text-gray-300 mb-4">{dish.description}</p>
                   <button
                     className="w-full bg-red-600 hover:bg-red-700 text-yellow-400 py-2 rounded-lg font-semibold transition-colors flex items-center justify-center"
-                    onClick={() => {
-                      addToCart({
-                        name: dish.name,
-                        price: Number(dish.price.replace(/\D/g, '')),
-                        image: dish.image
-                      });
-                      setShowAlert({ name: dish.name, quantity: 1 });
-                      setTimeout(() => setShowAlert(null), 2000);
-                    }}
+                    onClick={handleOrderClick}
                   >
-                    Đặt Món
+                    Xem Thực Đơn
                   </button>
                 </div>
               </div>
@@ -170,14 +163,6 @@ const Home = () => {
           </div>
         </div>
       </section>
-
-      {showAlert && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50">
-          <div className="bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg font-semibold animate-bounce-in">
-            Đã thêm <span className="text-yellow-300 font-bold">{showAlert.name}</span> x{showAlert.quantity} vào giỏ hàng!
-          </div>
-        </div>
-      )}
 
       <Footer />
     </div>
