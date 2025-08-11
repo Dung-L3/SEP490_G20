@@ -246,13 +246,15 @@ export const fetchOrderItems = async (orderId: number): Promise<MenuItem[]> => {
   }
 
   const data = await response.json();
-  return data.map((item: any) => ({
-    id: item.dishId,
-    name: item.dishName,
-    price: Number(item.unitPrice),
-    image: item.imageUrl || '/placeholder-dish.jpg',
-    quantity: item.quantity,
-    orderStatus: item.status ? item.status.toLowerCase() : 'pending',
-    orderDetailId: item.orderDetailId
-  }));
+  return data
+    .filter((item: any) => item.status === 'PENDING') // Chỉ lấy món ở trạng thái pending
+    .map((item: any) => ({
+      id: item.dishId,
+      name: item.dishName,
+      price: Number(item.unitPrice),
+      image: item.imageUrl || '/placeholder-dish.jpg',
+      quantity: item.quantity,
+      orderStatus: 'pending',
+      orderDetailId: item.orderDetailId
+    }));
 };

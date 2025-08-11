@@ -86,7 +86,7 @@ const Chef = () => {
               title="Đơn chờ xử lý" 
               orders={pendingOrders.filter(order => {
                 const status = order.status.toLowerCase();
-                return status === 'pending' || status === 'processing';
+                return status === 'pending';
               })} 
               currentTime={currentTime} 
             />

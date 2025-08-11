@@ -524,16 +524,9 @@ const Order: React.FC = () => {
                         
                         alert(message);
                         
-                        // Cập nhật trạng thái của các món trong giỏ hàng
-                        const updatedCart = cart.map(item => ({
-                          ...item,
-                          orderStatus: 'pending' as 'pending' | 'cooking' | 'completed',
-                          orderDetailId: orderId
-                        }));
-                        
-                        // Cập nhật giỏ hàng với trạng thái mới
+                        // Xóa toàn bộ giỏ hàng ngay sau khi đặt món thành công
                         clearCart();
-                        updatedCart.forEach(item => addToCart(item));
+                        window.location.reload(); // Tải lại trang để refresh hoàn toàn
                         
                         const tables = await fetchOccupiedTables();
                         setTableList(tables);

@@ -23,9 +23,8 @@ public class ChefServiceImpl implements ChefService {
     public List<KitchenOrderDTO> getPendingOrders() {
         try {
             List<OrderDetail> allOrders = new ArrayList<>();
-            allOrders.addAll(orderDetailRepository.findByStatusIdWithDetails(1)); // Pending
-            allOrders.addAll(orderDetailRepository.findByStatusIdWithDetails(2)); // Processing
-            allOrders.addAll(orderDetailRepository.findByStatusIdWithDetails(4)); // Cancelled
+            allOrders.addAll(orderDetailRepository.findByStatusIdWithDetails(1)); // Chỉ lấy pending
+            allOrders.addAll(orderDetailRepository.findByStatusIdWithDetails(4)); // Và cancelled
             log.info("Found {} orders", allOrders.size());
             
             return allOrders.stream()

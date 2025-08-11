@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/waiter")
@@ -141,6 +142,11 @@ public class WaiterController {
 
     @GetMapping("/orders/{orderId}/items")
     public ResponseEntity<List<OrderDetail>> getOrderItems(@PathVariable Integer orderId) {
-        return ResponseEntity.ok(waiterService.getOrderItems(orderId));
+        // Chỉ trả về các món ở trạng thái pending (StatusId = 1)
+        List<OrderDetail> items = waiterService.getOrderItems(orderId);
+        List<OrderDetail> pendingItems = items.stream()
+            .filter(item -> item.getStatusId() == 1)
+            .collect(Collectors.toList());
+        return ResponseEntity.ok(pendingItems);
     }
 }

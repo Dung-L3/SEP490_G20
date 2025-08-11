@@ -28,12 +28,16 @@ export const TableCartProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const addToCart = (item: Omit<CartItem, 'quantity'>) => {
     setTableCarts(prev => {
       const cart = prev[currentTable] || [];
-      const found = cart.find(i => i.name === item.name);
+      // Kiểm tra xem món đã được gửi và đang pending không
+      const found = cart.find(i => i.name === item.name && (!i.orderDetailId || i.orderStatus === 'pending'));
       let newCart;
       if (found) {
         newCart = cart.map(i => i.name === item.name ? { ...i, quantity: i.quantity + 1 } : i);
-      } else {
+      } else if (!item.orderDetailId || item.orderStatus === 'pending') {
+        // Chỉ thêm món mới nếu chưa gửi hoặc đang pending
         newCart = [...cart, { ...item, quantity: 1 }];
+      } else {
+        return prev; // Không thêm món đã gửi và không phải pending
       }
       return { ...prev, [currentTable]: newCart };
     });

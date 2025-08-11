@@ -541,6 +541,9 @@ public class WaiterServiceImpl implements WaiterService {
 
     @Override
     public List<OrderDetail> getOrderItems(Integer orderId) {
-        return orderDetailRepository.findByOrderId(orderId);
+        List<OrderDetail> items = orderDetailRepository.findByOrderId(orderId);
+        return items.stream()
+                .filter(item -> item.getStatusId() == 1) // Chỉ lấy món pending
+                .collect(Collectors.toList());
     }
 }
