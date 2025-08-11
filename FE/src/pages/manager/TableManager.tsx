@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { FC } from 'react';
 import TaskbarManager from '../../components/TaskbarManager';
 import { tableApi } from '../../api/tableApi';
+import { areaApi, type Area } from '../../api/areaApi';
 import { type UiTable, mapApiTableToUiTable, mapUiTableToApiTable } from '../../utils/tableMapping';
 
 const TableManager: FC = () => {
@@ -13,23 +14,36 @@ const TableManager: FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedTable, setSelectedTable] = useState<UiTable | null>(null);
-  const [statusDropdownId, setStatusDropdownId] = useState<number | null>(null);
+  const [areas, setAreas] = useState<Area[]>([]);
+  const [selectedArea, setSelectedArea] = useState<number | null>(null);
+
   const [newTable, setNewTable] = useState({
     tableId: 0,
     tableName: '',
     areaId: 1,
     tableType: '4 người',
-    status: 'Trống',
+    status: 'Available',
     isWindow: false,
     notes: '',
     createdAt: new Date().toISOString(),
     orders: []
   });
 
+  const fetchAreas = async () => {
+    try {
+      const response = await areaApi.getAllAreas();
+      setAreas(response);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch areas');
+    }
+  };
+
   const fetchTables = async () => {
     try {
       setIsLoading(true);
-      const response = await tableApi.getAll();
+      const response = selectedArea !== null
+        ? await areaApi.getTablesAvailableByArea(selectedArea)
+        : await tableApi.getAll();
       const uiTables = response.map(mapApiTableToUiTable);
       setTables(uiTables);
       setFilteredTables(uiTables);
@@ -41,8 +55,12 @@ const TableManager: FC = () => {
   };
 
   useEffect(() => {
-    fetchTables();
+    fetchAreas();
   }, []);
+
+  useEffect(() => {
+    fetchTables();
+  }, [selectedArea]);
 
   useEffect(() => {
     const filtered = tables.filter((table) =>
@@ -62,15 +80,18 @@ const TableManager: FC = () => {
     try {
       setIsLoading(true);
       const apiTable = mapUiTableToApiTable(table);
+      console.log('Sending update with data:', { ...apiTable, tableId: table.id });
       const updatedTable = await tableApi.update(table.id, {
         ...apiTable,
         tableId: table.id,
       });
       const uiTable = mapApiTableToUiTable(updatedTable);
       setTables(tables.map(t => t.id === uiTable.id ? uiTable : t));
+      setFilteredTables(prevTables => prevTables.map(t => t.id === uiTable.id ? uiTable : t));
       setShowEditModal(false);
       setSelectedTable(null);
     } catch (err) {
+      console.error('Error updating table:', err);
       setError(err instanceof Error ? err.message : 'Failed to update table');
     } finally {
       setIsLoading(false);
@@ -100,7 +121,7 @@ const TableManager: FC = () => {
         tableName: newTable.tableName.trim(),
         areaId: newTable.areaId || 1,
         tableType: newTable.tableType || '4 người',
-        status: 'Trống',
+        status: 'Available',
         isWindow: newTable.isWindow || false,
         notes: newTable.notes.trim(),
         createdAt: new Date().toISOString(),
@@ -118,7 +139,7 @@ const TableManager: FC = () => {
         tableName: '',
         areaId: 1,
         tableType: '4 người',
-        status: 'Trống',
+        status: 'Available',
         isWindow: false,
         notes: '',
         createdAt: new Date().toISOString(),
@@ -131,68 +152,7 @@ const TableManager: FC = () => {
     }
   };
 
-  const handleStatusChange = async (table: UiTable, newStatus: string) => {
-    try {
-      setIsLoading(true);
-      setError('');
-      
-      console.log('Current table:', table);
-      console.log('Attempting to change status to:', newStatus);
 
-      // Đảm bảo table.id là số
-      const tableId = parseInt(table.id.toString(), 10);
-      if (isNaN(tableId)) {
-        throw new Error('Invalid table ID');
-      }
-
-      // First try to update the status
-      console.log('Calling updateStatus API...');
-      const updatedApiTable = await tableApi.updateStatus(tableId, newStatus);
-      console.log('Status update successful:', updatedApiTable);
-
-      // If status update was successful, refresh the table list
-      console.log('Refreshing table list...');
-      const response = await tableApi.getAll();
-      const allTables = response.map(mapApiTableToUiTable);
-      
-      // Update both tables and filteredTables
-      setTables(allTables);
-      setFilteredTables(allTables.filter(t =>
-        t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.type.toLowerCase().includes(searchQuery.toLowerCase())
-      ));
-
-      // Close the dropdown
-      setStatusDropdownId(null);
-      console.log('Update completed successfully');
-      
-    } catch (err) {
-      console.error('Error details:', err);
-      setError(err instanceof Error ? err.message : 'Không thể cập nhật trạng thái bàn');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Mảng các trạng thái có thể có
-  const availableStatuses = ['Trống', 'Đang phục vụ', 'Đã đặt trước'];
-
-  React.useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (statusDropdownId !== null) {
-        const dropdown = document.querySelector(`[data-dropdown-id="${statusDropdownId}"]`);
-        if (dropdown && !dropdown.contains(event.target as Node)) {
-          setStatusDropdownId(null);
-        }
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [statusDropdownId]);
 
   if (isLoading) {
     return <div className="flex items-center justify-center p-4">Loading...</div>;
@@ -214,17 +174,20 @@ const TableManager: FC = () => {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
             <h1 className="text-2xl font-bold text-gray-900">Quản lý bàn</h1>
             <div className="flex flex-col sm:flex-row gap-4">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Tìm kiếm bàn..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-full sm:w-64 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-                <svg className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
+              <div className="flex gap-4">
+            
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Tìm kiếm bàn..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 pr-4 py-2 w-full sm:w-64 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <svg className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
               </div>
               <button
                 onClick={() => setShowCreateModal(true)}
@@ -253,7 +216,7 @@ const TableManager: FC = () => {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
-                        <span className="text-gray-600">Khu vực {table.areaId}</span>
+                        <span className="text-gray-600">{areas.find(area => area.areaId === table.areaId)?.areaName || `Khu vực ${table.areaId}`}</span>
                       </div>
                       <div className="flex items-center gap-2 mb-2">
                         <svg className="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -263,59 +226,21 @@ const TableManager: FC = () => {
                       </div>
                     </div>
                     <div className="relative">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setStatusDropdownId(statusDropdownId === table.id ? null : table.id);
-                        }}
-                        className={`px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1 transition-all duration-200 ${
+                      <span
+                        className={`px-3 py-1 rounded-full text-sm font-medium inline-block ${
                           table.status === 'Trống' 
-                            ? 'bg-green-100 text-green-800 hover:bg-green-200' 
+                            ? 'bg-green-100 text-green-800' 
                             : table.status === 'Đang phục vụ'
-                            ? 'bg-red-100 text-red-800 hover:bg-red-200'
-                            : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-yellow-100 text-yellow-800'
                         }`}
                       >
-                        <span>{table.status}</span>
-                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </button>
-                      
-                      {statusDropdownId === table.id && (
-                        <div 
-                          className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-10 border border-gray-200"
-                        >
-                          {['Trống', 'Đang phục vụ', 'Đã đặt trước'].map(status => (
-                            <button
-                              key={status}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                e.preventDefault();
-                                console.log('Clicked status:', status);
-                                handleStatusChange(table, status);
-                              }}
-                              className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 ${
-                                table.status === status ? 'font-medium bg-gray-50' : ''
-                              }`}
-                            >
-                              {status}
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                        {table.status}
+                      </span>
                     </div>
                   </div>
 
                   <div className="flex flex-wrap gap-2 mb-4">
-                    {table.isWindow && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        <svg className="mr-1.5 h-2 w-2 text-blue-400" fill="currentColor" viewBox="0 0 8 8">
-                          <circle cx="4" cy="4" r="3" />
-                        </svg>
-                        View cửa sổ
-                      </span>
-                    )}
                     {table.notes && (
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                         <svg className="mr-1.5 h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -384,13 +309,16 @@ const TableManager: FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Khu vực</label>
-                  <input
-                    type="number"
+                  <select
                     value={newTable.areaId}
                     onChange={(e) => setNewTable({...newTable, areaId: parseInt(e.target.value)})}
                     className="block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Nhập số khu vực..."
-                  />
+                  >
+                    <option value="">Chọn khu vực</option>
+                    {areas.map((area) => (
+                      <option key={area.areaId} value={area.areaId}>{area.areaName}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Loại bàn</label>
@@ -404,18 +332,6 @@ const TableManager: FC = () => {
                     <option value="6 người">6 người</option>
                     <option value="8 người">8 người</option>
                   </select>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    id="createWindow"
-                    checked={newTable.isWindow}
-                    onChange={(e) => setNewTable({...newTable, isWindow: e.target.checked})}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <label htmlFor="createWindow" className="text-sm font-medium text-gray-700">
-                    View cửa sổ
-                  </label>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
@@ -479,12 +395,15 @@ const TableManager: FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Khu vực</label>
-                  <input
-                    type="number"
+                  <select
                     value={selectedTable.areaId}
                     onChange={(e) => setSelectedTable({...selectedTable, areaId: parseInt(e.target.value)})}
                     className="block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
+                  >
+                    {areas.map((area) => (
+                      <option key={area.areaId} value={area.areaId}>{area.areaName}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Loại bàn</label>
@@ -498,36 +417,6 @@ const TableManager: FC = () => {
                     <option value="6 người">6 người</option>
                     <option value="8 người">8 người</option>
                   </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái</label>
-                  <select
-                    value={selectedTable.status}
-                    onChange={(e) => setSelectedTable({...selectedTable, status: e.target.value})}
-                    className={`block w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                      selectedTable.status === 'Trống'
-                        ? 'bg-green-50 border-green-300 text-green-800'
-                        : selectedTable.status === 'Đang phục vụ'
-                        ? 'bg-red-50 border-red-300 text-red-800'
-                        : 'bg-yellow-50 border-yellow-300 text-yellow-800'
-                    }`}
-                  >
-                    {availableStatuses.map(status => (
-                      <option key={status} value={status}>{status}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    id="editWindow"
-                    checked={selectedTable.isWindow}
-                    onChange={(e) => setSelectedTable({...selectedTable, isWindow: e.target.checked})}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <label htmlFor="editWindow" className="text-sm font-medium text-gray-700">
-                    View cửa sổ
-                  </label>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import type { DishModalProps } from '../types/DishModalProps';
 
 const DishAddModal: React.FC<DishModalProps> = ({ dish, onChange, onImageUrl, onCancel, onSave }) => {
-  const [imageUrl, setImageUrl] = useState(dish.image || '');
+  const [imageUrl, setImageUrl] = useState(dish.imageUrl || '');
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
@@ -11,11 +11,11 @@ const DishAddModal: React.FC<DishModalProps> = ({ dish, onChange, onImageUrl, on
         
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Tên món</label>
+            <label className="block text-sm font-medium text-gray-700">Tên món *</label>
             <input
               type="text"
-              name="name"
-              value={dish.name}
+              name="dishName"
+              value={dish.dishName}
               onChange={onChange}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               placeholder="Nhập tên món ăn"
@@ -23,41 +23,76 @@ const DishAddModal: React.FC<DishModalProps> = ({ dish, onChange, onImageUrl, on
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Giá</label>
-            <input
-              type="text"
-              name="price"
-              value={dish.price}
+            <label className="block text-sm font-medium text-gray-700">Danh mục *</label>
+            <select
+              name="categoryId"
+              value={dish.categoryId}
               onChange={onChange}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              placeholder="Nhập giá món ăn"
+            >
+              <option value="">Chọn danh mục</option>
+              <option value={1}>Món chính</option>
+              <option value={2}>Món phụ</option>
+              <option value={3}>Đồ uống</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Đơn vị *</label>
+            <input
+              type="text"
+              name="unit"
+              value={dish.unit}
+              onChange={onChange}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              placeholder="Ví dụ: Bát, Đĩa, Phần,..."
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">URL Ảnh</label>
-            <input
-              type="text"
-              value={imageUrl}
-              onChange={(e) => {
-                setImageUrl(e.target.value);
-                onImageUrl(e.target.value);
-              }}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              placeholder="Nhập URL ảnh"
-            />
+            <label className="block text-sm font-medium text-gray-700">Giá *</label>
+            <div className="relative">
+              <input
+                type="text"
+                name="price"
+                value={dish.price}
+                onChange={onChange}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-12"
+                placeholder="Nhập giá món ăn"
+              />
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 mt-1 pointer-events-none">
+                <span className="text-gray-500">VNĐ</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">URL ảnh món ăn</label>
+            <div className="mt-1 flex items-center gap-4">
+              <input
+                type="text"
+                name="imageUrl"
+                value={imageUrl}
+                onChange={(e) => {
+                  setImageUrl(e.target.value);
+                  onImageUrl(e.target.value);
+                }}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                placeholder="Nhập URL ảnh từ internet (http:// hoặc https://)"
+              />
+            </div>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700">Trạng thái</label>
             <select
               name="status"
-              value={dish.status}
+              value={dish.status.toString()}
               onChange={onChange}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             >
-              <option value="Còn">Còn</option>
-              <option value="Hết món">Hết món</option>
+              <option value="true">Còn</option>
+              <option value="false">Hết món</option>
             </select>
           </div>
 
