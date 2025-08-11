@@ -25,8 +25,9 @@ public class OrderController {
         this.orderService = orderService;
     }
 
-    @PostMapping
-    public ResponseEntity<TakeawayOrderResponse> createTakeawayOrder(@RequestBody CreateTakeawayOrderRequest request) {
+    @PostMapping("/takeaway")
+    public ResponseEntity<TakeawayOrderResponse> createTakeawayOrder(
+            @RequestBody CreateTakeawayOrderRequest request) {
         TakeawayOrderResponse response = receptionistService.createTakeawayOrder(request);
         return ResponseEntity.ok(response);
     }

@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState } from 'react';
-import type { MenuItem } from '../pages/waiter/Order';
 
 // Định nghĩa kiểu dữ liệu cho món ăn hoặc combo trong giỏ hàng
 export interface CartItem {

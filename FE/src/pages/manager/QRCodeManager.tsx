@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { tableApi } from '../../api/tableApi';
-import { getQRBaseURL, displayLocalIPInfo } from '../../utils/networkUtils';
+import { getQRBaseURL, checkNetworkConfig } from '../../utils/networkUtils';
 import { NETWORK_CONFIG } from '../../config/networkConfig';
 import type { Table } from '../../types/Table';
 
@@ -62,7 +62,7 @@ const QRCodeManager: React.FC = () => {
         setBaseURL(baseUrl);
         
         // Log thông tin truy cập
-        displayLocalIPInfo();
+        checkNetworkConfig();
       } catch (error) {
         console.error('Error getting network info:', error);
       }

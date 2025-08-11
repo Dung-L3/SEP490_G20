@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 @Service
@@ -21,10 +22,12 @@ public class ChefServiceImpl implements ChefService {
     @Override
     public List<KitchenOrderDTO> getPendingOrders() {
         try {
-            List<OrderDetail> orderDetails = orderDetailRepository.findByStatusIdWithDetails(1);
-            log.info("Found {} pending order details", orderDetails.size());
+            List<OrderDetail> allOrders = new ArrayList<>();
+            allOrders.addAll(orderDetailRepository.findByStatusIdWithDetails(1)); // Chỉ lấy pending
+            allOrders.addAll(orderDetailRepository.findByStatusIdWithDetails(4)); // Và cancelled
+            log.info("Found {} orders", allOrders.size());
             
-            return orderDetails.stream()
+            return allOrders.stream()
                     .map(this::convertToDTO)
                     .collect(Collectors.toList());
         } catch (Exception e) {
@@ -41,6 +44,9 @@ public class ChefServiceImpl implements ChefService {
             
             Integer statusId = getStatusId(status);
             orderDetail.setStatusId(statusId);
+            
+            // Cập nhật trạng thái
+            
             orderDetailRepository.save(orderDetail);
             
             log.info("Updated order detail {} status to {}", orderDetailId, status);
@@ -53,7 +59,7 @@ public class ChefServiceImpl implements ChefService {
     private KitchenOrderDTO convertToDTO(OrderDetail orderDetail) {
         KitchenOrderDTO dto = new KitchenOrderDTO();
         dto.setOrderDetailId(orderDetail.getOrderDetailId());
-        dto.setOrderId(orderDetail.getOrderId());
+        dto.setOrderId(orderDetail.getOrder() != null ? orderDetail.getOrder().getOrderId() : orderDetail.getOrderId());
         
         // Xử lý dish name an toàn
         String dishName = "Món không xác định";
@@ -76,6 +82,17 @@ public class ChefServiceImpl implements ChefService {
                     if (orderDetail.getOrder().getTable().getTableName() != null) {
                         tableName = orderDetail.getOrder().getTable().getTableName();
                         log.debug("Table name: {}", tableName);
+                        var o = orderDetail.getOrder();
+
+                        // ƯU TIÊN: nếu là TAKEAWAY -> luôn hiển thị "Mang đi"
+                        if ("TAKEAWAY".equalsIgnoreCase(o.getOrderType())) {
+                            tableName = "Mang đi";
+                        } else if (o.getTable() != null && o.getTable().getTableName() != null) {
+                            // DINE-IN có bàn
+                            tableName = o.getTable().getTableName();
+                        }
+
+                        dto.setOrderTime(o.getCreatedAt());
                     } else {
                         log.warn("Table name is null for table ID: {}", orderDetail.getOrder().getTable().getTableId());
                     }
@@ -100,6 +117,7 @@ public class ChefServiceImpl implements ChefService {
             case 1 -> "PENDING";
             case 2 -> "PROCESSING";
             case 3 -> "COMPLETED";
+            case 4 -> "CANCELLED";
             default -> "UNKNOWN";
         };
     }
@@ -109,6 +127,7 @@ public class ChefServiceImpl implements ChefService {
             case "PENDING" -> 1;
             case "PROCESSING" -> 2;
             case "COMPLETED" -> 3;
+            case "CANCELLED" -> 4;
             default -> throw new IllegalArgumentException("Invalid status: " + status);
         };
     }

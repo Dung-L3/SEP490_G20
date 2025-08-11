@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { getQRBaseURL } from '../utils/networkUtils';
 
 interface QRCodeGeneratorProps {
   tableId: number;
@@ -14,32 +15,14 @@ const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({
   className = ""
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [localIP, setLocalIP] = useState<string>('localhost');
-
-  // Tự động lấy IP local
-  useEffect(() => {
-    const getLocalIP = () => {
-      // Nếu đang dev mode, sử dụng IP từ window.location
-      if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-        setLocalIP(window.location.hostname);
-      } else {
-        // Fallback: hướng dẫn user tìm IP
-        setLocalIP(window.location.hostname);
-      }
-    };
-
-    getLocalIP();
-  }, []);
 
   useEffect(() => {
-    const generateQR = async () => {
+    const generateQR = () => {
       if (canvasRef.current) {
         try {
-          // Sử dụng IP thực hoặc localhost
-          const baseUrl = localIP === 'localhost' 
-            ? `http://${window.location.hostname}:3000`
-            : `http://${localIP}:3000`;
+          const baseUrl = getQRBaseURL();
           const menuUrl = `${baseUrl}/menu/${tableId}`;
+          console.log('Generated QR URL:', menuUrl); // For debugging
           
           // Sử dụng Google Charts API thay vì library QRCode
           const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(menuUrl)}`;
@@ -64,13 +47,11 @@ const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({
     };
 
     generateQR();
-  }, [tableId, size, localIP]);
+  }, [tableId, size]);
 
-  const downloadQR = async () => {
+  const downloadQR = () => {
     try {
-      const baseUrl = localIP === 'localhost' 
-        ? `http://${window.location.hostname}:3000`
-        : `http://${localIP}:3000`;
+      const baseUrl = getQRBaseURL();
       const menuUrl = `${baseUrl}/menu/${tableId}`;
       
       // Tạo QR code với size lớn hơn để download

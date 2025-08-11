@@ -30,13 +30,13 @@ public class ReceptionistController {
     private final PaymentRecordRepository paymentRecordRepository;
     private final InvoicePdfService invoicePdfService;
 
-    @PostMapping("/orders/takeaway")
-    public ResponseEntity<TakeawayOrderResponse> createTakeawayOrder(
-            @Valid @RequestBody CreateTakeawayOrderRequest request
-    ) {
-        TakeawayOrderResponse resp = receptionistService.createTakeawayOrder(request);
-        return ResponseEntity.ok(resp);
-    }
+//    @PostMapping("/orders/takeaway")
+//    public ResponseEntity<TakeawayOrderResponse> createTakeawayOrder(
+//            @Valid @RequestBody CreateTakeawayOrderRequest request
+//    ) {
+//        TakeawayOrderResponse resp = receptionistService.createTakeawayOrder(request);
+//        return ResponseEntity.ok(resp);
+//    }
 
     @GetMapping("/orders/takeaway/pending")
     public List<TakeawayOrderResponse> getPendingTakeawayOrders() {

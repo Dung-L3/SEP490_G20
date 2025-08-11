@@ -22,6 +22,7 @@ public interface WaiterService {
     OrderDetail getOrderDetailById(Integer orderDetailId);
 
     List<RestaurantTable> getTablesByStatus(String status);
+    List<RestaurantTable> getTablesByStatuses(List<String> statuses);
     RestaurantTable updateTableStatus(Integer tableId, String status);
 
     CustomerPurchaseHistoryResponse getCustomerPurchaseHistoryByPhone(String phone);
@@ -39,4 +40,5 @@ public interface WaiterService {
     List<RestaurantTable> getFreeWindowTables();
     List<RestaurantTable> getTablesByType(String tableType);
     RestaurantTable getTableByName(String tableName);
+    List<OrderDetail> getOrderItems(Integer orderId);
 }

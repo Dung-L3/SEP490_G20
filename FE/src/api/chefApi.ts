@@ -19,9 +19,16 @@ export interface OrderStatus {
   bgColor: string;
 }
 
-import { Clock, CheckCircle, ChefHat } from 'lucide-react';
+import { Clock, ChefHat, AlertCircle } from 'lucide-react';
 
 export const statusList: OrderStatus[] = [
+  {
+    value: 'cancelled',
+    label: 'Đã hủy',
+    icon: AlertCircle,
+    color: 'border-red-400 text-red-600',
+    bgColor: 'bg-red-50',
+  },
   {
     value: 'pending',
     label: 'Đơn chờ',
@@ -31,18 +38,11 @@ export const statusList: OrderStatus[] = [
   },
   {
     value: 'processing',
-    label: 'Đang chế biến',
+    label: 'Đã chế biến xong',
     icon: ChefHat,
     color: 'border-blue-400 text-blue-600', 
     bgColor: 'bg-blue-50',
-  },
-  {
-    value: 'completed',
-    label: 'Hoàn thành',
-    icon: CheckCircle,
-    color: 'border-green-500 text-green-600',
-    bgColor: 'bg-green-50',
-  },
+  }
 ];
 
 const parseJsonSafe = async (res: Response) => {
@@ -101,5 +101,19 @@ export const updateOrderStatus = async (orderDetailId: number, status: string): 
   if (!res.ok) {
     const errorText = await res.text();
     throw new Error(`Failed to update order status: ${errorText}`);
+  }
+};
+
+export const cancelOrder = async (orderDetailId: number): Promise<void> => {
+  const res = await fetch(`${BASE_URL}/chef/orders/${orderDetailId}/cancel`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  });
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Không thể hủy đơn hàng: ${errorText}`);
   }
 };

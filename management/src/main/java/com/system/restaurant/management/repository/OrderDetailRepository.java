@@ -31,4 +31,7 @@ public interface OrderDetailRepository extends JpaRepository<OrderDetail, Intege
     @EntityGraph(attributePaths = {"dish"})
     List<OrderDetail> findByOrderId(Integer orderId);
     Optional<OrderDetail> findByOrderIdAndDishId(Integer orderId, Integer dishId);
+    
+    @Query("SELECT od FROM OrderDetail od LEFT JOIN FETCH od.dish WHERE od.orderId = :orderId AND od.statusId = :statusId")
+    List<OrderDetail> findByOrderIdAndStatusId(Integer orderId, Integer statusId);
 }

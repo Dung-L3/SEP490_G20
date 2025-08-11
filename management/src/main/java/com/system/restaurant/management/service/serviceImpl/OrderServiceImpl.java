@@ -51,7 +51,7 @@ public class OrderServiceImpl implements OrderService {
         try {
             // Tạo Order entity từ DTO
             Order order = new Order();
-            order.setOrderType(orderDto.getOrderType() != null ? orderDto.getOrderType() : "DINE_IN");
+            order.setOrderType(orderDto.getOrderType() != null ? orderDto.getOrderType() : "DINEIN");
             order.setCustomerName(orderDto.getCustomerName());
             order.setPhone(orderDto.getPhone());
             order.setTableId(orderDto.getTableId());
@@ -282,7 +282,7 @@ public class OrderServiceImpl implements OrderService {
         return orderRepository.findPendingOrderByTableId(tableId)
                 .orElseGet(() -> {
                     Order newOrder = new Order();
-                    newOrder.setOrderType("DINE_IN");
+                    newOrder.setOrderType("DINEIN");
                     newOrder.setTableId(tableId);
                     newOrder.setStatusId(1); // Pending
                     newOrder.setSubTotal(BigDecimal.ZERO);

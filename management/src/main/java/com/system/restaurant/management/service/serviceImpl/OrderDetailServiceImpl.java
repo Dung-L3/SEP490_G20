@@ -38,4 +38,19 @@ public class OrderDetailServiceImpl implements OrderDetailService {
                 .map(OrderDetailDTO::fromEntity)
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public List<OrderDetailDTO> getOrderDetailsByOrderIdAndStatus(Integer orderId, Integer statusId) {
+        Order order = orderRepo.findById(orderId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Order không tồn tại với id = " + orderId
+                ));
+
+        List<OrderDetail> details = detailRepo.findByOrderId(order.getOrderId());
+        return details.stream()
+                .filter(detail -> detail.getStatusId().equals(statusId))
+                .map(OrderDetailDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
 }
