@@ -238,7 +238,7 @@ const OrderCard = ({ orderIdx, order, currentTime }: OrderCardProps) => {
                 return ['pending', 'processing'].concat(canCancel ? ['cancelled'] : []).includes(s.value);
               }
               if (status === 'processing') {
-                return ['processing', 'completed'].concat(canCancel ? ['cancelled'] : []).includes(s.value);
+                return ['processing'].concat(canCancel ? ['cancelled'] : []).includes(s.value);
               }
               return false;
             })

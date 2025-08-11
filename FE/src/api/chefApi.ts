@@ -19,7 +19,7 @@ export interface OrderStatus {
   bgColor: string;
 }
 
-import { Clock, CheckCircle, ChefHat, AlertCircle } from 'lucide-react';
+import { Clock, ChefHat, AlertCircle } from 'lucide-react';
 
 export const statusList: OrderStatus[] = [
   {
@@ -38,18 +38,11 @@ export const statusList: OrderStatus[] = [
   },
   {
     value: 'processing',
-    label: 'Đang chế biến',
+    label: 'Đã chế biến xong',
     icon: ChefHat,
     color: 'border-blue-400 text-blue-600', 
     bgColor: 'bg-blue-50',
-  },
-  {
-    value: 'completed',
-    label: 'Hoàn thành',
-    icon: CheckCircle,
-    color: 'border-green-500 text-green-600',
-    bgColor: 'bg-green-50',
-  },
+  }
 ];
 
 const parseJsonSafe = async (res: Response) => {
