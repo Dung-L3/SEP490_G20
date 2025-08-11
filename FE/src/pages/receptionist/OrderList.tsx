@@ -7,8 +7,8 @@ import TaskbarReceptionist from '../../components/TaskbarReceptionist';
 interface Order {
   orderId: number;
   orderType: string;
-  customerName: string;
-  tableName: string;
+  customerName?: string | null; // <= có thể null
+  tableName?: string | null;    // <= có thể null
   subTotal: number;
   discountAmount: number;
   finalTotal: number;
@@ -37,7 +37,9 @@ const OrderList: React.FC = () => {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [promosLoading, setPromosLoading] = useState(false);
   const [promosError, setPromosError] = useState<string | null>(null);
-  const [selectedPromoCode, setSelectedPromoCode] = useState<string>(''); // '' = không áp dụng
+  const [selectedPromoCode, setSelectedPromoCode] = useState<string>('');
+  // NEW: error state thật (thay cho hàm setError ở cuối file)
+  const [error, setError] = useState<string | null>(null);
 
   const [modalPaymentMethod, setModalPaymentMethod] =
     useState<'cash' | 'card' | 'bankTransfer'>('cash');
@@ -55,13 +57,15 @@ const OrderList: React.FC = () => {
       });
   }, []);
 
-  // Filter theo search (Mã đơn, tên KH, tên bàn)
+  const safeLower = (v?: string | null) => (v ?? '').toLowerCase();
+
+  // Filter theo search (Mã đơn, tên KH, tên bàn) — an toàn null
   const filteredOrders = orders.filter(o => {
-    const q = search.toLowerCase();
+    const q = (search ?? '').toLowerCase().trim();
     return (
-      o.customerName.toLowerCase().includes(q) ||
+      safeLower(o.customerName).includes(q) ||
       o.orderId.toString().includes(q) ||
-      o.tableName.toLowerCase().includes(q)
+      safeLower(o.tableName).includes(q)
     );
   });
 
@@ -71,20 +75,14 @@ const OrderList: React.FC = () => {
     setModalPaymentMethod('cash'); // reset mặc định
     setSelectedPromoCode('');      // mặc định không áp mã
     setPromosError(null);
+    setError(null);
     setModalOpen(true);
 
     setPromosLoading(true);
     fetch('/api/promotions/validPromotions', { credentials: 'include' })
       .then(res => (res.ok ? res.json() : Promise.reject('Không tải được danh sách mã khuyến mãi')))
       .then((list: Promotion[]) => {
-        // chuẩn hoá null -> 0 cho hiển thị
-        setPromotions(
-          (list || []).map(p => ({
-            ...p,
-            discountPercent: p.discountPercent ?? 0,
-            discountAmount: p.discountAmount ?? 0,
-          }))
-        );
+        setPromotions(list ?? []);
       })
       .catch((err: unknown) => {
         console.error(err);
@@ -98,7 +96,6 @@ const OrderList: React.FC = () => {
   const handleProceed = async () => {
     if (!selectedOrder) return;
 
-    // 1) Gọi API apply nếu có chọn mã
     if (selectedPromoCode) {
       try {
         const res = await fetch('/api/promotions/applyPromo', {
@@ -114,16 +111,13 @@ const OrderList: React.FC = () => {
           const text = await res.text();
           throw new Error(text || `Apply promo thất bại (${res.status})`);
         }
-        // (tuỳ bạn) có thể đọc response để show thông tin giảm giá
-        // const applied = await res.json();
       } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err));
-        // Giữ modal lại để người dùng chọn lại/huỷ
+        const msg = err instanceof Error ? err.message : String(err);
+        setError(msg); // chỉ hiển thị lỗi, KHÔNG ném lỗi => không trắng màn
         return;
       }
     }
 
-    // 2) Flow hiện tại (đi tới trang thanh toán)
     setModalOpen(false);
     navigate(`/receptionist/${selectedOrder.orderId}/payment`, {
       state: { paymentMethod: modalPaymentMethod },
@@ -181,8 +175,8 @@ const OrderList: React.FC = () => {
                     onClick={() => handleRowClick(order)}
                   >
                     <td className="px-6 py-4 font-semibold text-blue-700">#{order.orderId}</td>
-                    <td className="px-6 py-4">{order.customerName}</td>
-                    <td className="px-6 py-4">{order.tableName}</td>
+                    <td className="px-6 py-4">{order.customerName ?? '—'}</td>
+                    <td className="px-6 py-4">{order.tableName ?? (order.orderType === 'TAKEAWAY' ? 'Mang về' : '—')}</td>
                     <td className="px-6 py-4 font-semibold text-green-700">
                       {order.finalTotal.toLocaleString()}₫
                     </td>
@@ -213,6 +207,13 @@ const OrderList: React.FC = () => {
               Thanh toán cho đơn #{selectedOrder.orderId}
             </h3>
 
+            {/* show error nếu có */}
+            {error && (
+              <div className="mb-3 text-sm text-red-600">
+                {error}
+              </div>
+            )}
+
             {/* Payment method */}
             <label className="block text-sm mb-1">Phương thức thanh toán</label>
             <select
@@ -227,7 +228,7 @@ const OrderList: React.FC = () => {
               <option value="bankTransfer">Bank Transfer</option>
             </select>
 
-            {/* NEW: Promotion list */}
+            {/* Promotion list */}
             <label className="block text-sm mb-1">Mã khuyến mãi (đang hiệu lực)</label>
             <select
               value={selectedPromoCode}
@@ -265,7 +266,3 @@ const OrderList: React.FC = () => {
 };
 
 export default OrderList;
-function setError(_arg0: string) {
-  throw new Error('Function not implemented.');
-}
-
