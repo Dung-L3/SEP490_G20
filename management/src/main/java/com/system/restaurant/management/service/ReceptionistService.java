@@ -1,9 +1,6 @@
 package com.system.restaurant.management.service;
 
-import com.system.restaurant.management.dto.CreateTakeawayOrderRequest;
-import com.system.restaurant.management.dto.PaymentRequest;
-import com.system.restaurant.management.dto.ReservationRequestDto;
-import com.system.restaurant.management.dto.TakeawayOrderResponse;
+import com.system.restaurant.management.dto.*;
 import com.system.restaurant.management.entity.*;
 import jakarta.servlet.http.HttpSession;
 
@@ -23,5 +20,4 @@ public interface ReceptionistService {
     Notification sendReservationReminder(Integer reservationId);
     List<TakeawayOrderResponse> getPendingTakeawayOrders();
     void confirmTakeawayOrder(Integer orderId);
-
 }

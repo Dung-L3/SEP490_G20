@@ -1,5 +1,6 @@
 package com.system.restaurant.management.dto;
 
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -26,6 +27,7 @@ public class CreateTakeawayOrderRequest {
     public static class OrderItemDto {
         @NotNull
         private Integer dishId;
+        private Integer comboId;
         @NotNull
         private Integer quantity;
 

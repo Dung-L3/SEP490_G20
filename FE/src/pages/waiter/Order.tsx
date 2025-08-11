@@ -4,7 +4,9 @@ import type { TableInfo } from '../../api/orderApi.ts';
 import TaskbarWaiter from './TaskbarWaiter';
 import type { MenuItem } from '../../api/orderApi.ts';
 import type { ComboDTO } from '../../api/comboApi';
+import type { Category } from '../../api/categoryApi';
 import { comboApi } from '../../api/comboApi';
+import { categoryApi } from '../../api/categoryApi';
 import { 
   fetchOccupiedTables, 
   fetchMenuItems, 
@@ -20,6 +22,7 @@ const Order: React.FC = () => {
   const [tableList, setTableList] = useState<TableInfo[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [combos, setCombos] = useState<ComboDTO[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Fetch tables
@@ -45,17 +48,25 @@ const Order: React.FC = () => {
     const loadData = async () => {
       setLoading(true);
       try {
-        const [items, comboList] = await Promise.all([
-          fetchMenuItems(search),
-          comboApi.getAllCombos()
+        const [comboList, categoryList] = await Promise.all([
+          comboApi.getAllCombos(),
+          categoryApi.getAll()
         ]);
+
+        const menuItemsPromises = categoryList.map(category => 
+          fetchMenuItems(category.categoryId, search)
+        );
+        const menuItemsByCategory = await Promise.all(menuItemsPromises);
+        const allMenuItems = menuItemsByCategory.flat();
         
-        console.log('Menu items:', items);
+        console.log('Menu items:', allMenuItems);
         console.log('Combos:', comboList);
+        console.log('Categories:', categoryList);
         
-        setMenuItems(items);
+        setMenuItems(allMenuItems);
         const activeComboList = Array.isArray(comboList) ? comboList : [];
-        setCombos(activeComboList); // Lấy tất cả combo
+        setCombos(activeComboList);
+        setCategories(categoryList);
       } catch (error) {
         console.error('Error fetching menu items and combos:', error);
         setMenuItems([]);
@@ -186,6 +197,7 @@ const Order: React.FC = () => {
               value={currentTable}
               onChange={e => setTable(e.target.value)}
             >
+              <option value="">--- Chọn bàn ---</option>
               {tableList && tableList.length > 0 ? (
                 tableList.map(table => (
                   <option key={table.id} value={table.name}>
@@ -193,7 +205,7 @@ const Order: React.FC = () => {
                   </option>
                 ))
               ) : (
-                <option value="">Không có bàn đang phục vụ</option>
+                <option value="" disabled>Không có bàn đang phục vụ</option>
               )}
             </select>
           </div>
@@ -257,7 +269,6 @@ const Order: React.FC = () => {
                     id: combo.comboId,
                     name: combo.comboName,
                     price: combo.price,
-                    quantity: 1,
                     isCombo: true,
                     comboItems: combo.comboItems.map(item => ({
                       dishId: item.dishId,
@@ -285,13 +296,25 @@ const Order: React.FC = () => {
           </svg>
           Menu món lẻ
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+        <div className="space-y-8 mb-8">
           {loading ? (
-            <div className="col-span-full flex justify-center items-center py-8">
+            <div className="flex justify-center items-center py-8">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
             </div>
-          ) : (
-            filteredMenu.map(item => (
+          ) : categories.map(category => {
+            const categoryItems = filteredMenu.filter(item => item.categoryId === category.categoryId);
+            if (categoryItems.length === 0) return null;
+            
+            return (
+              <div key={category.categoryId}>
+                <h3 className="text-xl font-bold text-gray-700 mb-4 flex items-center">
+                  <svg className="w-6 h-6 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+                  </svg>
+                  {category.categoryName}
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {categoryItems.map(item => (
               <div key={item.name} className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden">
                 <div className="relative">
                   <img 
@@ -318,7 +341,7 @@ const Order: React.FC = () => {
                   </div>
                   <button
                     className="w-full py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-xl hover:from-blue-600 hover:to-blue-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
-                    onClick={() => addToCart(item)}
+                    onClick={() => addToCart({...item, image: item.image || '/placeholder-dish.jpg'})}
                   >
                     <span className="flex items-center justify-center">
                       <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -330,7 +353,11 @@ const Order: React.FC = () => {
                 </div>
               </div>
             ))
-          )}
+          }
+        </div>
+              </div>
+            );
+          })}
         </div>
 
         {/* Giỏ hàng với thiết kế hiện đại */}
@@ -478,11 +505,14 @@ const Order: React.FC = () => {
 
                       const orderData = {
                         tableId: Number(currentTable.replace(/\D/g, '')),
+                        orderType: 'DINEIN',
                         items: cart.map(item => ({
-                          dishId: item.id,
+                          dishId: item.isCombo ? null : item.id,
+                          comboId: item.isCombo ? item.id : null,
                           quantity: item.quantity || 1,
                           notes: "",
-                          unitPrice: item.price
+                          unitPrice: item.price,
+                          isCombo: !!item.isCombo
                         }))
                       };
                       

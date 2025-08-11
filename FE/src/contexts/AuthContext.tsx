@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 
 interface AuthContextType {
   currentUser: string | null;
+  userRole: string | null;
   setCurrentUser: (user: string | null) => void;
   logout: () => void;
 }
@@ -10,6 +11,25 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [currentUser, setCurrentUser] = useState<string | null>(localStorage.getItem('currentUser'));
+  const [userRole, setUserRole] = useState<string | null>(localStorage.getItem('userRole'));
+
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const response = await fetch('/api/auth/check-session');
+        if (!response.ok) {
+          logout();
+        }
+      } catch (error) {
+        console.error('Session check failed:', error);
+        logout();
+      }
+    };
+    
+    if (currentUser) {
+      checkSession();
+    }
+  }, [currentUser]);
 
   const logout = () => {
     // Xóa tất cả thông tin người dùng khỏi localStorage
@@ -35,7 +55,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [currentUser]);
 
   return (
-    <AuthContext.Provider value={{ currentUser, setCurrentUser, logout }}>
+    <AuthContext.Provider value={{ currentUser, userRole, setCurrentUser, logout }}>
       {children}
     </AuthContext.Provider>
   );

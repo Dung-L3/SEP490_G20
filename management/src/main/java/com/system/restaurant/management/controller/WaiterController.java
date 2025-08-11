@@ -137,4 +137,9 @@ public class WaiterController {
         
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/orders/{orderId}/items")
+    public ResponseEntity<List<OrderDetail>> getOrderItems(@PathVariable Integer orderId) {
+        return ResponseEntity.ok(waiterService.getOrderItems(orderId));
+    }
 }

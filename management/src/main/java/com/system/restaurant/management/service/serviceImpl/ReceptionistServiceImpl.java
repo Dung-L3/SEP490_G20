@@ -51,6 +51,8 @@ public class ReceptionistServiceImpl implements ReceptionistService {
                 .notes(req.getNotes())
                 .subTotal(subTotal)
                 .finalTotal(subTotal)
+                .statusId(1)                 // ✅ PENDING
+                .createdAt(LocalDateTime.now())
                 .build();
 
         Order saved = orderRepo.save(order);
@@ -58,26 +60,20 @@ public class ReceptionistServiceImpl implements ReceptionistService {
         req.getItems().forEach(i -> {
             OrderDetail od = new OrderDetail();
             od.setOrderId(saved.getOrderId());
-            od.setDishId(i.getDishId());
+            if (i.getDishId() != null)  od.setDishId(i.getDishId());
+            if (i.getComboId() != null) od.setComboId(i.getComboId()); // nhớ có field comboId trong DTO
             od.setQuantity(i.getQuantity());
             od.setUnitPrice(i.getUnitPrice());
             od.setNotes(i.getNotes());
+            od.setStatusId(1);            // ✅ PENDING để bếp thấy ngay
             orderDetailRepository.save(od);
         });
 
         em.flush();
         em.clear();
 
-        // nếu dùng @EntityGraph hoặc eager fetch, gọi bình thường
-        List<OrderDetail> detailEntities = orderDetailRepository.findByOrderId(saved.getOrderId());
-        // hoặc nếu dùng join fetch JPQL:
-        // List<OrderDetail> detailEntities = orderDetailRepo.findByOrderIdWithDish(saved.getOrderId());
-
-        List<OrderDetailDTO> details = orderDetailRepository
-                .findByOrderId(saved.getOrderId())
-                .stream()
-                .map(OrderDetailDTO::fromEntity)
-                .collect(Collectors.toList());
+        List<OrderDetailDTO> details = orderDetailRepository.findByOrderId(saved.getOrderId())
+                .stream().map(OrderDetailDTO::fromEntity).toList();
 
         return TakeawayOrderResponse.builder()
                 .orderId(saved.getOrderId())
