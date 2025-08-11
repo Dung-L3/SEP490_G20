@@ -88,7 +88,8 @@ public class WaiterController {
 
     @GetMapping("/tables")
     public ResponseEntity<List<RestaurantTable>> getTablesByStatus(@RequestParam String status) {
-        return ResponseEntity.ok(waiterService.getTablesByStatus(status));
+        List<String> statuses = List.of(status.split(","));
+        return ResponseEntity.ok(waiterService.getTablesByStatuses(statuses));
     }
 
     @PutMapping("/tables/{tableId}/status")

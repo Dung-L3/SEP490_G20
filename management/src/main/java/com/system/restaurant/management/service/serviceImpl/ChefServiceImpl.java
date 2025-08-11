@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 @Service
@@ -21,10 +22,13 @@ public class ChefServiceImpl implements ChefService {
     @Override
     public List<KitchenOrderDTO> getPendingOrders() {
         try {
-            List<OrderDetail> orderDetails = orderDetailRepository.findByStatusIdWithDetails(1);
-            log.info("Found {} pending order details", orderDetails.size());
+            List<OrderDetail> allOrders = new ArrayList<>();
+            allOrders.addAll(orderDetailRepository.findByStatusIdWithDetails(1)); // Pending
+            allOrders.addAll(orderDetailRepository.findByStatusIdWithDetails(2)); // Processing
+            allOrders.addAll(orderDetailRepository.findByStatusIdWithDetails(4)); // Cancelled
+            log.info("Found {} orders", allOrders.size());
             
-            return orderDetails.stream()
+            return allOrders.stream()
                     .map(this::convertToDTO)
                     .collect(Collectors.toList());
         } catch (Exception e) {
@@ -41,6 +45,9 @@ public class ChefServiceImpl implements ChefService {
             
             Integer statusId = getStatusId(status);
             orderDetail.setStatusId(statusId);
+            
+            // Cập nhật trạng thái
+            
             orderDetailRepository.save(orderDetail);
             
             log.info("Updated order detail {} status to {}", orderDetailId, status);
@@ -111,6 +118,7 @@ public class ChefServiceImpl implements ChefService {
             case 1 -> "PENDING";
             case 2 -> "PROCESSING";
             case 3 -> "COMPLETED";
+            case 4 -> "CANCELLED";
             default -> "UNKNOWN";
         };
     }
@@ -120,6 +128,7 @@ public class ChefServiceImpl implements ChefService {
             case "PENDING" -> 1;
             case "PROCESSING" -> 2;
             case "COMPLETED" -> 3;
+            case "CANCELLED" -> 4;
             default -> throw new IllegalArgumentException("Invalid status: " + status);
         };
     }
