@@ -12,10 +12,9 @@ export interface DailyRevenue {
 }
 
 export interface ShiftRevenue {
-  shiftId: string;
-  shiftName: string;
-  revenue: number;
-  orderCount: number;
+  period: string;
+  invoiceCount: number;
+  totalRevenue: number;
 }
 
 export interface RevenueResponse {

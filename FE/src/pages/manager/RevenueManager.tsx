@@ -217,15 +217,15 @@ const RevenueManager = () => {
               {shiftRevenue.map((shift) => {
                 console.log('Shift Item:', shift);
                 return (
-                  <div key={shift.shiftId} className="p-4 bg-gray-50 rounded-lg">
+                  <div key={shift.period} className="p-4 bg-gray-50 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
-                      <p className="font-medium text-gray-900">{shift.shiftName}</p>
+                      <p className="font-medium text-gray-900">{shift.period}</p>
                       <div className="p-2 bg-blue-100 rounded">
                         <Clock className="w-5 h-5 text-blue-600" />
                       </div>
                     </div>
-                    <p className="text-2xl font-bold text-gray-900">{formatCurrency(shift.revenue)}</p>
-                    <p className="mt-2 text-sm text-gray-500">{shift.orderCount} đơn hàng</p>
+                    <p className="text-2xl font-bold text-gray-900">{formatCurrency(shift.totalRevenue)}</p>
+                    <p className="mt-2 text-sm text-gray-500">{shift.invoiceCount} hóa đơn</p>
                   </div>
                 );
               })}
