@@ -12,9 +12,16 @@ export interface MenuItem {
   price: number;
   image: string;
   status: boolean;
+  categoryId: number;
   quantity?: number;
   orderStatus?: 'pending' | 'cooking' | 'completed';
   orderDetailId?: number;
+  isCombo?: boolean;
+  comboItems?: {
+    dishId: number;
+    dishName: string;
+    quantity: number;
+  }[];
 }
 
 export interface OrderItem {
@@ -24,6 +31,11 @@ export interface OrderItem {
   notes?: string;
   unitPrice: number;
   isCombo: boolean;
+  comboItems?: {
+    dishId: number;
+    dishName: string;
+    quantity: number;
+  }[];
 }
 
 export interface CreateOrderRequest {
@@ -57,7 +69,7 @@ const BASE_URL = '/api';
 const API_URL = '/api/v1/orders';
 
 export const fetchOccupiedTables = async (): Promise<TableInfo[]> => {
-  const response = await fetch(`${BASE_URL}/waiter/tables?status=Occupied`, {
+  const response = await fetch(`${BASE_URL}/waiter/tables?status=Đang phục vụ`, {
     credentials: 'include',
     headers: {
       'Accept': 'application/json'
@@ -65,22 +77,26 @@ export const fetchOccupiedTables = async (): Promise<TableInfo[]> => {
   });
 
   if (!response.ok) {
-    throw new Error(`Server error: ${response.status} ${response.statusText}`);
+    throw new Error(`Lỗi máy chủ: ${response.status} ${response.statusText}`);
   }
 
   const data = await response.json();
   return data.map((item: any) => ({
-    id: item.tableId,
-    name: item.tableName,
+    id: item.id || item.tableId,
+    name: item.name || item.tableName,
     status: item.status,
-    capacity: parseInt(item.tableType) || 4
+    capacity: parseInt(item.type || item.tableType) || 4
   }));
 };
 
-export const fetchMenuItems = async (search?: string): Promise<MenuItem[]> => {
-  const endpoint = search?.trim() 
-    ? `${BASE_URL}/dishes/search?name=${encodeURIComponent(search)}`
-    : `${BASE_URL}/dishes`;
+export const fetchMenuItems = async (categoryId?: number, search?: string): Promise<MenuItem[]> => {
+  let endpoint = `${BASE_URL}/dishes`;
+  
+  if (categoryId) {
+    endpoint = `${endpoint}/category/${categoryId}`;
+  } else if (search?.trim()) {
+    endpoint = `${endpoint}/search?name=${encodeURIComponent(search)}`;
+  }
 
   const response = await fetch(endpoint, {
     credentials: 'include',
@@ -90,7 +106,7 @@ export const fetchMenuItems = async (search?: string): Promise<MenuItem[]> => {
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch menu items: ${response.status} ${response.statusText}`);
+    throw new Error(`Không thể lấy danh sách món ăn: ${response.status} ${response.statusText}`);
   }
 
   const data = await response.json();
@@ -99,7 +115,9 @@ export const fetchMenuItems = async (search?: string): Promise<MenuItem[]> => {
     name: item.dishName,
     price: Number(item.price),
     image: item.imageUrl || '/placeholder-dish.jpg',
-    status: item.status
+    status: item.status,
+    categoryId: item.categoryId,
+    unit: item.unit
   })) : [];
 
   return menuData.filter(item => item.status === true);
@@ -115,7 +133,7 @@ export const orderApi = {
           'Accept': 'application/json'
         },
         body: JSON.stringify({
-          orderType: orderData.orderType || 'DINE_IN',
+          orderType: orderData.orderType || 'DINEIN',
           tableId: orderData.tableId,
           items: orderData.items.map(item => ({
             dishId: item.dishId,
@@ -137,12 +155,12 @@ export const orderApi = {
       
       return {
         orderId: result.orderId || result.id,
-        message: result.message || 'Đơn hàng đã được tạo thành công',
+        message: result.message || 'Đã gửi đơn hàng thành công!',
         order: result.order || result
       };
     } catch (error) {
       if (error instanceof TypeError && error.message.includes('fetch')) {
-        throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
+        throw new Error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng.');
       }
       throw error;
     }
@@ -208,10 +226,11 @@ export const fetchOrderStatus = async (orderDetailId: number): Promise<string> =
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch order status: ${response.status}`);
+    throw new Error(`Không thể lấy trạng thái đơn hàng: ${response.status}`);
   }
 
-  return response.text();
+  const data = await response.json();
+  return data.status;
 };
 
 export const fetchOrderItems = async (orderId: number): Promise<MenuItem[]> => {
@@ -223,7 +242,7 @@ export const fetchOrderItems = async (orderId: number): Promise<MenuItem[]> => {
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch order items: ${response.status}`);
+    throw new Error(`Không thể lấy danh sách món đã đặt: ${response.status}`);
   }
 
   const data = await response.json();
@@ -233,7 +252,7 @@ export const fetchOrderItems = async (orderId: number): Promise<MenuItem[]> => {
     price: Number(item.unitPrice),
     image: item.imageUrl || '/placeholder-dish.jpg',
     quantity: item.quantity,
-    orderStatus: item.status.toLowerCase(),
+    orderStatus: item.status ? item.status.toLowerCase() : 'pending',
     orderDetailId: item.orderDetailId
   }));
 };

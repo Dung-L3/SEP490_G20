@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -87,33 +88,55 @@ public class WaiterServiceImpl implements WaiterService {
             throw new IllegalArgumentException("Order must have at least one item");
         }
 
-        return items.stream()
-                .map(item -> {
-                    OrderDetail detail = OrderDetail.builder()
+        List<OrderDetail> allDetails = new ArrayList<>();
+
+        for (OrderItemRequest item : items) {
+            if (item.getComboId() != null && Boolean.TRUE.equals(item.getIsCombo())) {
+                // Xử lý combo
+                Combo combo = comboRepository.findById(item.getComboId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Combo not found: " + item.getComboId()));
+                
+                // Tạo một order detail cho mỗi món trong combo
+                for (ComboItem comboItem : combo.getComboItems()) {
+                    // Tìm dish tương ứng để lấy thông tin
+                    Dish comboDish = dishRepository.findById(comboItem.getDishId())
+                            .orElseThrow(() -> new ResourceNotFoundException("Dish not found: " + comboItem.getDishId()));
+
+                    OrderDetail comboDetail = OrderDetail.builder()
                             .orderId(order.getOrderId())
-                            .quantity(item.getQuantity())
+                            .dishId(comboDish.getDishId())
+                            .comboId(combo.getComboId())
+                            .quantity(comboItem.getQuantity() * item.getQuantity()) // Số lượng = số lượng trong combo * số lượng combo
                             .statusId(1) // Pending
                             .isRefunded(0)
-                            .notes(item.getNotes())
+                            .notes(item.getNotes() != null ? item.getNotes() + " (Từ combo: " + combo.getComboName() + ")" : "(Từ combo: " + combo.getComboName() + ")")
+                            .unitPrice(comboDish.getPrice()) // Giữ nguyên giá gốc của món
                             .build();
+                    
+                    allDetails.add(orderDetailRepository.save(comboDetail));
+                }
+            } else if (item.getDishId() != null && !Boolean.TRUE.equals(item.getIsCombo())) {
+                // Xử lý món lẻ
+                Dish dish = dishRepository.findById(item.getDishId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Dish not found: " + item.getDishId()));
+                
+                OrderDetail detail = OrderDetail.builder()
+                        .orderId(order.getOrderId())
+                        .dishId(dish.getDishId())
+                        .quantity(item.getQuantity())
+                        .statusId(1) // Pending
+                        .isRefunded(0)
+                        .notes(item.getNotes())
+                        .unitPrice(dish.getPrice())
+                        .build();
+                
+                allDetails.add(orderDetailRepository.save(detail));
+            } else {
+                throw new IllegalArgumentException("Either dishId or comboId must be provided");
+            }
+        }
 
-                    if (item.getDishId() != null) {
-                        Dish dish = dishRepository.findById(item.getDishId())
-                                .orElseThrow(() -> new ResourceNotFoundException("Dish not found: " + item.getDishId()));
-                        detail.setDishId(dish.getDishId());
-                        detail.setUnitPrice(dish.getPrice());
-                    } else if (item.getComboId() != null) {
-                        Combo combo = comboRepository.findById(item.getComboId())
-                                .orElseThrow(() -> new ResourceNotFoundException("Combo not found: " + item.getComboId()));
-                        detail.setComboId(combo.getComboId());
-                        detail.setUnitPrice(combo.getPrice());
-                    } else {
-                        throw new IllegalArgumentException("Either dishId or comboId must be provided");
-                    }
-
-                    return orderDetailRepository.save(detail);
-                })
-                .collect(Collectors.toList());
+        return allDetails;
     }
 
     private BigDecimal calculateOrderSubTotal(List<OrderDetail> details) {
@@ -255,24 +278,6 @@ public class WaiterServiceImpl implements WaiterService {
         return orderRepository.save(order);
     }
 
-//    @Override
-//    public Order createTakeawayOrder(CreateTakeawayOrderRequest request) {
-//        if (request.getCustomerPhone() == null || request.getCustomerPhone().trim().isEmpty()) {
-//            throw new IllegalArgumentException("Số điện thoại khách hàng là bắt buộc cho đơn mang đi");
-//        }
-//        if (request.getCustomerName() == null || request.getCustomerName().trim().isEmpty()) {
-//            throw new IllegalArgumentException("Tên khách hàng là bắt buộc cho đơn mang đi");
-//        }
-//
-//        CreateOrderRequest orderRequest = new CreateOrderRequest();
-//        orderRequest.setOrderType("TAKEAWAY");
-//        orderRequest.setCustomerName(request.getCustomerName());
-//        orderRequest.setCustomerPhone(request.getCustomerPhone());
-//        orderRequest.setNotes(request.getNotes());
-//        orderRequest.setItems(request.getOrderItems());
-//
-//        return createOrderWithReservationTracking(orderRequest);
-//    }
 
     @Override
     public CheckInResponse checkInReservation(Integer reservationId, Integer tableId) {
@@ -520,5 +525,10 @@ public class WaiterServiceImpl implements WaiterService {
                     "orderDetailId",
                     orderDetailId
                 ));
+    }
+
+    @Override
+    public List<OrderDetail> getOrderItems(Integer orderId) {
+        return orderDetailRepository.findByOrderId(orderId);
     }
 }

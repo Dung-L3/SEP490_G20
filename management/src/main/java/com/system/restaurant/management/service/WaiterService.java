@@ -39,4 +39,5 @@ public interface WaiterService {
     List<RestaurantTable> getFreeWindowTables();
     List<RestaurantTable> getTablesByType(String tableType);
     RestaurantTable getTableByName(String tableName);
+    List<OrderDetail> getOrderItems(Integer orderId);
 }
