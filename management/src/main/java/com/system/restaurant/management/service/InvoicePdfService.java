@@ -10,21 +10,72 @@ import com.itextpdf.layout.element.Table;
 import com.itextpdf.layout.properties.UnitValue;
 import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.borders.Border;
-import com.system.restaurant.management.entity.OrderDetail;
-import com.system.restaurant.management.entity.PaymentRecord;
+import com.system.restaurant.management.entity.*;
+import com.system.restaurant.management.repository.*;
+import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import com.itextpdf.layout.borders.SolidBorder;
 import com.itextpdf.kernel.colors.ColorConstants;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
 import java.io.ByteArrayOutputStream;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.BiFunction;
 
 @Service
+@RequiredArgsConstructor
 public class InvoicePdfService {
 
+    private final InvoiceRepository invoiceRepository;
+    private final OrderDetailRepository orderDetailRepository;
+    private final PaymentRecordRepository paymentRecordRepository;
+    private final UserRepository userRepository;
+    private final OrderRepository orderRepository;
+
+    @Transactional(readOnly = true)
+    public byte[] buildInvoicePdf(Integer orderId, Integer cashierUserId) throws Exception {
+        // 1) Lấy invoice theo orderId
+        Invoice inv = invoiceRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new EntityNotFoundException("Invoice không tồn tại cho order " + orderId));
+
+        // 2) Lấy chi tiết món
+        List<OrderDetail> items = orderDetailRepository.findByOrderId(orderId);
+
+        // 3) Lấy payment record mới nhất
+        PaymentRecord pr = paymentRecordRepository
+                .findTopByInvoiceIdOrderByPaidAtDesc(inv.getInvoiceId())
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "PaymentRecord không tồn tại cho invoice " + inv.getInvoiceId()));
+
+        // 4) Tính toán các giá trị hiển thị
+        double discount = inv.getDiscountAmount().doubleValue();
+        double total    = inv.getFinalTotal().doubleValue();
+        Integer tableNumber = (inv.getOrder() != null && inv.getOrder().getTable() != null)
+                ? inv.getOrder().getTable().getTableId()
+                : null; // an toàn khi order không gắn bàn
+
+        // 5) Lấy tên thu ngân từ session userId
+        String cashierName = userRepository.findById(cashierUserId)
+                .orElseThrow(() -> new EntityNotFoundException("User không tồn tại: " + cashierUserId))
+                .getFullName();
+
+        // 6) Gọi service render PDF
+        return generateInvoicePdf(
+                orderId,
+                tableNumber,
+                cashierName,
+                items,
+                pr,
+                discount,
+                total
+        );
+    }
     public byte[] generateInvoicePdf(Integer orderId,
-                                     String customerName,
                                      Integer tableNumber,
                                      String cashierName,
                                      List<OrderDetail> items,
@@ -35,6 +86,17 @@ public class InvoicePdfService {
         PdfWriter writer = new PdfWriter(baos);
         PdfDocument pdf = new PdfDocument(writer);
         Document doc = new Document(pdf);
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Order không tồn tại với id = " + orderId
+                ));
+        User user = (order.getPhone() != null && !order.getPhone().isBlank())
+                ? userRepository.findByPhone(order.getPhone()).orElse(null)
+                : null;
+        String customerDisplay =
+                (user != null && user.getFullName() != null && !user.getFullName().isBlank())
+                        ? user.getFullName()
+                        : "Khách ăn lần đầu";
 
         // Font
         FontProvider fontProvider = new FontProvider();
@@ -84,7 +146,7 @@ public class InvoicePdfService {
         info.addCell(cell.apply("Thu ngân:", 12f));
         info.addCell(cell.apply(cashierName, 12f));
         info.addCell(cell.apply("Khách hàng:", 12f));
-        info.addCell(cell.apply(customerName, 12f));
+        info.addCell(cell.apply(customerDisplay, 12f));
         doc.add(info);
 
         // 4. Bảng chi tiết món với STT, Tên món, Đơn giá, SL, Thành tiền

@@ -15,6 +15,7 @@ import com.system.restaurant.management.repository.OrderDetailRepository;
 import com.system.restaurant.management.repository.DishRepository;
 import com.system.restaurant.management.repository.OrderStatusRepository;
 import com.system.restaurant.management.service.OrderService;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -44,6 +45,20 @@ public class OrderServiceImpl implements OrderService {
         return orders.stream()
                 .map(this::mapToDto)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public void updateOrderPhone(Integer orderId, String phone) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new EntityNotFoundException("Order không tồn tại với id = " + orderId));
+
+        String normalized = phone.trim();
+        if (normalized.length() > 20) {
+            normalized = normalized.substring(0, 20); // đảm bảo fit cột NVARCHAR(20)
+        }
+        order.setPhone(normalized);
+        orderRepository.save(order);
     }
 
     @Override
@@ -161,9 +176,9 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public List<OrderDto> getUnpaidOrders() {
-        OrderStatus pending = statusRepo.findByStatusName("Processing")
+        OrderStatus pending = statusRepo.findByStatusName("Pending")
                 .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Processing status not found"));
+                        HttpStatus.NOT_FOUND, "Pending status not found"));
 
         Integer pendingId = pending.getStatusId();
         List<Order> orders = orderRepository.findByStatusId(pendingId);

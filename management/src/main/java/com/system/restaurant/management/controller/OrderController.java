@@ -1,11 +1,9 @@
 package com.system.restaurant.management.controller;
 
-import com.system.restaurant.management.dto.CreateTakeawayOrderRequest;
-import com.system.restaurant.management.dto.OrderDto;
-import com.system.restaurant.management.dto.OrderRequestDto;
-import com.system.restaurant.management.dto.TakeawayOrderResponse;
+import com.system.restaurant.management.dto.*;
 import com.system.restaurant.management.service.OrderService;
 import com.system.restaurant.management.service.ReceptionistService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -40,5 +38,14 @@ public class OrderController {
     @GetMapping("{id}")
     public ResponseEntity<OrderDto> getOrder(@PathVariable Integer id) {
         return ResponseEntity.ok(orderService.findById(id));
+    }
+
+    @PatchMapping("/{orderId}/phone")
+    public ResponseEntity<Void> updatePhone(
+            @PathVariable Integer orderId,
+            @RequestBody @Valid UpdateOrderPhoneRequest req
+    ) {
+        orderService.updateOrderPhone(orderId, req.getPhone());
+        return ResponseEntity.noContent().build();
     }
 }

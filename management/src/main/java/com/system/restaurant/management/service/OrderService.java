@@ -15,7 +15,7 @@ public interface OrderService {
     Order updateOrder(Order order);
     OrderDetail addOrderDetail(OrderDetail orderDetail);
     OrderDetail updateOrderDetail(OrderDetail orderDetail);
-
+    void updateOrderPhone(Integer orderId, String phone);
     List<OrderDto> getUnpaidOrders();
     
     // Methods for QR Menu

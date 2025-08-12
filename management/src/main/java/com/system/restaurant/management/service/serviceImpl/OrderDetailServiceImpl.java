@@ -33,7 +33,7 @@ public class OrderDetailServiceImpl implements OrderDetailService {
                         "Order không tồn tại với id = " + orderId
                 ));
 
-        List<OrderDetail> details = detailRepo.findByOrderId(order.getOrderId());
+        List<OrderDetail> details = detailRepo.findByOrderIdAndStatusId(order.getOrderId(), 2);
         return details.stream()
                 .map(OrderDetailDTO::fromEntity)
                 .collect(Collectors.toList());

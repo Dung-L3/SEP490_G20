@@ -13,6 +13,7 @@ interface Order {
   discountAmount: number;
   finalTotal: number;
   createdAt: string;
+  phone?: string | null;        // <= THÊM: số ĐT khách (có thể null)
 }
 
 interface Promotion {
@@ -33,13 +34,17 @@ const OrderList: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
-  // NEW: promo state
+  // Promotions
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [promosLoading, setPromosLoading] = useState(false);
   const [promosError, setPromosError] = useState<string | null>(null);
   const [selectedPromoCode, setSelectedPromoCode] = useState<string>('');
-  // NEW: error state thật (thay cho hàm setError ở cuối file)
+
+  // Error hiển thị trong modal
   const [error, setError] = useState<string | null>(null);
+
+  // THÊM: state số điện thoại nhập trong modal
+  const [phone, setPhone] = useState<string>('');
 
   const [modalPaymentMethod, setModalPaymentMethod] =
     useState<'cash' | 'card' | 'bankTransfer'>('cash');
@@ -69,21 +74,20 @@ const OrderList: React.FC = () => {
     );
   });
 
-  // NEW: mở modal + load promotions hợp lệ
+  // Mở modal + load promotions hợp lệ
   const handleRowClick = (order: Order) => {
     setSelectedOrder(order);
     setModalPaymentMethod('cash'); // reset mặc định
     setSelectedPromoCode('');      // mặc định không áp mã
     setPromosError(null);
     setError(null);
+    setPhone(order.phone ?? '');   // THÊM: đưa sẵn phone của order (nếu có) vào input
     setModalOpen(true);
 
     setPromosLoading(true);
     fetch('/api/promotions/validPromotions', { credentials: 'include' })
       .then(res => (res.ok ? res.json() : Promise.reject('Không tải được danh sách mã khuyến mãi')))
-      .then((list: Promotion[]) => {
-        setPromotions(list ?? []);
-      })
+      .then((list: Promotion[]) => setPromotions(list ?? []))
       .catch((err: unknown) => {
         console.error(err);
         setPromotions([]);
@@ -92,10 +96,40 @@ const OrderList: React.FC = () => {
       .finally(() => setPromosLoading(false));
   };
 
-  // NEW: Tiếp tục = apply mã (nếu chọn) rồi giữ flow cũ (đi tới màn payment)
+  // Tiếp tục = PATCH phone (nếu có thay đổi) → apply promo (nếu chọn) → điều hướng payment
   const handleProceed = async () => {
     if (!selectedOrder) return;
+    setError(null);
 
+    const trimmedPhone = phone.trim();
+    const prevPhone = (selectedOrder.phone ?? '').trim();
+
+    // 1) Cập nhật phone nếu có nhập và khác trước đó
+    if (trimmedPhone && trimmedPhone !== prevPhone) {
+      try {
+        const res = await fetch(`/api/receptionist/orders/${selectedOrder.orderId}/phone`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ phone: trimmedPhone }),
+        });
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(text || `Cập nhật số điện thoại thất bại (${res.status})`);
+        }
+        // cập nhật local state
+        setSelectedOrder({ ...selectedOrder, phone: trimmedPhone });
+        setOrders(prev =>
+          prev.map(o => (o.orderId === selectedOrder.orderId ? { ...o, phone: trimmedPhone } : o))
+        );
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setError(msg);
+        return; // dừng flow nếu patch fail
+      }
+    }
+
+    // 2) Áp mã nếu có
     if (selectedPromoCode) {
       try {
         const res = await fetch('/api/promotions/applyPromo', {
@@ -113,11 +147,12 @@ const OrderList: React.FC = () => {
         }
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
-        setError(msg); // chỉ hiển thị lỗi, KHÔNG ném lỗi => không trắng màn
+        setError(msg);
         return;
       }
     }
 
+    // 3) Điều hướng sang màn thanh toán
     setModalOpen(false);
     navigate(`/receptionist/${selectedOrder.orderId}/payment`, {
       state: { paymentMethod: modalPaymentMethod },
@@ -176,7 +211,9 @@ const OrderList: React.FC = () => {
                   >
                     <td className="px-6 py-4 font-semibold text-blue-700">#{order.orderId}</td>
                     <td className="px-6 py-4">{order.customerName ?? '—'}</td>
-                    <td className="px-6 py-4">{order.tableName ?? (order.orderType === 'TAKEAWAY' ? 'Mang về' : '—')}</td>
+                    <td className="px-6 py-4">
+                      {order.tableName ?? (order.orderType === 'TAKEAWAY' ? 'Mang về' : '—')}
+                    </td>
                     <td className="px-6 py-4 font-semibold text-green-700">
                       {order.finalTotal.toLocaleString()}₫
                     </td>
@@ -207,14 +244,24 @@ const OrderList: React.FC = () => {
               Thanh toán cho đơn #{selectedOrder.orderId}
             </h3>
 
-            {/* show error nếu có */}
+            {/* Error */}
             {error && (
               <div className="mb-3 text-sm text-red-600">
                 {error}
               </div>
             )}
 
-            {/* Payment method */}
+            {/* Số điện thoại khách */}
+            <label className="block text-sm mb-1">Số điện thoại (khách)</label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="VD: 0372698544"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-4"
+            />
+
+            {/* Phương thức thanh toán */}
             <label className="block text-sm mb-1">Phương thức thanh toán</label>
             <select
               value={modalPaymentMethod}
