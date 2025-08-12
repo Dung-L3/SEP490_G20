@@ -45,4 +45,13 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
     })
     Optional<Order> findWithDetailsAndDishByOrderId(Integer orderId);
     List<Order> findByOrderTypeAndStatusId(String orderType, Integer statusId);
+    @Query("""
+        select distinct o
+        from Order o
+        join o.orderDetails od
+        where o.orderType = 'TAKEAWAY'
+          and od.statusId = :status
+        order by o.createdAt desc
+    """)
+    List<Order> findTakeawayOrdersByItemStatus(@Param("status") Integer status);
 }
