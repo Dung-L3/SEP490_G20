@@ -31,100 +31,71 @@ interface CreateWorkshiftDto {
   repeatPattern: 'daily' | 'weekly' | 'none';
 }
 
-// Mock data
-const today = new Date().toISOString().split('T')[0];
-
-let mockWorkshifts: Workshift[] = [
-  {
-    id: 1,
-    name: 'Ca sáng',
-    date: today,
-    startTime: '07:00',
-    endTime: '15:00',
-    status: 'ACTIVE',
-    location: 'Tầng 1',
-    requiredStaff: 5,
-    assignedEmployees: [],
-    department: 'service',
-    repeatPattern: 'daily'
-  },
-  {
-    id: 2,
-    name: 'Ca chiều',
-    date: today,
-    startTime: '15:00',
-    endTime: '23:00',
-    status: 'ACTIVE',
-    location: 'Tầng 1',
-    requiredStaff: 5,
-    assignedEmployees: [],
-    department: 'service',
-    repeatPattern: 'daily'
-  },
-  {
-    id: 3,
-    name: 'Ca đêm',
-    date: today,
-    startTime: '23:00',
-    endTime: '07:00',
-    status: 'ACTIVE',
-    location: 'Tầng 1',
-    requiredStaff: 3,
-    assignedEmployees: [],
-    department: 'service',
-    repeatPattern: 'daily'
-  }
-];
+const API_URL = '/api/v1/workshifts';
 
 export const workshiftApi = {
   getAll: async (): Promise<Workshift[]> => {
-    // Giả lập delay của API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return [...mockWorkshifts];
+    const response = await fetch(`${API_URL}/getAll`, {
+      credentials: 'include',
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Không thể lấy danh sách ca làm việc: ${response.status}`);
+    }
+
+    return await response.json();
   },
 
   create: async (workshift: CreateWorkshiftDto): Promise<Workshift> => {
-    // Giả lập delay của API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-      const newWorkshift: Workshift = {
-      id: Math.max(...mockWorkshifts.map(w => w.id)) + 1,
-      name: workshift.name,
-      date: workshift.date,
-      startTime: workshift.startTime,
-      endTime: workshift.endTime,
-      status: workshift.status,
-      location: workshift.location,
-      requiredStaff: workshift.requiredStaff,
-      assignedEmployees: [],
-      department: workshift.department,
-      repeatPattern: workshift.repeatPattern
-    };    mockWorkshifts.push(newWorkshift);
-    return { ...newWorkshift };
+    const response = await fetch(`${API_URL}/create`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify(workshift)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Không thể tạo ca làm việc: ${response.status}`);
+    }
+
+    return await response.json();
   },
 
   update: async (id: number, workshift: Workshift): Promise<Workshift> => {
-    // Giả lập delay của API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const index = mockWorkshifts.findIndex(w => w.id === id);
-    if (index === -1) {
-      throw new Error('Workshift not found');
+    const response = await fetch(`${API_URL}/update/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify(workshift)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Không thể cập nhật ca làm việc: ${response.status}`);
     }
-    
-    mockWorkshifts[index] = { ...workshift };
-    return { ...mockWorkshifts[index] };
+
+    return await response.json();
   },
 
   delete: async (id: number): Promise<void> => {
-    // Giả lập delay của API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const index = mockWorkshifts.findIndex(w => w.id === id);
-    if (index === -1) {
-      throw new Error('Workshift not found');
+    const response = await fetch(`${API_URL}/delete/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Accept': 'application/json'
+      },
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      throw new Error(`Không thể xóa ca làm việc: ${response.status}`);
     }
-    
-    mockWorkshifts = mockWorkshifts.filter(w => w.id !== id);
   },
 };

@@ -1,7 +1,7 @@
 import type { Staff, StaffRequest } from '../types/Staff';
 import axiosClient from './axiosClient';
 
-// No need for /api prefix since axiosClient already has baseURL = '/api'
+
 const API_URL = '/users';
 const AUTH_API_URL = '/auth';
 
@@ -13,7 +13,7 @@ interface StaffResponse {
   phone: string;
   status: boolean;
   createdAt?: string;
-  roleName: string;  // Changed from roles array to single roleName
+  roleName: string;  
 }
 
 const mapToStaff = (data: StaffResponse): Staff => {
