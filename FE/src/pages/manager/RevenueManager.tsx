@@ -179,12 +179,12 @@ const RevenueManager = () => {
               {monthlyRevenue.map((item) => {
                 console.log('Monthly Item:', item);
                 return (
-                  <div key={item.month} className="flex justify-between items-center p-4 hover:bg-gray-50 rounded-lg">
+                  <div key={item.period} className="flex justify-between items-center p-4 hover:bg-gray-50 rounded-lg">
                     <div>
-                      <p className="font-medium text-gray-900">{item.month}</p>
-                      <p className="text-sm text-gray-500">{item.orderCount} đơn hàng</p>
+                      <p className="font-medium text-gray-900">{item.period}</p>
+                      <p className="text-sm text-gray-500">{item.invoiceCount} đơn hàng</p>
                     </div>
-                    <p className="text-lg font-semibold text-gray-900">{formatCurrency(item.revenue)}</p>
+                    <p className="text-lg font-semibold text-gray-900">{formatCurrency(item.totalRevenue)}</p>
                   </div>
                 );
               })}
@@ -198,12 +198,12 @@ const RevenueManager = () => {
               {dailyRevenue.map((item) => {
                 console.log('Daily Item:', item);
                 return (
-                  <div key={item.date} className="flex justify-between items-center p-4 hover:bg-gray-50 rounded-lg">
+                  <div key={item.period} className="flex justify-between items-center p-4 hover:bg-gray-50 rounded-lg">
                     <div>
-                      <p className="font-medium text-gray-900">{formatDate(item.date)}</p>
-                      <p className="text-sm text-gray-500">{item.orderCount} đơn hàng</p>
+                      <p className="font-medium text-gray-900">{formatDate(item.period)}</p>
+                      <p className="text-sm text-gray-500">{item.invoiceCount} đơn hàng</p>
                     </div>
-                    <p className="text-lg font-semibold text-gray-900">{formatCurrency(item.revenue)}</p>
+                    <p className="text-lg font-semibold text-gray-900">{formatCurrency(item.totalRevenue)}</p>
                   </div>
                 );
               })}

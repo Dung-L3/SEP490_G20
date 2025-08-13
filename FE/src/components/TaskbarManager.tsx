@@ -116,7 +116,7 @@ const TaskbarManager = () => {
         onMouseOver={e => (e.currentTarget.style.background = '#e5e7eb')}
         onMouseOut={e => (e.currentTarget.style.background = 'none')}
         onClick={() => navigate('/manager/purchase-history')}
-      >Lịch sử mua hàng</button>
+      >Lịch sử giao dịch</button>
       <button
         style={{
           background: 'none',

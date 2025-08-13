@@ -1,24 +1,16 @@
 // Revenue types for API responses
-export interface MonthlyRevenue {
-  month: string;
-  revenue: number;
-  orderCount: number;
-}
-
-export interface DailyRevenue {
-  date: string;
-  revenue: number;
-  orderCount: number;
-}
-
-export interface ShiftRevenue {
+export interface RevenueData {
   period: string;
   invoiceCount: number;
   totalRevenue: number;
 }
 
+export interface MonthlyRevenue extends RevenueData {}
+export interface DailyRevenue extends RevenueData {}
+export interface ShiftRevenue extends RevenueData {}
+
 export interface RevenueResponse {
   success: boolean;
-  data: MonthlyRevenue[] | DailyRevenue[] | ShiftRevenue[];
+  data: RevenueData[];
   message?: string;
 }
