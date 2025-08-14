@@ -12,37 +12,24 @@ import java.util.List;
 
 @Data
 public class CreateTakeawayOrderRequest {
-    @NotNull
-    private String customerName;
-    @NotNull
-    private String phone;
-
+    @NotNull private String customerName;
+    @NotNull private String phone;
     private String notes;
 
-    @NotNull
-    private List<OrderItemDto> items;
+    @NotNull private List<OrderItemDto> items;
 
     @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
+    @NoArgsConstructor @AllArgsConstructor
     public static class OrderItemDto {
-        private Integer dishId;     // 1 trong 2
-        private Integer comboId;    // 1 trong 2
-
-        @NotNull @Min(1)
-        private Integer quantity;
-
+        private Integer dishId;
+        private Integer comboId;
+        @NotNull private Integer quantity;
         private BigDecimal unitPrice;
         private String notes;
 
-        @AssertTrue(message = "Exactly one of dishId or comboId must be provided")
-        public boolean isDishXorCombo() {
-            return (dishId != null) ^ (comboId != null);
+        @AssertTrue(message = "Mỗi item phải có dishId hoặc comboId")
+        public boolean hasDishOrCombo() {
+            return dishId != null || comboId != null;
         }
-    }
-
-    @AssertTrue(message = "Items must not be empty")
-    public boolean isItemsNotEmpty() {
-        return items != null && !items.isEmpty();
     }
 }

@@ -25,7 +25,7 @@ public class OrderDetail {
     @Column(name = "DishID", nullable = false)
     private Integer dishId;
 
-    @Column(name = "ComboID")
+    @Column(name = "ComboID", nullable = false)
     private Integer comboId;
 
     @Column(name = "Quantity", nullable = false)
@@ -52,6 +52,10 @@ public class OrderDetail {
     @JoinColumn(name = "DishID", insertable = false, updatable = false)
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Dish dish;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ComboID", insertable = false, updatable = false)
+    private Combo combo;
 
     @PrePersist
     protected void onCreate() {

@@ -41,58 +41,78 @@ public class ReceptionistServiceImpl implements ReceptionistService {
     @Override
     @Transactional
     public TakeawayOrderResponse createTakeawayOrder(CreateTakeawayOrderRequest req) {
+        // 1) Validate cơ bản
+        if (req.getItems() == null || req.getItems().isEmpty()) {
+            throw new IllegalArgumentException("Danh sách món không được trống.");
+        }
+        if (req.getCustomerName() == null || req.getCustomerName().isBlank()) {
+            throw new IllegalArgumentException("Thiếu tên khách hàng.");
+        }
+        if (req.getPhone() == null || req.getPhone().isBlank()) {
+            throw new IllegalArgumentException("Thiếu số điện thoại.");
+        }
 
-        Order order = new Order();
-        order.setOrderType("TAKEAWAY");
-        order.setCustomerName(req.getCustomerName());
-        order.setPhone(req.getPhone());
-        order.setNotes(req.getNotes());
-        order.setCreatedAt(LocalDateTime.now());
-        order.setTable(null);
+        // 2) Tạo Order TAKEAWAY
+        Order order = Order.builder()
+                .orderType("TAKEAWAY")
+                .customerName(req.getCustomerName())
+                .phone(req.getPhone())
+                .notes(req.getNotes())
+                .statusId(1)                     // PENDING
+                .createdAt(LocalDateTime.now())
+                .subTotal(BigDecimal.ZERO)
+                .discountAmount(BigDecimal.ZERO)
+                .finalTotal(BigDecimal.ZERO)
+                .build();
 
-        order.setStatusId(1);                         // PENDING
-        order.setIsRefunded(0);                       // vì cột kiểu Integer
-        order.setSubTotal(BigDecimal.ZERO);
-        order.setDiscountAmount(BigDecimal.ZERO);
-        order.setFinalTotal(BigDecimal.ZERO);
+        order = orderRepo.save(order);
 
-        order = orderRepo.save(order);                // lưu lần 1 để có orderId
-
+        // 3) Lưu chi tiết: lấy giá từ DB, chỉ 1 trong 2: dishId hoặc comboId
         BigDecimal subTotal = BigDecimal.ZERO;
 
         for (var it : req.getItems()) {
+            Integer dishId  = it.getDishId();
+            Integer comboId = it.getComboId();
+
+            // CHỈ 1 loại: dish XOR combo
+            if ((dishId == null && comboId == null) || (dishId != null && comboId != null)) {
+                throw new IllegalArgumentException("Mỗi món phải CHỈ chọn 1: dishId hoặc comboId.");
+            }
+            if (it.getQuantity() == null || it.getQuantity() <= 0) {
+                throw new IllegalArgumentException("Số lượng phải > 0.");
+            }
+
             BigDecimal unitPrice;
-            if (it.getDishId() != null) {
-                Dish d = dishRepo.findById(it.getDishId())
-                        .orElseThrow(() -> new IllegalArgumentException("Dish not found: " + it.getDishId()));
+            if (dishId != null) {
+                Dish d = dishRepo.findById(dishId)
+                        .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy món id=" + dishId));
                 unitPrice = d.getPrice();
             } else {
-                Combo c = comboRepo.findById(it.getComboId())
-                        .orElseThrow(() -> new IllegalArgumentException("Combo not found: " + it.getComboId()));
+                Combo c = comboRepo.findById(comboId)
+                        .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy combo id=" + comboId));
                 unitPrice = c.getPrice();
             }
 
             OrderDetail od = new OrderDetail();
-            od.setOrder(order);
-            od.setDishId(it.getDishId());
-            od.setComboId(it.getComboId());
+            od.setOrderId(order.getOrderId()); 
+            od.setDishId(dishId);
+            od.setComboId(comboId);
             od.setQuantity(it.getQuantity());
-            od.setUnitPrice(unitPrice);               // dùng giá từ DB
+            od.setUnitPrice(unitPrice);
             od.setNotes(it.getNotes());
-            od.setStatusId(1);                        // PENDING
+            od.setStatusId(1);
             orderDetailRepository.save(od);
 
             subTotal = subTotal.add(unitPrice.multiply(BigDecimal.valueOf(it.getQuantity())));
         }
 
+        // 4) Cập nhật tổng tiền
         order.setSubTotal(subTotal);
-        order.setFinalTotal(subTotal.subtract(
-                order.getDiscountAmount() == null ? BigDecimal.ZERO : order.getDiscountAmount()
-        ));
-        orderRepo.save(order);                        // cập nhật lần 2
+        order.setFinalTotal(subTotal);           // chưa áp dụng khuyến mãi
+        orderRepo.save(order);
 
-        // build DTO trả về cho FE
-        var items = orderDetailRepository.findByOrderId(order.getOrderId())
+        // 5) Trả response: cần repo load kèm dish/combo (EntityGraph có "dish","combo")
+        var details = orderDetailRepository.findByOrderId(order.getOrderId())
                 .stream()
                 .map(OrderDetailDTO::fromEntity)
                 .toList();
@@ -102,8 +122,9 @@ public class ReceptionistServiceImpl implements ReceptionistService {
                 .customerName(order.getCustomerName())
                 .phone(order.getPhone())
                 .notes(order.getNotes())
-                .items(items)
+                .items(details)
                 .subTotal(order.getSubTotal())
+                .discountAmount(order.getDiscountAmount())
                 .finalTotal(order.getFinalTotal())
                 .build();
     }

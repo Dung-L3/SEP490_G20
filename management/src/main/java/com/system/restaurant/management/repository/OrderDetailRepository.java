@@ -28,7 +28,7 @@ public interface OrderDetailRepository extends JpaRepository<OrderDetail, Intege
            "WHERE od.orderDetailId = :id")
     Optional<OrderDetail> findByIdWithDetails(Integer id);
 
-    @EntityGraph(attributePaths = {"dish"})
+    @EntityGraph(attributePaths = {"dish", "combo"})
     List<OrderDetail> findByOrderId(Integer orderId);
     Optional<OrderDetail> findByOrderIdAndDishId(Integer orderId, Integer dishId);
     

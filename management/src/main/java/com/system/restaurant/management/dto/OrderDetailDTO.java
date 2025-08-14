@@ -19,11 +19,20 @@ public class OrderDetailDTO {
     private String notes;
 
     public static OrderDetailDTO fromEntity(OrderDetail detail) {
+        String name = null;
+        if (detail.getDish() != null && detail.getDish().getDishName() != null) {
+            name = detail.getDish().getDishName();
+        } else if (detail.getCombo() != null && detail.getCombo().getComboName() != null) {
+            name = detail.getCombo().getComboName();
+        } else {
+            name = "Món không xác định";
+        }
+
         return new OrderDetailDTO(
                 detail.getOrderDetailId(),
-                detail.getDish().getDishName(),   // sẽ không NPE nữa
+                name,
                 detail.getQuantity(),
-                detail.getUnitPrice(),
+                detail.getUnitPrice() != null ? detail.getUnitPrice() : BigDecimal.ZERO,
                 detail.getNotes()
         );
     }

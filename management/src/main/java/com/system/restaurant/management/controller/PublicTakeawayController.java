@@ -19,10 +19,10 @@ public class PublicTakeawayController {
     private final ReceptionistService receptionistService;
 
     @PostMapping("/orders")
-    public ResponseEntity<TakeawayOrderResponse> create(@Valid @RequestBody CreateTakeawayOrderRequest req) {
+    public ResponseEntity<TakeawayOrderResponse> create(
+            @Valid @RequestBody CreateTakeawayOrderRequest req) {
         return ResponseEntity.ok(receptionistService.createTakeawayOrder(req));
     }
-
 
     // (tuỳ chọn) Lấy các đơn TAKEAWAY đang chờ (để debug / dùng riêng)
     @GetMapping("/takeaway-orders/pending")
