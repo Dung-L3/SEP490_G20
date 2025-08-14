@@ -1,74 +1,60 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 // src/pages/OrderManager.tsx
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import TaskbarReceptionist from '../../components/TaskbarReceptionist';
 
 interface Order {
   orderId: number;
   orderType: string;
-  customerName: string;
-  tableName: string;
+  customerName?: string | null; // <= có thể null
+  tableName?: string | null;    // <= có thể null
   subTotal: number;
   discountAmount: number;
   finalTotal: number;
   createdAt: string;
+  phone?: string | null;        // <= THÊM: số ĐT khách (có thể null)
 }
 
-interface TakeawayOrderResponse {
-  orderId: number;
-  customerName: string;
-  phone: string;
-  notes?: string;
-  subTotal: number;
-  finalTotal: number;
+interface Promotion {
+  promoId: number;
+  promoCode: string;
+  promoName: string;
+  discountPercent: number | null;
+  discountAmount: number | null;
+  startDate: string;
+  endDate: string;
+  usageLimit: number | null;
+  isActive: boolean;
 }
-type NavState = { newOrder?: TakeawayOrderResponse };
-
-const formatVnd = (n: number) => `${n.toLocaleString('vi-VN')}đ`;
-
-const dedupeById = (arr: Order[]) => {
-  const seen = new Set<number>();
-  const out: Order[] = [];
-  for (const o of arr) {
-    if (!seen.has(o.orderId)) {
-      seen.add(o.orderId);
-      out.push(o);
-    }
-  }
-  return out;
-};
-
-const mapTakeawayToOrder = (t: TakeawayOrderResponse) => ({
-  orderId: t.orderId,
-  orderType: 'TAKEAWAY',
-  customerName: t.customerName,
-  tableName: 'Mang đi',
-  subTotal: t.subTotal,
-  discountAmount: 0,
-  finalTotal: t.finalTotal,
-  createdAt: new Date().toISOString(),
-});
 
 const OrderList: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [modalPaymentMethod, setModalPaymentMethod] = useState<'cash' | 'card' | 'bankTransfer'>('cash');
+
+  // Promotions
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [promosLoading, setPromosLoading] = useState(false);
+  const [promosError, setPromosError] = useState<string | null>(null);
+  const [selectedPromoCode, setSelectedPromoCode] = useState<string>('');
+
+  // Error hiển thị trong modal
+  const [error, setError] = useState<string | null>(null);
+
+  // THÊM: state số điện thoại nhập trong modal
+  const [phone, setPhone] = useState<string>('');
+
+  const [modalPaymentMethod, setModalPaymentMethod] =
+    useState<'cash' | 'card' | 'bankTransfer'>('cash');
+
   const navigate = useNavigate();
-  const location = useLocation();
 
-
-  // Load dữ liệu từ API
+  // Load danh sách đơn chưa thanh toán
   useEffect(() => {
-    fetch('/api/receptionist/orders/unpaid', {
-      credentials: 'include',
-    })
-      .then(res =>
-        res.ok
-          ? res.json()
-          : Promise.reject('Không tải được danh sách đơn')
-      )
+    fetch('/api/receptionist/orders/unpaid', { credentials: 'include' })
+      .then(res => (res.ok ? res.json() : Promise.reject('Không tải được danh sách đơn')))
       .then((data: Order[]) => setOrders(data))
       .catch(err => {
         console.error(err);
@@ -76,66 +62,101 @@ const OrderList: React.FC = () => {
       });
   }, []);
 
-  useEffect(() => {
-  let cancelled = false;
+  const safeLower = (v?: string | null) => (v ?? '').toLowerCase();
 
-  const navState = (location.state || {}) as NavState;
-  const newMapped = navState.newOrder ? mapTakeawayToOrder(navState.newOrder) : undefined;
-
-  const run = async () => {
-    try {
-      const res = await fetch('/api/receptionist/orders/unpaid', { credentials: 'include' });
-      if (!res.ok) throw new Error('no unpaid api');
-      const data: Order[] = await res.json();
-      if (cancelled) return;
-      setOrders(prev => {
-        const merged = [...(newMapped ? [newMapped] : []), ...data];
-        const seen = new Set<number>();
-        return merged.filter(o => (seen.has(o.orderId) ? false : (seen.add(o.orderId), true)));
-      });
-    } catch {
-      if (cancelled) return;
-      if (newMapped) {
-        setOrders(prev => {
-          const seen = new Set<number>();
-          return [newMapped, ...prev].filter(o => (seen.has(o.orderId) ? false : (seen.add(o.orderId), true)));
-        });
-      }
-    } finally {
-      if (navState.newOrder) {
-        navigate(location.pathname, { replace: true, state: {} });
-      }
-    }
-  };
-
-  run();
-  return () => { cancelled = true; };
-}, [location.state, navigate, location.pathname]);
-
-
-  // Filter theo search (Mã đơn, tên KH, tên bàn)
+  // Filter theo search (Mã đơn, tên KH, tên bàn) — an toàn null
   const filteredOrders = orders.filter(o => {
-    const q = search.toLowerCase();
+    const q = (search ?? '').toLowerCase().trim();
     return (
-      o.customerName.toLowerCase().includes(q) ||
+      safeLower(o.customerName).includes(q) ||
       o.orderId.toString().includes(q) ||
-      o.tableName.toLowerCase().includes(q)
+      safeLower(o.tableName).includes(q)
     );
   });
 
+  // Mở modal + load promotions hợp lệ
   const handleRowClick = (order: Order) => {
     setSelectedOrder(order);
     setModalPaymentMethod('cash'); // reset mặc định
+    setSelectedPromoCode('');      // mặc định không áp mã
+    setPromosError(null);
+    setError(null);
+    setPhone(order.phone ?? '');   // THÊM: đưa sẵn phone của order (nếu có) vào input
     setModalOpen(true);
+
+    setPromosLoading(true);
+    fetch('/api/promotions/validPromotions', { credentials: 'include' })
+      .then(res => (res.ok ? res.json() : Promise.reject('Không tải được danh sách mã khuyến mãi')))
+      .then((list: Promotion[]) => setPromotions(list ?? []))
+      .catch((err: unknown) => {
+        console.error(err);
+        setPromotions([]);
+        setPromosError(typeof err === 'string' ? err : 'Không tải được danh sách mã');
+      })
+      .finally(() => setPromosLoading(false));
   };
 
-  const handleProceed = () => {
+  // Tiếp tục = PATCH phone (nếu có thay đổi) → apply promo (nếu chọn) → điều hướng payment
+  const handleProceed = async () => {
     if (!selectedOrder) return;
+    setError(null);
+
+    const trimmedPhone = phone.trim();
+    const prevPhone = (selectedOrder.phone ?? '').trim();
+
+    // 1) Cập nhật phone nếu có nhập và khác trước đó
+    if (trimmedPhone && trimmedPhone !== prevPhone) {
+      try {
+        const res = await fetch(`/api/receptionist/orders/${selectedOrder.orderId}/phone`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ phone: trimmedPhone }),
+        });
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(text || `Cập nhật số điện thoại thất bại (${res.status})`);
+        }
+        // cập nhật local state
+        setSelectedOrder({ ...selectedOrder, phone: trimmedPhone });
+        setOrders(prev =>
+          prev.map(o => (o.orderId === selectedOrder.orderId ? { ...o, phone: trimmedPhone } : o))
+        );
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setError(msg);
+        return; // dừng flow nếu patch fail
+      }
+    }
+
+    // 2) Áp mã nếu có
+    if (selectedPromoCode) {
+      try {
+        const res = await fetch('/api/promotions/applyPromo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            orderId: selectedOrder.orderId,
+            promoCode: selectedPromoCode,
+          }),
+        });
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(text || `Apply promo thất bại (${res.status})`);
+        }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setError(msg);
+        return;
+      }
+    }
+
+    // 3) Điều hướng sang màn thanh toán
     setModalOpen(false);
-    navigate(
-      `/receptionist/${selectedOrder.orderId}/payment`,
-      { state: { paymentMethod: modalPaymentMethod } }
-    );
+    navigate(`/receptionist/${selectedOrder.orderId}/payment`, {
+      state: { paymentMethod: modalPaymentMethod },
+    });
   };
 
   return (
@@ -174,21 +195,11 @@ const OrderList: React.FC = () => {
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
-                    Mã đơn
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
-                    Khách hàng
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
-                    Bàn
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
-                    Tổng tiền
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
-                    Thời gian
-                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Mã đơn</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Khách hàng</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Bàn</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Tổng tiền</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Thời gian</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -198,11 +209,11 @@ const OrderList: React.FC = () => {
                     className="hover:bg-gray-50 transition-colors cursor-pointer"
                     onClick={() => handleRowClick(order)}
                   >
-                    <td className="px-6 py-4 font-semibold text-blue-700">
-                      #{order.orderId}
+                    <td className="px-6 py-4 font-semibold text-blue-700">#{order.orderId}</td>
+                    <td className="px-6 py-4">{order.customerName ?? '—'}</td>
+                    <td className="px-6 py-4">
+                      {order.tableName ?? (order.orderType === 'TAKEAWAY' ? 'Mang về' : '—')}
                     </td>
-                    <td className="px-6 py-4">{order.customerName}</td>
-                    <td className="px-6 py-4">{order.tableName}</td>
                     <td className="px-6 py-4 font-semibold text-green-700">
                       {order.finalTotal.toLocaleString()}₫
                     </td>
@@ -225,33 +236,71 @@ const OrderList: React.FC = () => {
         )}
       </div>
 
-      {/* Payment Method Modal */}
+      {/* Payment + Promotion Modal */}
       {modalOpen && selectedOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-lg w-80">
+          <div className="bg-white p-6 rounded-lg w-96">
             <h3 className="text-lg font-semibold mb-4">
-              Chọn phương thức thanh toán
+              Thanh toán cho đơn #{selectedOrder.orderId}
             </h3>
+
+            {/* Error */}
+            {error && (
+              <div className="mb-3 text-sm text-red-600">
+                {error}
+              </div>
+            )}
+
+            {/* Số điện thoại khách */}
+            <label className="block text-sm mb-1">Số điện thoại (khách)</label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="VD: 0372698544"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-4"
+            />
+
+            {/* Phương thức thanh toán */}
+            <label className="block text-sm mb-1">Phương thức thanh toán</label>
             <select
               value={modalPaymentMethod}
               onChange={e =>
                 setModalPaymentMethod(e.target.value as 'cash' | 'card' | 'bankTransfer')
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-6"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-4"
             >
-              <option value="cash">Tiền mặt</option>
-              <option value="card">Thẻ</option>
-              <option value="bankTransfer">Chuyển khoản ngân hàng</option>
+              <option value="cash">Cash</option>
+              <option value="card">Card</option>
+              <option value="bankTransfer">Bank Transfer</option>
             </select>
-            <div className="flex justify-end gap-2">
-              <button                onClick={() => setModalOpen(false)}
-                className="px-4 py-2 border rounded-lg"
-              >
+
+            {/* Promotion list */}
+            <label className="block text-sm mb-1">Mã khuyến mãi (đang hiệu lực)</label>
+            <select
+              value={selectedPromoCode}
+              onChange={e => setSelectedPromoCode(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-2"
+              disabled={promosLoading}
+            >
+              <option value="">-- Không áp dụng --</option>
+              {promotions.map(p => (
+                <option key={p.promoId} value={p.promoCode}>
+                  {p.promoCode} — {p.promoName} ({p.discountPercent ?? 0}% | {(p.discountAmount ?? 0).toLocaleString()}đ)
+                </option>
+              ))}
+            </select>
+            {promosLoading && <div className="text-sm text-gray-500 mb-2">Đang tải danh sách mã…</div>}
+            {promosError && <div className="text-sm text-red-600 mb-2">{promosError}</div>}
+
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => setModalOpen(false)} className="px-4 py-2 border rounded-lg">
                 Huỷ
               </button>
               <button
                 onClick={handleProceed}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                disabled={promosLoading}
               >
                 Tiếp tục
               </button>

@@ -7,8 +7,8 @@ const ReceptionistHome = () => {
     <div style={{ display: 'flex' }}>
       <TaskbarRecptionist />
       <div style={{ marginLeft: '220px', padding: '24px', width: '100%' }}>
-        <h1>Trang Lễ tân</h1>
-        <p>Chào mừng bạn đến với trang Lễ tân!</p>
+        <h1>Receptionist Page</h1>
+        <p>Welcome to the receptionist page!</p>
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 // src/pages/OrderPayment.tsx
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 
 interface OrderDetailDTO {
