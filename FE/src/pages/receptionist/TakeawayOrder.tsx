@@ -2,7 +2,6 @@
 import React, { useState, useEffect} from 'react';
 import type { FormEvent } from 'react';
 import axios from 'axios';
-//import type { AxiosError } from 'axios';
 import { useNavigate } from 'react-router-dom';
 
 interface Dish { dishId: number; dishName: string; price: number; }
