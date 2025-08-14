@@ -2,6 +2,7 @@
 
     import com.system.restaurant.management.entity.Order;
     import com.system.restaurant.management.dto.PurchaseHistoryDto;
+    import org.springframework.data.domain.Sort;
     import org.springframework.data.jpa.repository.JpaRepository;
     import org.springframework.data.jpa.repository.Query;
     import org.springframework.data.repository.query.Param;
@@ -52,5 +53,5 @@
           JOIN PaymentMethod pm ON pm.methodId = pr.methodId
           WHERE o.phone = :phone
           """)
-        List<PurchaseHistoryDto> findHistoryByPhone(@Param("phone") String phone);
+        List<PurchaseHistoryDto> findHistoryByPhone(@Param("phone") String phone, Sort sort);
     }

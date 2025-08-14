@@ -5,6 +5,7 @@ import com.system.restaurant.management.dto.PurchaseHistoryResponse;
 import com.system.restaurant.management.repository.PurchaseHistoryRepository;
 import com.system.restaurant.management.service.ManagePurchaseHistoryService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -24,7 +25,7 @@ public class ManagePurchaseHistoryServiceImpl implements ManagePurchaseHistorySe
 
     @Override
     public List<PurchaseHistoryDto> getHistoryByPhone(String phone) {
-        return purchaseHistoryRepository.findHistoryByPhone(phone);
+        return purchaseHistoryRepository.findHistoryByPhone(phone, Sort.by(Sort.Direction.DESC, "date"));
     }
 
     @Override

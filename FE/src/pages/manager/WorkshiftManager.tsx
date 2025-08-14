@@ -42,8 +42,16 @@ const WorkshiftManager: FC = () => {
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [createShift, setCreateShift] = useState<ShiftPayload>({ userId: 0, shiftDate: '', startTime: '', endTime: '', isOverNight: false });
-  const [editShift, setEditShift] = useState<ShiftPayload & { id: number }>({ id: 0, userId: 0, shiftDate: '', startTime: '', endTime: '', isOverNight: false });
+  const [createShift, setCreateShift] = useState<ShiftPayload>({
+    userId: 0, shiftDate: '', startTime: '', endTime: '', isOverNight: false
+  });
+  const [editShift, setEditShift] = useState<ShiftPayload & { id: number }>({
+    id: 0, userId: 0, shiftDate: '', startTime: '', endTime: '', isOverNight: false
+  });
+
+  // === NEW: error form cho modal create / edit ===
+  const [createErr, setCreateErr] = useState<string | null>(null);
+  const [editErr, setEditErr] = useState<string | null>(null);
 
   // Load both workshifts and staffs
   const loadAll = async () => {
@@ -80,23 +88,50 @@ const WorkshiftManager: FC = () => {
     setFiltered(tmp);
   }, [searchUsername, dateFilter, workshifts]);
 
+  // === NEW: validate helper ===
+  const validateShiftInput = (payload: Pick<ShiftPayload, 'userId'|'shiftDate'|'startTime'|'endTime'>): string | null => {
+    if (!payload.userId || payload.userId === 0) return 'Vui lòng chọn nhân viên.';
+    if (!payload.shiftDate) return 'Vui lòng chọn ngày ca.';
+    if (!payload.startTime) return 'Vui lòng nhập giờ bắt đầu.';
+    if (!payload.endTime) return 'Vui lòng nhập giờ kết thúc.';
+    // So sánh HH:mm dạng string là đủ cho cùng 1 ngày
+    if (payload.startTime >= payload.endTime) return 'Giờ bắt đầu phải sớm hơn giờ kết thúc.';
+    return null;
+  };
+
   // Handlers for modals
   const openCreate = () => {
     setCreateShift({ userId: 0, shiftDate: '', startTime: '', endTime: '', isOverNight: false });
+    setCreateErr(null); // clear lỗi cũ
     setIsCreateModalOpen(true);
   };
   const openEdit = (ws: WorkshiftRecord) => {
-    setEditShift({ id: ws.id, userId: ws.userId, shiftDate: ws.shiftDate, startTime: ws.startTime, endTime: ws.endTime, isOverNight: !!ws.isOverNight });
+    setEditShift({
+      id: ws.id,
+      userId: ws.userId,
+      shiftDate: ws.shiftDate,
+      startTime: ws.startTime,
+      endTime: ws.endTime,
+      isOverNight: !!ws.isOverNight
+    });
+    setEditErr(null); // clear lỗi cũ
     setIsEditModalOpen(true);
   };
 
   // Create API
   const handleCreate = async () => {
+    // === NEW: chạy validate trước khi gọi API
+    const v = validateShiftInput(createShift);
+    if (v) { setCreateErr(v); return; }
+
     setLoading(true);
     try {
+      // isOverNight luôn false khi tạo (UI không cho tick)
       const res = await fetch('/api/reports/create/shift', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify(createShift)
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ...createShift, isOverNight: false })
       });
       if (!res.ok) throw new Error('Tạo ca thất bại');
       setIsCreateModalOpen(false);
@@ -109,11 +144,17 @@ const WorkshiftManager: FC = () => {
 
   // Update API
   const handleUpdate = async () => {
+    // === NEW: validate khi cập nhật
+    const { id, ...payload } = editShift;
+    const v = validateShiftInput(payload);
+    if (v) { setEditErr(v); return; }
+
     setLoading(true);
     try {
-      const { id, ...payload } = editShift;
       const res = await fetch(`/api/reports/update/shift/${id}`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(payload)
       });
       if (!res.ok) throw new Error('Cập nhật ca thất bại');
@@ -135,14 +176,39 @@ const WorkshiftManager: FC = () => {
         <h1 className="text-2xl font-bold mb-4">Quản lý Ca làm việc</h1>
         {/* Filters + Add */}
         <div className="bg-white p-4 rounded-lg shadow mb-6 flex flex-wrap gap-4 items-end">
-          <input type="text" placeholder="Tìm theo username..." value={searchUsername}
-            onChange={e=>setSearchUsername(e.target.value)} className="px-3 py-2 border rounded w-64"/>
-          <div><label className="block text-sm mb-1">Từ ngày</label><input type="date" value={dateFilter.from}
-            onChange={e=>setDateFilter(d=>({...d,from:e.target.value}))} className="px-2 py-1 border rounded"/></div>
-          <div><label className="block text-sm mb-1">Đến ngày</label><input type="date" value={dateFilter.to}
-            onChange={e=>setDateFilter(d=>({...d,to:e.target.value}))} className="px-2 py-1 border rounded"/></div>
-          <button onClick={openCreate} className="ml-auto bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Thêm Ca</button>
+          <input
+            type="text"
+            placeholder="Tìm theo username..."
+            value={searchUsername}
+            onChange={e=>setSearchUsername(e.target.value)}
+            className="px-3 py-2 border rounded w-64"
+          />
+          <div>
+            <label className="block text-sm mb-1">Từ ngày</label>
+            <input
+              type="date"
+              value={dateFilter.from}
+              onChange={e=>setDateFilter(d=>({...d,from:e.target.value}))}
+              className="px-2 py-1 border rounded"
+            />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">Đến ngày</label>
+            <input
+              type="date"
+              value={dateFilter.to}
+              onChange={e=>setDateFilter(d=>({...d,to:e.target.value}))}
+              className="px-2 py-1 border rounded"
+            />
+          </div>
+          <button
+            onClick={openCreate}
+            className="ml-auto bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            Thêm Ca
+          </button>
         </div>
+
         {/* Table */}
         <div className="bg-white rounded-lg shadow overflow-auto">
           <table className="min-w-full">
@@ -170,47 +236,120 @@ const WorkshiftManager: FC = () => {
             </tbody>
           </table>
         </div>
+
         {/* Create Modal */}
         {isCreateModalOpen&&(
           <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center">
             <div className="bg-white p-6 rounded-lg w-96">
-              <h2 className="text-lg font-semibold mb-4">Tạo Ca làm việc</h2>
+              <h2 className="text-lg font-semibold mb-2">Tạo Ca làm việc</h2>
+              {createErr && <p className="text-red-600 text-sm mb-2">{createErr}</p>}
               <div className="space-y-3">
                 <label className="block text-sm">Nhân viên</label>
-                <select value={createShift.userId} onChange={e=>setCreateShift(s=>({...s,userId:+e.target.value}))} className="w-full border px-2 py-1 rounded">
-                  <option value={0}>Chọn nhân viên...</option>
+                <select
+                  value={createShift.userId}
+                  onChange={e=>{ setCreateShift(s=>({...s,userId:+e.target.value})); setCreateErr(null); }}
+                  className="w-full border px-2 py-1 rounded"
+                  required
+                >
+                  <option value={0} disabled>Chọn nhân viên...</option>
                   {staffs.map(st=><option key={st.id} value={st.id}>{st.fullName} ({st.username})</option>)}
                 </select>
+
                 <label className="block text-sm">Ngày ca</label>
-                <input type="date" value={createShift.shiftDate} onChange={e=>setCreateShift(s=>({...s,shiftDate:e.target.value}))} className="w-full border px-2 py-1 rounded"/>
+                <input
+                  type="date"
+                  value={createShift.shiftDate}
+                  onChange={e=>{ setCreateShift(s=>({...s,shiftDate:e.target.value})); setCreateErr(null); }}
+                  className="w-full border px-2 py-1 rounded"
+                  required
+                />
+
                 <div className="flex gap-2">
-                  <div className="flex-1"><label className="block text-sm">Bắt đầu</label><input type="time" value={createShift.startTime} onChange={e=>setCreateShift(s=>({...s,startTime:e.target.value}))} className="w-full border px-2 py-1 rounded"/></div>
-                  <div className="flex-1"><label className="block text-sm">Kết thúc</label><input type="time" value={createShift.endTime} onChange={e=>setCreateShift(s=>({...s,endTime:e.target.value}))} className="w-full border px-2 py-1 rounded"/></div>
+                  <div className="flex-1">
+                    <label className="block text-sm">Bắt đầu</label>
+                    <input
+                      type="time"
+                      value={createShift.startTime}
+                      onChange={e=>{ setCreateShift(s=>({...s,startTime:e.target.value})); setCreateErr(null); }}
+                      className="w-full border px-2 py-1 rounded"
+                      required
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-sm">Kết thúc</label>
+                    <input
+                      type="time"
+                      value={createShift.endTime}
+                      onChange={e=>{ setCreateShift(s=>({...s,endTime:e.target.value})); setCreateErr(null); }}
+                      className="w-full border px-2 py-1 rounded"
+                      required
+                    />
+                  </div>
                 </div>
-                <div className="flex items-center"><input type="checkbox" checked={createShift.isOverNight} onChange={e=>setCreateShift(s=>({...s,isOverNight:e.target.checked}))} className="mr-2"/><label className="text-sm">Overnight</label></div>
+
               </div>
-              <div className="mt-4 flex justify-end gap-2"><button onClick={()=>setIsCreateModalOpen(false)} className="px-4 py-2 border rounded">Huỷ</button><button onClick={handleCreate} className="px-4 py-2 bg-green-600 text-white rounded">Tạo</button></div>
+              <div className="mt-4 flex justify-end gap-2">
+                <button onClick={()=>setIsCreateModalOpen(false)} className="px-4 py-2 border rounded">Huỷ</button>
+                <button onClick={handleCreate} className="px-4 py-2 bg-green-600 text-white rounded">Tạo</button>
+              </div>
             </div>
           </div>
         )}
+
         {/* Edit Modal */}
         {isEditModalOpen&&(
           <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center">
             <div className="bg-white p-6 rounded-lg w-96">
-              <h2 className="text-lg font-semibold mb-4">Cập nhật Ca làm việc</h2>
+              <h2 className="text-lg font-semibold mb-2">Cập nhật Ca làm việc</h2>
+              {editErr && <p className="text-red-600 text-sm mb-2">{editErr}</p>}
               <div className="space-y-3">
                 <label className="block text-sm">Nhân viên</label>
-                <select value={editShift.userId} onChange={e=>setEditShift(s=>({...s,userId:+e.target.value}))} className="w-full border px-2 py-1 rounded">
+                <select
+                  value={editShift.userId}
+                  onChange={e=>{ setEditShift(s=>({...s,userId:+e.target.value})); setEditErr(null); }}
+                  className="w-full border px-2 py-1 rounded"
+                  required
+                >
                   {staffs.map(st=><option key={st.id} value={st.id}>{st.fullName} ({st.username})</option>)}
                 </select>
+
                 <label className="block text-sm">Ngày ca</label>
-                <input type="date" value={editShift.shiftDate} onChange={e=>setEditShift(s=>({...s,shiftDate:e.target.value}))} className="w-full border px-2 py-1 rounded"/>
+                <input
+                  type="date"
+                  value={editShift.shiftDate}
+                  onChange={e=>{ setEditShift(s=>({...s,shiftDate:e.target.value})); setEditErr(null); }}
+                  className="w-full border px-2 py-1 rounded"
+                  required
+                />
+
                 <div className="flex gap-2">
-                  <div className="flex-1"><label className="block text-sm">Bắt đầu</label><input type="time" value={editShift.startTime} onChange={e=>setEditShift(s=>({...s,startTime:e.target.value}))} className="w-full border px-2 py-1 rounded"/></div>
-                  <div className="flex-1"><label className="block text-sm">Kết thúc</label><input type="time" value={editShift.endTime} onChange={e=>setEditShift(s=>({...s,endTime:e.target.value}))} className="w-full border px-2 py-1 rounded"/></div>
+                  <div className="flex-1">
+                    <label className="block text-sm">Bắt đầu</label>
+                    <input
+                      type="time"
+                      value={editShift.startTime}
+                      onChange={e=>{ setEditShift(s=>({...s,startTime:e.target.value})); setEditErr(null); }}
+                      className="w-full border px-2 py-1 rounded"
+                      required
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-sm">Kết thúc</label>
+                    <input
+                      type="time"
+                      value={editShift.endTime}
+                      onChange={e=>{ setEditShift(s=>({...s,endTime:e.target.value})); setEditErr(null); }}
+                      className="w-full border px-2 py-1 rounded"
+                      required
+                    />
+                  </div>
                 </div>
+
               </div>
-              <div className="mt-4 flex justify-end gap-2"><button onClick={()=>setIsEditModalOpen(false)} className="px-4 py-2 border rounded">Huỷ</button><button onClick={handleUpdate} className="px-4 py-2 bg-blue-600 text-white rounded">Lưu</button></div>
+              <div className="mt-4 flex justify-end gap-2">
+                <button onClick={()=>setIsEditModalOpen(false)} className="px-4 py-2 border rounded">Huỷ</button>
+                <button onClick={handleUpdate} className="px-4 py-2 bg-blue-600 text-white rounded">Lưu</button>
+              </div>
             </div>
           </div>
         )}
