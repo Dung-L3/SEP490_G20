@@ -48,6 +48,8 @@ const QRDisplay: React.FC<QRDisplayProps> = ({ tableId, tableName, baseURL }) =>
   );
 };
 
+import TaskbarManager from '../../components/TaskbarManager';
+
 const QRCodeManager: React.FC = () => {
   const [tables, setTables] = useState<Table[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,8 +123,10 @@ const QRCodeManager: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="flex h-screen bg-gray-100">
+      <TaskbarManager />
+      <div className="flex-1 overflow-auto">
+        <div className="container mx-auto px-6 py-8">
         <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
           <div className="flex justify-between items-center">
             <div>
@@ -192,6 +196,7 @@ const QRCodeManager: React.FC = () => {
               baseURL={baseURL}
             />
           ))}
+        </div>
         </div>
       </div>
     </div>
