@@ -9,6 +9,7 @@ export interface UiTable {
   capacity?: number;
   estimatedTime?: string;
   areaId: number;
+  areaName?: string;
   isWindow: boolean;
   notes: string;
   type: string;
@@ -25,7 +26,7 @@ export const mapApiTableToUiTable = (apiTable: ApiTable): UiTable => {
       name: apiTable?.tableName || '',
       x: 0, // These will need to be persisted in the backend
       y: 0, // These will need to be persisted in the backend
-      status: apiTable?.status || 'Available',
+      status: (apiTable?.status === 'Trống' ? 'Available' : apiTable?.status) || 'Available',
       capacity: tableType && typeof tableType === 'string' && tableType.split && tableType.split(' ')[0] 
         ? (Number(tableType.split(' ')[0]) || undefined) 
         : undefined,
@@ -33,6 +34,7 @@ export const mapApiTableToUiTable = (apiTable: ApiTable): UiTable => {
         ? notes.split('Khách đến lúc ')[1] 
         : undefined,
       areaId: apiTable?.areaId || 0,
+      areaName: apiTable?.areaName || '',
       isWindow: apiTable?.isWindow || false,
       notes: notes,
       type: tableType

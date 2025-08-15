@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import type { FC } from 'react';
 import TaskbarManager from '../../components/TaskbarManager';
 import { tableApi } from '../../api/tableApi';
@@ -16,6 +16,7 @@ const TableManager: FC = () => {
   const [selectedTable, setSelectedTable] = useState<UiTable | null>(null);
   const [areas, setAreas] = useState<Area[]>([]);
   const [selectedArea, setSelectedArea] = useState<number | null>(null);
+  const [windowFilter, setWindowFilter] = useState(false);
 
   const [newTable, setNewTable] = useState({
     tableId: 0,
@@ -38,38 +39,58 @@ const TableManager: FC = () => {
     }
   };
 
-  const fetchTables = async () => {
+  const fetchTables = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = selectedArea !== null
-        ? await areaApi.getTablesAvailableByArea(selectedArea)
-        : await tableApi.getAll();
-      const uiTables = response.map(mapApiTableToUiTable);
+      const response = await tableApi.getAll();
+      
+      // Map API tables to UI tables với areaName
+      const uiTables = response.map(apiTable => {
+        const areaName = areas.find(area => area.areaId === apiTable.areaId)?.areaName;
+        return {
+          ...mapApiTableToUiTable(apiTable),
+          areaName: areaName || 'Chưa phân khu'
+        };
+      });
+
+      // Filter tables based on area and window if selected
+      let filtered = uiTables;
+      if (selectedArea !== null) {
+        filtered = filtered.filter(table => table.areaId === selectedArea);
+      }
+      if (windowFilter) {
+        filtered = filtered.filter(table => table.isWindow);
+      }
+      
       setTables(uiTables);
-      setFilteredTables(uiTables);
+      setFilteredTables(filtered);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch tables');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [areas, selectedArea, windowFilter]);
 
   useEffect(() => {
     fetchAreas();
   }, []);
 
   useEffect(() => {
-    fetchTables();
-  }, [selectedArea]);
+    if (areas.length > 0) {
+      fetchTables();
+    }
+  }, [selectedArea, areas, windowFilter, fetchTables]);
 
   useEffect(() => {
     const filtered = tables.filter((table) =>
-      table.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      table.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      table.type.toLowerCase().includes(searchQuery.toLowerCase())
+      (table.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+       table.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
+       table.type.toLowerCase().includes(searchQuery.toLowerCase())) &&
+      (!selectedArea || table.areaId === selectedArea) &&
+      (!windowFilter || table.isWindow)
     );
     setFilteredTables(filtered);
-  }, [searchQuery, tables]);
+  }, [searchQuery, tables, selectedArea, windowFilter]);
 
   const handleTableClick = (table: UiTable) => {
     setSelectedTable(table);
@@ -78,6 +99,11 @@ const TableManager: FC = () => {
 
   const handleUpdateTable = async (table: UiTable) => {
     try {
+      if (isTableNameDuplicate(table.name, table.id)) {
+        setError('Tên bàn đã tồn tại. Vui lòng chọn tên khác!');
+        return;
+      }
+
       setIsLoading(true);
       const apiTable = mapUiTableToApiTable(table);
       console.log('Sending update with data:', { ...apiTable, tableId: table.id });
@@ -114,8 +140,21 @@ const TableManager: FC = () => {
     }
   };
 
+  const isTableNameDuplicate = (tableName: string, excludeId?: number): boolean => {
+    const normalizedName = tableName.trim().toLowerCase();
+    return tables.some(table => 
+      table.name.toLowerCase() === normalizedName && 
+      (excludeId === undefined || table.id !== excludeId)
+    );
+  };
+
   const handleCreateTable = async () => {
     try {
+      if (isTableNameDuplicate(newTable.tableName)) {
+        setError('Tên bàn đã tồn tại. Vui lòng chọn tên khác!');
+        return;
+      }
+
       setIsLoading(true);
       const tableToCreate = {
         tableName: newTable.tableName.trim(),
@@ -175,7 +214,6 @@ const TableManager: FC = () => {
             <h1 className="text-2xl font-bold text-gray-900">Quản lý bàn</h1>
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex gap-4">
-            
                 <div className="relative">
                   <input
                     type="text"
@@ -188,6 +226,27 @@ const TableManager: FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </div>
+                <select
+                  value={selectedArea || ''}
+                  onChange={(e) => setSelectedArea(e.target.value ? Number(e.target.value) : null)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Tất cả khu vực</option>
+                  {areas.map((area) => (
+                    <option key={area.areaId} value={area.areaId}>
+                      {area.areaName}
+                    </option>
+                  ))}
+                </select>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={windowFilter}
+                    onChange={(e) => setWindowFilter(e.target.checked)}
+                    className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                  />
+                  <span className="text-gray-700">Chỉ xem bàn cửa sổ</span>
+                </label>
               </div>
               <button
                 onClick={() => setShowCreateModal(true)}
@@ -216,7 +275,9 @@ const TableManager: FC = () => {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
-                        <span className="text-gray-600">{areas.find(area => area.areaId === table.areaId)?.areaName || `Khu vực ${table.areaId}`}</span>
+                        <span className="text-gray-600">
+                          [{areas.find(area => area.areaId === table.areaId)?.areaName || 'Chưa phân khu'}]
+                        </span>
                       </div>
                       <div className="flex items-center gap-2 mb-2">
                         <svg className="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -224,6 +285,14 @@ const TableManager: FC = () => {
                         </svg>
                         <span className="text-gray-600">{table.type}</span>
                       </div>
+                      {table.isWindow && (
+                        <div className="flex items-center gap-2 mb-2">
+                          <svg className="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                          </svg>
+                          <span className="text-gray-600">Cửa sổ</span>
+                        </div>
+                      )}
                     </div>
                     <div className="relative">
                       <span
@@ -302,10 +371,18 @@ const TableManager: FC = () => {
                   <input
                     type="text"
                     value={newTable.tableName}
-                    onChange={(e) => setNewTable({...newTable, tableName: e.target.value})}
-                    className="block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    onChange={(e) => {
+                      setNewTable({...newTable, tableName: e.target.value});
+                      setError(''); // Xóa thông báo lỗi khi người dùng thay đổi tên
+                    }}
+                    className={`block w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      error && error.includes('tên bàn') ? 'border-red-500' : 'border-gray-300'
+                    }`}
                     placeholder="Nhập tên bàn..."
                   />
+                  {error && error.includes('tên bàn') && (
+                    <p className="mt-1 text-sm text-red-500">{error}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Khu vực</label>
@@ -332,6 +409,17 @@ const TableManager: FC = () => {
                     <option value="6 người">6 người</option>
                     <option value="8 người">8 người</option>
                   </select>
+                </div>
+                <div>
+                  <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-1">
+                    <input
+                      type="checkbox"
+                      checked={newTable.isWindow}
+                      onChange={(e) => setNewTable({...newTable, isWindow: e.target.checked})}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span>Vị trí cửa sổ</span>
+                  </label>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
@@ -389,9 +477,17 @@ const TableManager: FC = () => {
                   <input
                     type="text"
                     value={selectedTable.name}
-                    onChange={(e) => setSelectedTable({...selectedTable, name: e.target.value})}
-                    className="block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    onChange={(e) => {
+                      setSelectedTable({...selectedTable, name: e.target.value});
+                      setError(''); // Xóa thông báo lỗi khi người dùng thay đổi tên
+                    }}
+                    className={`block w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      error && error.includes('tên bàn') ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {error && error.includes('tên bàn') && (
+                    <p className="mt-1 text-sm text-red-500">{error}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Khu vực</label>
@@ -417,6 +513,17 @@ const TableManager: FC = () => {
                     <option value="6 người">6 người</option>
                     <option value="8 người">8 người</option>
                   </select>
+                </div>
+                <div>
+                  <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-1">
+                    <input
+                      type="checkbox"
+                      checked={selectedTable.isWindow}
+                      onChange={(e) => setSelectedTable({...selectedTable, isWindow: e.target.checked})}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span>Vị trí cửa sổ</span>
+                  </label>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
