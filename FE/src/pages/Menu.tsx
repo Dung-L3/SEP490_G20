@@ -1,115 +1,153 @@
+// src/pages/Menu.tsx
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import { useState, useEffect } from 'react';
-import { categoryApi } from '../api/categoryApi';
-import { dishApi } from '../api/dishApi';
-import type { Category } from '../api/categoryApi';
-import type { Dish } from '../api/dishApi';
-import { comboApi } from '../api/comboApi';
-import type { ComboDTO } from '../api/comboApi';
+import { ArrowRight } from 'lucide-react';
+import { useCart } from '../contexts/CartContext';
+import { dishApi, type Dish as ApiDish } from '../api/dishApi';
+
+type UiDish = {
+  id: number;
+  name: string;
+  price: number;            // dùng number để dễ tính toán
+  description?: string;
+  image?: string;
+};
+
+type TakeawaySelectionItem = {
+  kind: 'dish' | 'combo';
+  dishId?: number | null;
+  comboId?: number | null;
+  name: string;
+  unitPrice: number;
+  quantity: number;
+  notes?: string;
+};
+
+const formatVnd = (n: number) => `${n.toLocaleString('vi-VN')} đ`;
 
 const Menu = () => {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [dishes, setDishes] = useState<Record<number, Dish[]>>({});
-  const [combos, setCombos] = useState<ComboDTO[]>([]);
+  const nav = useNavigate();
+  const [params] = useSearchParams();
+  const isTakeawayMode = params.get('mode') === 'takeaway';
 
-  // Load categories, dishes và combos
+  const { addToCart } = useCart();
+  const [showAlert, setShowAlert] = useState<{ name: string; quantity: number } | null>(null);
+  const [dishes, setDishes] = useState<UiDish[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // map từ Dish (BE) -> UiDish (FE)
+  const toUi = (d: ApiDish): UiDish => ({
+    id: d.dishId,
+    name: d.dishName,
+    price: Number(d.price) || 0,
+    description: d.unit ? `Đơn vị: ${d.unit}` : undefined,
+    image: d.imageUrl,
+  });
+
   useEffect(() => {
-    const loadData = async () => {
+    (async () => {
       try {
-        const [categoryList, comboList] = await Promise.all([
-          categoryApi.getAll(),
-          comboApi.getAllCombos()
-        ]);
-        console.log('All combos:', comboList);
-        setCategories(categoryList);
-        setCombos(comboList);
-
-        // Load dishes for each category
-        const dishesMap: Record<number, Dish[]> = {};
-        await Promise.all(
-            categoryList.map(async (category) => {
-              const categoryDishes = await dishApi.getByCategory(category.categoryId);
-              dishesMap[category.categoryId] = categoryDishes.filter(dish => dish.status);
-            })
-        );
-        setDishes(dishesMap);
-      } catch (error) {
-        console.error('Error loading menu data:', error);
+        // tuỳ bạn: getAll() hoặc getByStatus(true)
+        const data = await dishApi.getByStatus(true);
+        setDishes(data.map(toUi));
+      } catch (e) {
+        console.error(e);
+        alert('Không tải được thực đơn');
+      } finally {
+        setLoading(false);
       }
-    };
-
-    loadData();
+    })();
   }, []);
+
+  const addToTakeawaySelection = (item: TakeawaySelectionItem) => {
+    const key = 'takeaway_selection';
+    const arr: TakeawaySelectionItem[] = JSON.parse(localStorage.getItem(key) || '[]');
+
+    // gộp theo dishId/comboId
+    const idx = arr.findIndex(
+        (x) => (x.dishId ?? 0) === (item.dishId ?? 0) && (x.comboId ?? 0) === (item.comboId ?? 0)
+    );
+    if (idx >= 0) arr[idx].quantity += item.quantity;
+    else arr.push(item);
+
+    localStorage.setItem(key, JSON.stringify(arr));
+  };
+
+  const handleOrder = (dish: UiDish) => {
+    if (isTakeawayMode) {
+      // ✅ LƯU ĐÚNG id từ DB vào localStorage
+      addToTakeawaySelection({
+        kind: 'dish',
+        dishId: dish.id,
+        comboId: null,
+        name: dish.name,
+        unitPrice: dish.price, // chỉ để hiển thị tạm tính; BE vẫn lấy giá từ DB
+        quantity: 1,
+      });
+      nav('/takeaway-order');
+      return;
+    }
+
+    // giỏ hàng cũ của bạn
+    addToCart({ ...dish, price: dish.price });
+    setShowAlert({ name: dish.name, quantity: 1 });
+    setTimeout(() => setShowAlert(null), 2000);
+  };
 
   return (
       <div className="min-h-screen bg-gray-900">
         <Header />
-        <section className="py-20 bg-gray-800">
-          <div className="container mx-auto px-4">
-            <h2 className="text-4xl font-bold text-yellow-400 mb-8 text-center">Thực Đơn</h2>
 
-            {/* Combo Section */}
-            <div className="mb-12">
-              <h3 className="text-2xl font-bold text-yellow-400 mb-6">Combo Đặc Biệt</h3>
-              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-                {combos.map((combo) => (
-                    <div key={combo.comboId} className="bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-2xl hover:shadow-red-600/20 transition-all duration-300 transform hover:-translate-y-2 border border-gray-700">
-                      <div className="relative overflow-hidden">
-                        <img
-                            src="/images/combo-default.jpg"
-                            alt={combo.comboName}
-                            className="w-full h-48 object-cover hover:scale-110 transition-transform duration-300"
-                        />
-                        <div className="absolute top-4 right-4 bg-red-600 text-yellow-400 px-3 py-1 rounded-full font-bold">
-                          {combo.price.toLocaleString()}đ
-                        </div>
-                      </div>
-                      <div className="p-6">
-                        <h3 className="text-xl font-bold text-white mb-2">{combo.comboName}</h3>
-                        <p className="text-gray-300 mb-4 line-clamp-2">
-                          {combo.comboItems.map(item => item.dishName).join(', ')}
-                        </p>
-                        <div className="w-full bg-red-600 text-yellow-400 py-2 rounded-lg font-semibold text-center cursor-pointer hover:bg-red-700">
-                          Xem Chi Tiết
-                        </div>
-                      </div>
-                    </div>
-                ))}
+        {showAlert && (
+            <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50">
+              <div className="bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg font-semibold animate-bounce-in">
+                Đã thêm <span className="text-yellow-300 font-bold">{showAlert.name}</span> x{showAlert.quantity} vào giỏ hàng!
               </div>
             </div>
+        )}
 
-            {/* Categories Section */}
-            {categories.map(category => (
-                <div key={category.categoryId} className="mb-12">
-                  <h3 className="text-2xl font-bold text-yellow-400 mb-6">{category.categoryName}</h3>
-                  <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-                    {dishes[category.categoryId]?.map((dish, index) => (
-                        <div key={index} className="bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-2xl hover:shadow-red-600/20 transition-all duration-300 transform hover:-translate-y-2 border border-gray-700">
-                          <div className="relative overflow-hidden">
-                            <img
-                                src={dish.imageUrl || '/placeholder-dish.jpg'}
-                                alt={dish.dishName}
-                                className="w-full h-48 object-cover hover:scale-110 transition-transform duration-300"
-                            />
-                            <div className="absolute top-4 right-4 bg-red-600 text-yellow-400 px-3 py-1 rounded-full font-bold">
-                              {dish.price.toLocaleString()}đ
-                            </div>
-                          </div>
-                          <div className="p-6">
-                            <h3 className="text-xl font-bold text-white mb-2">{dish.dishName}</h3>
-                            <p className="text-gray-300 mb-4">Món {dish.dishName} đặc biệt</p>
-                            <div className="w-full bg-red-600 text-yellow-400 py-2 rounded-lg font-semibold text-center">
-                              Xem Chi Tiết
-                            </div>
+        <section className="py-20 bg-gray-800">
+          <div className="container mx-auto px-4">
+            <h2 className="text-4xl font-bold text-yellow-400 mb-4 text-center">Thực Đơn</h2>
+
+            {loading ? (
+                <div className="text-center text-gray-300">Đang tải…</div>
+            ) : (
+                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+                  {dishes.map((dish) => (
+                      <div
+                          key={dish.id}
+                          className="bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-2xl hover:shadow-red-600/20 transition-all duration-300 transform hover:-translate-y-2 border border-gray-700"
+                      >
+                        <div className="relative overflow-hidden">
+                          <img
+                              src={dish.image || 'https://via.placeholder.com/400x300?text=Dish'}
+                              alt={dish.name}
+                              className="w-full h-48 object-cover hover:scale-110 transition-transform duration-300"
+                          />
+                          <div className="absolute top-4 right-4 bg-red-600 text-yellow-400 px-3 py-1 rounded-full font-bold">
+                            {formatVnd(dish.price)}
                           </div>
                         </div>
-                    ))}
-                  </div>
+                        <div className="p-6">
+                          <h3 className="text-xl font-bold text-white mb-2">{dish.name}</h3>
+                          <p className="text-gray-300 mb-4">{dish.description || '—'}</p>
+                          <button
+                              className="w-full bg-red-600 hover:bg-red-700 text-yellow-400 py-2 rounded-lg font-semibold transition-colors flex items-center justify-center"
+                              onClick={() => handleOrder(dish)}
+                          >
+                            Đặt Món <ArrowRight className="w-4 h-4 ml-2" />
+                          </button>
+                        </div>
+                      </div>
+                  ))}
                 </div>
-            ))}
+            )}
           </div>
         </section>
+
         <Footer />
       </div>
   );
