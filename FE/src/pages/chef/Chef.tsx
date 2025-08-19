@@ -1,13 +1,8 @@
 // src/pages/Chef.tsx
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Clock, ChefHat, Utensils, AlertCircle } from 'lucide-react';
 import type { KitchenOrderItem, OrderStatus } from '../../api/chefApi';
 import { fetchPendingOrders, statusList, updateOrderStatus, cancelOrder } from '../../api/chefApi';
-//import { useLocation } from 'react-router-dom';
-
-type KitchenOrderItemWithType = KitchenOrderItem & {
-  orderType?: string | null;
-};
 
 interface OrderCardProps {
   orderIdx: number;
@@ -20,66 +15,6 @@ const Chef = () => {
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [typeFilter, setTypeFilter] = useState<'all' | 'takeaway' | 'dinein'>('all');
-
-  // Xác định đơn mang đi (ưu tiên orderType; fallback theo tableNumber chứa "mang di")
-  const isTakeaway = (o: KitchenOrderItem) => {
-    const tRaw = (o as KitchenOrderItemWithType).orderType;
-    const t = typeof tRaw === 'string' ? tRaw.toUpperCase() : '';
-    if (t) return t === 'TAKEAWAY';
-
-    const s = String(o.tableNumber ?? '')
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .toLowerCase();
-    return s.includes('mang di');
-  };
-
-  // Lọc theo dropdown
-  const filteredByType = useMemo(() => {
-    if (typeFilter === 'all') return pendingOrders;
-    return pendingOrders.filter(o => (typeFilter === 'takeaway' ? isTakeaway(o) : !isTakeaway(o)));
-  }, [pendingOrders, typeFilter]);
-
-  // Nhóm đơn
-  const pendingList = useMemo(
-      () => filteredByType.filter(o => o.status?.toLowerCase() === 'pending'),
-      [filteredByType]
-  );
-
-  const cancelledRecent = useMemo(() => {
-    return filteredByType.filter(o => {
-      if (o.status?.toLowerCase() !== 'cancelled') return false;
-      const orderTime = new Date(o.orderTime);
-      const waitingMinutes = Math.floor((Date.now() - orderTime.getTime()) / (1000 * 60));
-      return waitingMinutes < 30;
-    });
-  }, [filteredByType]);
-
-  // const totalShownPending = pendingList.length;
-
-  // Tách loadOrders để gọi lại nhiều nơi
-  const loadOrders = async () => {
-    try {
-      setLoading(true);
-      setErrorMessage(null);
-      const pending = await fetchPendingOrders();
-      setPendingOrders(pending);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch orders';
-      setErrorMessage(message);
-      console.error('Error loading orders:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Lần đầu + poll 30s
-  useEffect(() => {
-    loadOrders();
-    const interval = setInterval(loadOrders, 30000);
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -226,23 +161,6 @@ const OrderCard = ({ orderIdx, order, currentTime }: OrderCardProps) => {
   const [status, setStatus] = useState(order.status.toLowerCase());
   const [updating, setUpdating] = useState(false);
 
-  // Compute titleText here
-  const normalize = (s: string) =>
-      s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
-
-const typeRaw = (order as KitchenOrderItemWithType).orderType;
-const type = typeof typeRaw === 'string' ? typeRaw.toUpperCase() : '';
-
-const rawTable = (order.tableNumber || '').toString().trim();
-
-const titleText =
-  type === 'TAKEAWAY'
-    ? 'Đơn mang đi'
-    : (!rawTable || normalize(rawTable) === 'ban khong xac dinh')
-      ? 'Đơn mang đi'
-      : order.tableNumber;
-
-
   const currentStatus = statusList.find(s => s.value === status);
   const StatusIcon = currentStatus?.icon;
 
@@ -286,7 +204,7 @@ const titleText =
               <span className="text-white font-bold text-sm">#{orderIdx + 1}</span>
             </div>
             <div>
-              <h3 className="text-white font-semibold">{titleText}</h3>
+              <h3 className="text-white font-semibold">{order.tableNumber}</h3>
               <p className="text-slate-300 text-xs">Mã đơn: #{order.orderId}</p>
             </div>
           </div>
