@@ -1,194 +1,113 @@
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import { ArrowRight } from 'lucide-react';
-import { useCart } from '../contexts/CartContext';
-import { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { categoryApi } from '../api/categoryApi';
+import { dishApi } from '../api/dishApi';
+import type { Category } from '../api/categoryApi';
+import type { Dish } from '../api/dishApi';
+import { comboApi } from '../api/comboApi';
+import type { ComboDTO } from '../api/comboApi';
 
 const Menu = () => {
-  const nav = useNavigate();
-  const [params] = useSearchParams();
-  const isTakeawayMode = params.get('mode') === 'takeaway';
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [dishes, setDishes] = useState<Record<number, Dish[]>>({});
+  const [combos, setCombos] = useState<ComboDTO[]>([]);
 
-  const { addToCart } = useCart();
-  const [showAlert, setShowAlert] = useState<{ name: string; quantity: number } | null>(null);
+  // Load categories, dishes và combos
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [categoryList, comboList] = await Promise.all([
+          categoryApi.getAll(),
+          comboApi.getAllCombos()
+        ]);
+        console.log('All combos:', comboList);
+        setCategories(categoryList);
+        setCombos(comboList);
 
-  const dishes = [
-    {
-      name: "Cơm Tấm Sườn Nướng",
-      price: "65.000đ",
-      description: "Cơm tấm thơm ngon với sườn nướng đậm đà",
-      image: "https://i1-giadinh.vnecdn.net/2024/03/07/7-Hoan-thien-thanh-pham-1-6244-1709800134.jpg?w=1020&h=0&q=100&dpr=1&fit=crop&s=Y03-BsY4ORbpVkG4zm_DcA"
-    },
-    {
-      name: "Bánh Xèo Miền Tây",
-      price: "45.000đ",
-      description: "Bánh xèo giòn tan với nhân tôm thịt đầy đặn",
-      image: "https://images.unsplash.com/photo-1567620832903-9fc6debc209f?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80"
-    },
-    {
-      name: "Lẩu Cá Kèo",
-      price: "180.000đ",
-      description: "Lẩu cá kèo chua cay đặc sản miền Tây",
-      image: "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80"
-    },
-    {
-      name: "Gỏi Cuốn Tôm Thịt",
-      price: "35.000đ",
-      description: "Gỏi cuốn tươi mát với tôm thịt tươi ngon",
-      image: "https://images.unsplash.com/photo-1539136788836-5699e78bfc75?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80"
-    },
-    {
-      name: "Phở Bò",
-      price: "50.000đ",
-      description: "Món phở nổi tiếng với nước dùng thơm ngon và thịt bò mềm",
-      image: "https://giavichinsu.com/wp-content/uploads/2024/01/cach-nau-pho-bo.jpg"
-    },
-    {
-      name: "Bún Chả Hà Nội",
-      price: "60.000đ",
-      description: "Bún chả nướng thơm, nước mắm pha đặc trưng",
-      image: "https://cdn2.fptshop.com.vn/unsafe/1920x0/filters:format(webp):quality(75)/2024_1_12_638406880045931692_cach-lam-bun-cha-ha-noi-0.jpg"
-    },
-    {
-      name: "Chả Cá Lã Vọng",
-      price: "120.000đ",
-      description: "Món chả cá thơm ngon, ăn kèm với bún và rau sống",
-      image: "https://file.hstatic.net/200000700229/article/lam-cha-ca-la-vong-bang-noi-chien-khong-dau_7e476b1bfcff43428bc8af05fd931d74.jpeg"
-    },
-    {
-      name: "Mì Quảng",
-      price: "55.000đ",
-      description: "Mì Quảng đặc sản miền Trung, thơm ngon với nước dùng đặc trưng",
-      image: "https://danangfantasticity.com/wp-content/uploads/2024/04/cach-thuong-thuc-mot-to-mi-quang-dung-dieu-nguoi-da-nang.jpg"
-    },
-    {
-      name: "Bánh Mì Thịt Nướng",
-      price: "30.000đ",
-      description: "Bánh mì thơm ngon, thịt nướng giòn ngọt",
-      image: "https://cdn.tgdd.vn/Files/2021/08/20/1376583/cach-lam-banh-mi-thit-nuong-cuc-don-gian-bang-chai-nhua-co-san-tai-nha-202108201640593483.jpg"
-    },
-    {
-      name: "Bánh Cuốn Hà Nội",
-      price: "45.000đ",
-      description: "Bánh cuốn nóng hổi, nhân thịt heo thơm lừng",
-      image: "https://static.tuoitre.vn/tto/i/s626/2013/05/08/DxofPVKe.jpg"
-    },
-    {
-      name: "Cơm Gà Hội An",
-      price: "70.000đ",
-      description: "Cơm gà thơm ngon, đậm đà với nước mắm, rau sống",
-      image: "https://i-giadinh.vnecdn.net/2023/04/22/Buoc-11-thanh-pham-1-11-9981-1682135995.jpg"
-    },
-    {
-      name: "Xôi Xéo",
-      price: "40.000đ",
-      description: "Xôi xéo với đậu xanh, mỡ hành thơm lừng",
-      image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTLXHCgHafFLTjysi9B5c1qDkgbYs_ef_qGvw&s"
-    },
+        // Load dishes for each category
+        const dishesMap: Record<number, Dish[]> = {};
+        await Promise.all(
+            categoryList.map(async (category) => {
+              const categoryDishes = await dishApi.getByCategory(category.categoryId);
+              dishesMap[category.categoryId] = categoryDishes.filter(dish => dish.status);
+            })
+        );
+        setDishes(dishesMap);
+      } catch (error) {
+        console.error('Error loading menu data:', error);
+      }
+    };
 
-  ];
-
-
-  type Dish = {
-    name: string;
-    price: string;
-    description: string;
-    image: string;
-  };
-
-  const priceToNumber = (s: string) => Number(s.replace(/[^\d]/g, '') || 0);
-
-  // Handler đặt món
-  const handleOrder = (dish: Dish, index: number) => {
-    const priceNum = priceToNumber(dish.price);
-
-    if (isTakeawayMode) {
-      // Chế độ "mang đi": lưu vào giỏ takeaway + điều hướng sang /takeaway-order
-      addToTakeawaySelection({
-        kind: 'dish',
-        dishId: undefined,
-        comboId: null,
-        name: dish.name,
-        unitPrice: priceNum,
-        quantity: 1,
-      });
-      nav('/takeaway-order');
-      return;
-    }
-
-    // Luồng giỏ hàng nội bộ hiện tại
-    addToCart({ ...dish, price: priceNum, id: index });
-    setShowAlert({ name: dish.name, quantity: 1 });
-    setTimeout(() => setShowAlert(null), 2000);
-  };
-  const addToTakeawaySelection = (item: {
-    kind: 'dish' | 'combo',
-    dishId?: number | null,
-    comboId?: number | null,
-    name: string,
-    unitPrice: number,
-    quantity: number,
-    notes?: string
-  }) => {
-    const key = 'takeaway_selection';
-    const raw = localStorage.getItem(key);
-    const arr: any[] = raw ? JSON.parse(raw) : [];
-
-    // gộp số lượng nếu cùng dish/combo
-    const idx = arr.findIndex((x) =>
-        (x.dishId ?? 0) === (item.dishId ?? 0) &&
-        (x.comboId ?? 0) === (item.comboId ?? 0) &&
-        x.name === item.name
-    );
-    if (idx >= 0) {
-      arr[idx].quantity += item.quantity;
-    } else {
-      arr.push(item);
-    }
-
-    localStorage.setItem(key, JSON.stringify(arr));
-  };
+    loadData();
+  }, []);
 
   return (
       <div className="min-h-screen bg-gray-900">
         <Header />
-        {showAlert && (
-            <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50">
-              <div className="bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg font-semibold animate-bounce-in">
-                Đã thêm <span className="text-yellow-300 font-bold">{showAlert.name}</span> x{showAlert.quantity} vào giỏ hàng!
-              </div>
-            </div>
-        )}
         <section className="py-20 bg-gray-800">
           <div className="container mx-auto px-4">
-            <h2 className="text-4xl font-bold text-yellow-400 mb-4 text-center">Thực Đơn</h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-              {dishes.map((dish, index) => (
-                  <div key={index} className="bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-2xl hover:shadow-red-600/20 transition-all duration-300 transform hover:-translate-y-2 border border-gray-700">
-                    <div className="relative overflow-hidden">
-                      <img
-                          src={dish.image}
-                          alt={dish.name}
-                          className="w-full h-48 object-cover hover:scale-110 transition-transform duration-300"
-                      />
-                      <div className="absolute top-4 right-4 bg-red-600 text-yellow-400 px-3 py-1 rounded-full font-bold">
-                        {dish.price}
+            <h2 className="text-4xl font-bold text-yellow-400 mb-8 text-center">Thực Đơn</h2>
+
+            {/* Combo Section */}
+            <div className="mb-12">
+              <h3 className="text-2xl font-bold text-yellow-400 mb-6">Combo Đặc Biệt</h3>
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+                {combos.map((combo) => (
+                    <div key={combo.comboId} className="bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-2xl hover:shadow-red-600/20 transition-all duration-300 transform hover:-translate-y-2 border border-gray-700">
+                      <div className="relative overflow-hidden">
+                        <img
+                            src="/images/combo-default.jpg"
+                            alt={combo.comboName}
+                            className="w-full h-48 object-cover hover:scale-110 transition-transform duration-300"
+                        />
+                        <div className="absolute top-4 right-4 bg-red-600 text-yellow-400 px-3 py-1 rounded-full font-bold">
+                          {combo.price.toLocaleString()}đ
+                        </div>
+                      </div>
+                      <div className="p-6">
+                        <h3 className="text-xl font-bold text-white mb-2">{combo.comboName}</h3>
+                        <p className="text-gray-300 mb-4 line-clamp-2">
+                          {combo.comboItems.map(item => item.dishName).join(', ')}
+                        </p>
+                        <div className="w-full bg-red-600 text-yellow-400 py-2 rounded-lg font-semibold text-center cursor-pointer hover:bg-red-700">
+                          Xem Chi Tiết
+                        </div>
                       </div>
                     </div>
-                    <div className="p-6">
-                      <h3 className="text-xl font-bold text-white mb-2">{dish.name}</h3>
-                      <p className="text-gray-300 mb-4">{dish.description}</p>
-                      <button
-                          className="w-full bg-red-600 hover:bg-red-700 text-yellow-400 py-2 rounded-lg font-semibold transition-colors flex items-center justify-center"
-                          onClick={() => handleOrder(dish, index)}
-                      >
-                        Đặt Món <ArrowRight className="w-4 h-4 ml-2" />
-                      </button>
-                    </div>
-                  </div>
-              ))}
+                ))}
+              </div>
             </div>
+
+            {/* Categories Section */}
+            {categories.map(category => (
+                <div key={category.categoryId} className="mb-12">
+                  <h3 className="text-2xl font-bold text-yellow-400 mb-6">{category.categoryName}</h3>
+                  <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+                    {dishes[category.categoryId]?.map((dish, index) => (
+                        <div key={index} className="bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-2xl hover:shadow-red-600/20 transition-all duration-300 transform hover:-translate-y-2 border border-gray-700">
+                          <div className="relative overflow-hidden">
+                            <img
+                                src={dish.imageUrl || '/placeholder-dish.jpg'}
+                                alt={dish.dishName}
+                                className="w-full h-48 object-cover hover:scale-110 transition-transform duration-300"
+                            />
+                            <div className="absolute top-4 right-4 bg-red-600 text-yellow-400 px-3 py-1 rounded-full font-bold">
+                              {dish.price.toLocaleString()}đ
+                            </div>
+                          </div>
+                          <div className="p-6">
+                            <h3 className="text-xl font-bold text-white mb-2">{dish.dishName}</h3>
+                            <p className="text-gray-300 mb-4">Món {dish.dishName} đặc biệt</p>
+                            <div className="w-full bg-red-600 text-yellow-400 py-2 rounded-lg font-semibold text-center">
+                              Xem Chi Tiết
+                            </div>
+                          </div>
+                        </div>
+                    ))}
+                  </div>
+                </div>
+            ))}
           </div>
         </section>
         <Footer />
