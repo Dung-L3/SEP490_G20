@@ -24,6 +24,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.HashMap;
@@ -183,6 +184,7 @@ public class OrderServiceImpl implements OrderService {
         Integer pendingId = pending.getStatusId();
         List<Order> orders = orderRepository.findByStatusId(pendingId);
         return orders.stream()
+                .sorted(Comparator.comparing(Order::getOrderId).reversed())
                 .map(this::mapToDto)
                 .collect(Collectors.toList());
     }

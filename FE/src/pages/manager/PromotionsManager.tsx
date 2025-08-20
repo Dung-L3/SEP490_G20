@@ -15,11 +15,11 @@ interface Promotion {
   promoCode: string;
   promoName: string;
   description?: string | null;
-  discountPercent: number | null;   // sẽ normalize về 0 khi render
-  discountAmount: number | null;    // sẽ normalize về 0 khi render
-  startDate: string;                // yyyy-MM-dd
-  endDate: string;                  // yyyy-MM-dd
-  usageLimit: number | null;        // null = không giới hạn
+  discountPercent: number | null;   
+  discountAmount: number | null;   
+  startDate: string;                
+  endDate: string;                  
+  usageLimit: number | null;        
   isActive: boolean;
 }
 
@@ -27,11 +27,11 @@ interface PromotionPayload {
   promoCode: string;
   promoName: string;
   description?: string | null;
-  discountPercent: number;      // cho phép nhập đồng thời với discountAmount
+  discountPercent: number;      
   discountAmount: number;
   startDate: string;
   endDate: string;
-  usageLimit: number | null;
+  usageLimit: number;           
   isActive: boolean;
 }
 
@@ -43,7 +43,7 @@ const emptyPayload: PromotionPayload = {
   discountAmount: 0,
   startDate: '',
   endDate: '',
-  usageLimit: null,
+  usageLimit: 0,   
   isActive: true,
 };
 
@@ -72,6 +72,10 @@ const PromotionsManager: FC = () => {
 
   const [createForm, setCreateForm] = useState<PromotionPayload>({...emptyPayload});
   const [editForm, setEditForm] = useState<PromotionPayload & { promoId: number }>({ ...emptyPayload, promoId: 0 });
+
+  // NEW: lỗi hiển thị đỏ trong modal
+  const [createErr, setCreateErr] = useState<string | null>(null);
+  const [editErr, setEditErr] = useState<string | null>(null);
 
   const loadPage = async () => {
     setLoading(true);
@@ -117,23 +121,29 @@ const PromotionsManager: FC = () => {
     setFiltered(tmp);
   }, [search, activeFilter, dateFrom, dateTo, pageData]);
 
-  // Validate: cho phép nhập CẢ % & amount; chỉ chặn nếu cả 2 đều <= 0
+  // Validate
   const validatePayload = (pl: PromotionPayload): string | null => {
-    if (!pl.promoCode.trim()) return 'Vui lòng nhập mã (promoCode)';
-    if (!pl.promoName.trim()) return 'Vui lòng nhập tên chương trình';
-    if (!pl.startDate || !pl.endDate) return 'Vui lòng chọn ngày bắt đầu/kết thúc';
-    if (pl.endDate < pl.startDate) return 'Ngày kết thúc phải >= ngày bắt đầu';
+    if (!pl.promoCode.trim()) return 'Vui lòng nhập mã (promoCode).';
+    if (!pl.promoName.trim()) return 'Vui lòng nhập tên chương trình.';
+    if (!pl.startDate) return 'Vui lòng chọn ngày bắt đầu.';
+    if (!pl.endDate) return 'Vui lòng chọn ngày kết thúc.';
+    // startDate phải sớm hơn endDate (so sánh chặt)
+    if (pl.endDate <= pl.startDate) return 'Ngày kết thúc phải MUỘN HƠN ngày bắt đầu.';
     const pct = Number(pl.discountPercent);
     const amt = Number(pl.discountAmount);
-    if (pct < 0 || pct > 100) return 'discountPercent phải trong [0, 100]';
-    if (amt < 0) return 'discountAmount không được âm';
-    if (pct <= 0 && amt <= 0) return 'Cần nhập ít nhất một trong hai: % hoặc số tiền';
-    if (pl.usageLimit != null && pl.usageLimit < 0) return 'usageLimit không được âm';
+    if (!Number.isFinite(pct) || pct < 0 || pct > 100) return 'discountPercent phải trong khoảng [0, 100].';
+    if (!Number.isFinite(amt) || amt < 0) return 'discountAmount không được âm.';
+    // Ít nhất 1 trong 2 > 0
+    if (pct <= 0 && amt <= 0) return 'Cần nhập ÍT NHẤT một trong hai: % hoặc số tiền (> 0).';
+    // usageLimit bắt buộc, min 0
+    if (!Number.isFinite(pl.usageLimit)) return 'Vui lòng nhập Usage limit (số).';
+    if (pl.usageLimit < 0) return 'Usage limit không được âm.';
     return null;
   };
 
   const openCreate = () => {
     setCreateForm({...emptyPayload});
+    setCreateErr(null);
     setIsCreateOpen(true);
   };
 
@@ -143,19 +153,20 @@ const PromotionsManager: FC = () => {
       promoCode: p.promoCode,
       promoName: p.promoName,
       description: p.description ?? '',
-      discountPercent: p.discountPercent ?? 0,
-      discountAmount: p.discountAmount ?? 0,
+      discountPercent: (p.discountPercent ?? 0),
+      discountAmount: (p.discountAmount ?? 0),
       startDate: p.startDate,
       endDate: p.endDate,
-      usageLimit: p.usageLimit,
+      usageLimit: p.usageLimit ?? 0, 
       isActive: p.isActive,
     });
+    setEditErr(null);
     setIsEditOpen(true);
   };
 
   const handleCreate = async () => {
     const msg = validatePayload(createForm);
-    if (msg) { alert(msg); return; }
+    if (msg) { setCreateErr(msg); return; }
     setLoading(true);
     try {
       const res = await fetch('/api/promotions/create', {
@@ -169,7 +180,7 @@ const PromotionsManager: FC = () => {
         throw new Error(`Tạo mã thất bại: ${res.status} ${t}`);
       }
       setIsCreateOpen(false);
-      setPage(0); // quay về trang 0 để thấy bản ghi mới
+      setPage(0); 
       await loadPage();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
@@ -181,7 +192,7 @@ const PromotionsManager: FC = () => {
   const handleUpdate = async () => {
     const { promoId, ...payload } = editForm;
     const msg = validatePayload(payload);
-    if (msg) { alert(msg); return; }
+    if (msg) { setEditErr(msg); return; }
     setLoading(true);
     try {
       const res = await fetch(`/api/promotions/update/${promoId}`, {
@@ -333,65 +344,102 @@ const PromotionsManager: FC = () => {
         {isCreateOpen && (
           <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
             <div className="bg-white p-6 rounded-lg w-[520px]">
-              <h2 className="text-lg font-semibold mb-4">Thêm mã khuyến mãi</h2>
+              <h2 className="text-lg font-semibold mb-2">Thêm mã khuyến mãi</h2>
+              {createErr && <p className="text-red-600 text-sm mb-2">{createErr}</p>}
               <div className="space-y-3">
                 <div className="flex gap-3">
                   <div className="flex-1">
                     <label className="block text-sm">Mã</label>
-                    <input value={createForm.promoCode} onChange={e=>setCreateForm(s=>({...s, promoCode: e.target.value}))} className="w-full border rounded px-2 py-1"/>
+                    <input
+                      value={createForm.promoCode}
+                      onChange={e=>{ setCreateForm(s=>({...s, promoCode: e.target.value})); setCreateErr(null); }}
+                      className="w-full border rounded px-2 py-1"
+                      required
+                    />
                   </div>
                   <div className="flex-1">
                     <label className="block text-sm">Tên</label>
-                    <input value={createForm.promoName} onChange={e=>setCreateForm(s=>({...s, promoName: e.target.value}))} className="w-full border rounded px-2 py-1"/>
+                    <input
+                      value={createForm.promoName}
+                      onChange={e=>{ setCreateForm(s=>({...s, promoName: e.target.value})); setCreateErr(null); }}
+                      className="w-full border rounded px-2 py-1"
+                      required
+                    />
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-sm">Mô tả</label>
-                  <textarea value={createForm.description ?? ''} onChange={e=>setCreateForm(s=>({...s, description: e.target.value}))} className="w-full border rounded px-2 py-1" rows={2}/>
+                  <textarea
+                    value={createForm.description ?? ''}
+                    onChange={e=>{ setCreateForm(s=>({...s, description: e.target.value})); setCreateErr(null); }}
+                    className="w-full border rounded px-2 py-1" rows={2}
+                  />
                 </div>
 
                 <div className="flex gap-3">
                   <div className="flex-1">
                     <label className="block text-sm">% giảm (0–100)</label>
-                    <input type="number" min={0} max={100} step="0.01"
+                    <input
+                      type="number" min={0} max={100} step="0.01" required
                       value={createForm.discountPercent}
-                      onChange={e=>setCreateForm(s=>({...s, discountPercent: num(e.target.value)}))}
-                      className="w-full border rounded px-2 py-1"/>
+                      onChange={e=>{ setCreateForm(s=>({...s, discountPercent: num(e.target.value)})); setCreateErr(null); }}
+                      className="w-full border rounded px-2 py-1"
+                    />
                   </div>
                   <div className="flex-1">
                     <label className="block text-sm">Giảm số tiền (đ)</label>
-                    <input type="number" min={0} step="1"
+                    <input
+                      type="number" min={0} step="1" required
                       value={createForm.discountAmount}
-                      onChange={e=>setCreateForm(s=>({...s, discountAmount: num(e.target.value)}))}
-                      className="w-full border rounded px-2 py-1"/>
+                      onChange={e=>{ setCreateForm(s=>({...s, discountAmount: num(e.target.value)})); setCreateErr(null); }}
+                      className="w-full border rounded px-2 py-1"
+                    />
                   </div>
                 </div>
+                <p className="text-xs text-gray-500">
+                  Lưu ý: Ít nhất một trong hai trường trên phải &gt; 0 (được phép nhập cả hai).
+                </p>
 
                 <div className="flex gap-3">
                   <div className="flex-1">
                     <label className="block text-sm">Bắt đầu</label>
-                    <input type="date" value={createForm.startDate} onChange={e=>setCreateForm(s=>({...s, startDate: e.target.value}))} className="w-full border rounded px-2 py-1"/>
+                    <input
+                      type="date" value={createForm.startDate} required
+                      onChange={e=>{ setCreateForm(s=>({...s, startDate: e.target.value})); setCreateErr(null); }}
+                      className="w-full border rounded px-2 py-1"
+                    />
                   </div>
                   <div className="flex-1">
                     <label className="block text-sm">Kết thúc</label>
-                    <input type="date" value={createForm.endDate} onChange={e=>setCreateForm(s=>({...s, endDate: e.target.value}))} className="w-full border rounded px-2 py-1"/>
+                    <input
+                      type="date" value={createForm.endDate} required
+                      onChange={e=>{ setCreateForm(s=>({...s, endDate: e.target.value})); setCreateErr(null); }}
+                      className="w-full border rounded px-2 py-1"
+                    />
                   </div>
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex gap-3 items-end">
                   <div className="flex-1">
-                    <label className="block text-sm">Usage limit (để trống = ∞)</label>
+                    <label className="block text-sm">Usage limit</label>
                     <input
-                      type="number"
-                      min={0}
-                      value={createForm.usageLimit ?? ''}
-                      onChange={e=>setCreateForm(s=>({...s, usageLimit: e.target.value === '' ? null : Math.max(0, Number(e.target.value))}))}
+                      type="number" min={0} step="1" required
+                      value={createForm.usageLimit}
+                      onChange={e=>{
+                        const v = e.target.value === '' ? 0 : Number(e.target.value);
+                        setCreateForm(s=>({...s, usageLimit: Math.max(0, isNaN(v) ? 0 : v)}));
+                        setCreateErr(null);
+                      }}
                       className="w-full border rounded px-2 py-1"
                     />
                   </div>
                   <label className="flex items-center gap-2">
-                    <input type="checkbox" checked={createForm.isActive} onChange={e=>setCreateForm(s=>({...s, isActive: e.target.checked}))}/>
+                    <input
+                      type="checkbox"
+                      checked={createForm.isActive}
+                      onChange={e=>{ setCreateForm(s=>({...s, isActive: e.target.checked})); setCreateErr(null); }}
+                    />
                     <span className="text-sm">Active</span>
                   </label>
                 </div>
@@ -405,70 +453,107 @@ const PromotionsManager: FC = () => {
           </div>
         )}
 
-        {/* Edit Modal (mở khi bấm vào hàng) */}
+        {/* Edit Modal */}
         {isEditOpen && (
           <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
             <div className="bg-white p-6 rounded-lg w-[520px]">
-              <h2 className="text-lg font-semibold mb-4">Cập nhật mã khuyến mãi</h2>
+              <h2 className="text-lg font-semibold mb-2">Cập nhật mã khuyến mãi</h2>
+              {editErr && <p className="text-red-600 text-sm mb-2">{editErr}</p>}
 
               <div className="space-y-3">
                 <div className="flex gap-3">
                   <div className="flex-1">
                     <label className="block text-sm">Mã</label>
-                    <input value={editForm.promoCode} onChange={e=>setEditForm(s=>({...s, promoCode: e.target.value}))} className="w-full border rounded px-2 py-1"/>
+                    <input
+                      value={editForm.promoCode}
+                      onChange={e=>{ setEditForm(s=>({...s, promoCode: e.target.value})); setEditErr(null); }}
+                      className="w-full border rounded px-2 py-1"
+                      required
+                    />
                   </div>
                   <div className="flex-1">
                     <label className="block text-sm">Tên</label>
-                    <input value={editForm.promoName} onChange={e=>setEditForm(s=>({...s, promoName: e.target.value}))} className="w-full border rounded px-2 py-1"/>
+                    <input
+                      value={editForm.promoName}
+                      onChange={e=>{ setEditForm(s=>({...s, promoName: e.target.value})); setEditErr(null); }}
+                      className="w-full border rounded px-2 py-1"
+                      required
+                    />
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-sm">Mô tả</label>
-                  <textarea value={editForm.description ?? ''} onChange={e=>setEditForm(s=>({...s, description: e.target.value}))} className="w-full border rounded px-2 py-1" rows={2}/>
+                  <textarea
+                    value={editForm.description ?? ''}
+                    onChange={e=>{ setEditForm(s=>({...s, description: e.target.value})); setEditErr(null); }}
+                    className="w-full border rounded px-2 py-1" rows={2}
+                  />
                 </div>
 
                 <div className="flex gap-3">
                   <div className="flex-1">
                     <label className="block text-sm">% giảm (0–100)</label>
-                    <input type="number" min={0} max={100} step="0.01"
+                    <input
+                      type="number" min={0} max={100} step="0.01" required
                       value={editForm.discountPercent}
-                      onChange={e=>setEditForm(s=>({...s, discountPercent: num(e.target.value)}))}
-                      className="w-full border rounded px-2 py-1"/>
+                      onChange={e=>{ setEditForm(s=>({...s, discountPercent: num(e.target.value)})); setEditErr(null); }}
+                      className="w-full border rounded px-2 py-1"
+                    />
                   </div>
                   <div className="flex-1">
                     <label className="block text-sm">Giảm số tiền (đ)</label>
-                    <input type="number" min={0} step="1"
+                    <input
+                      type="number" min={0} step="1" required
                       value={editForm.discountAmount}
-                      onChange={e=>setEditForm(s=>({...s, discountAmount: num(e.target.value)}))}
-                      className="w-full border rounded px-2 py-1"/>
+                      onChange={e=>{ setEditForm(s=>({...s, discountAmount: num(e.target.value)})); setEditErr(null); }}
+                      className="w-full border rounded px-2 py-1"
+                    />
                   </div>
                 </div>
+                <p className="text-xs text-gray-500">
+                  Lưu ý: Ít nhất một trong hai trường trên phải &gt; 0 (được phép nhập cả hai).
+                </p>
 
                 <div className="flex gap-3">
                   <div className="flex-1">
                     <label className="block text-sm">Bắt đầu</label>
-                    <input type="date" value={editForm.startDate} onChange={e=>setEditForm(s=>({...s, startDate: e.target.value}))} className="w-full border rounded px-2 py-1"/>
+                    <input
+                      type="date" value={editForm.startDate} required
+                      onChange={e=>{ setEditForm(s=>({...s, startDate: e.target.value})); setEditErr(null); }}
+                      className="w-full border rounded px-2 py-1"
+                    />
                   </div>
                   <div className="flex-1">
                     <label className="block text-sm">Kết thúc</label>
-                    <input type="date" value={editForm.endDate} onChange={e=>setEditForm(s=>({...s, endDate: e.target.value}))} className="w-full border rounded px-2 py-1"/>
+                    <input
+                      type="date" value={editForm.endDate} required
+                      onChange={e=>{ setEditForm(s=>({...s, endDate: e.target.value})); setEditErr(null); }}
+                      className="w-full border rounded px-2 py-1"
+                    />
                   </div>
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex gap-3 items-end">
                   <div className="flex-1">
-                    <label className="block text-sm">Usage limit (để trống = ∞)</label>
+                    <label className="block text-sm">Usage limit</label>
                     <input
-                      type="number"
-                      min={0}
-                      value={editForm.usageLimit ?? ''}
-                      onChange={e=>setEditForm(s=>({...s, usageLimit: e.target.value === '' ? null : Math.max(0, Number(e.target.value))}))}
+                      type="number" min={0} step="1" required
+                      value={editForm.usageLimit}
+                      onChange={e=>{
+                        const v = e.target.value === '' ? 0 : Number(e.target.value);
+                        setEditForm(s=>({...s, usageLimit: Math.max(0, isNaN(v) ? 0 : v)}));
+                        setEditErr(null);
+                      }}
                       className="w-full border rounded px-2 py-1"
                     />
                   </div>
                   <label className="flex items-center gap-2">
-                    <input type="checkbox" checked={editForm.isActive} onChange={e=>setEditForm(s=>({...s, isActive: e.target.checked}))}/>
+                    <input
+                      type="checkbox"
+                      checked={editForm.isActive}
+                      onChange={e=>{ setEditForm(s=>({...s, isActive: e.target.checked})); setEditErr(null); }}
+                    />
                     <span className="text-sm">Active</span>
                   </label>
                 </div>

@@ -15,23 +15,23 @@ public interface OrderDetailRepository extends JpaRepository<OrderDetail, Intege
     List<OrderDetail> findByStatusId(Integer statusId);
 
     @Query("SELECT DISTINCT od FROM OrderDetail od " +
-           "LEFT JOIN FETCH od.order o " +
-           "LEFT JOIN FETCH o.table t " +
-           "LEFT JOIN FETCH od.dish d " +
-           "WHERE od.statusId = :statusId")
+            "LEFT JOIN FETCH od.order o " +
+            "LEFT JOIN FETCH o.table t " +
+            "LEFT JOIN FETCH od.dish d " +
+            "WHERE od.statusId = :statusId")
     List<OrderDetail> findByStatusIdWithDetails(Integer statusId);
 
     @Query("SELECT DISTINCT od FROM OrderDetail od " +
-           "LEFT JOIN FETCH od.order o " +
-           "LEFT JOIN FETCH o.table t " +
-           "LEFT JOIN FETCH od.dish d " +
-           "WHERE od.orderDetailId = :id")
+            "LEFT JOIN FETCH od.order o " +
+            "LEFT JOIN FETCH o.table t " +
+            "LEFT JOIN FETCH od.dish d " +
+            "WHERE od.orderDetailId = :id")
     Optional<OrderDetail> findByIdWithDetails(Integer id);
 
-    @EntityGraph(attributePaths = {"dish"})
+    @EntityGraph(attributePaths = {"dish", "combo"})
     List<OrderDetail> findByOrderId(Integer orderId);
     Optional<OrderDetail> findByOrderIdAndDishId(Integer orderId, Integer dishId);
-    
+
     @Query("SELECT od FROM OrderDetail od LEFT JOIN FETCH od.dish WHERE od.orderId = :orderId AND od.statusId = :statusId")
     List<OrderDetail> findByOrderIdAndStatusId(Integer orderId, Integer statusId);
 }

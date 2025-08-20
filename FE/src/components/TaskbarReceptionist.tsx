@@ -61,7 +61,7 @@ const TaskbarReceptionist = () => {
         }}
         onMouseOver={e => (e.currentTarget.style.background = '#e5e7eb')}
         onMouseOut={e => (e.currentTarget.style.background = 'none')}
-        onClick={() => navigate('/receptionist/orders/uppaid')}
+        onClick={() => navigate('/receptionist/orders/unpaid')}
       >Quản lý đơn hàng chưa thanh toán</button>
       <button
         style={{
@@ -80,7 +80,7 @@ const TaskbarReceptionist = () => {
         onMouseOver={e => (e.currentTarget.style.background = '#e5e7eb')}
         onMouseOut={e => (e.currentTarget.style.background = 'none')}
         onClick={() => navigate('/manager/report')}
-      >Báo cáo</button>
+      >Quản Lý hóa đơn</button>
       </div>
       <button
         style={{
