@@ -23,6 +23,7 @@ interface StaffRequest {
 const StaffManager = () => {
   const [staff, setStaff] = useState<StaffDisplay[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedRole, setSelectedRole] = useState<string>('');
   const [editStaff, setEditStaff] = useState<StaffDisplay | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -70,7 +71,16 @@ const StaffManager = () => {
     }
   };
 
-    const formatRole = (role: string): string => {
+    const ROLE_OPTIONS = [
+    { value: '', label: 'Tất cả vai trò' },
+    { value: 'ROLE_MANAGER', label: 'Quản lý' },
+    { value: 'ROLE_WAITER', label: 'Phục vụ' },
+    { value: 'ROLE_CHEF', label: 'Đầu bếp' },
+    { value: 'ROLE_RECEPTIONIST', label: 'Thu ngân' },
+    { value: 'ROLE_CUSTOMER', label: 'Khách hàng' }
+  ];
+
+  const formatRole = (role: string): string => {
     console.log('Formatting role:', role);
     if (!role) return '';
     // Remove 'ROLE_' prefix if exists
@@ -81,7 +91,6 @@ const StaffManager = () => {
       case 'WAITER': return 'Phục vụ';
       case 'CHEF': return 'Đầu bếp';
       case 'RECEPTIONIST': return 'Thu ngân';
-      case 'STAFF': return 'Nhân viên';
       case 'CUSTOMER': return 'Khách hàng';
       default: return baseRole;
     }
@@ -127,15 +136,23 @@ const StaffManager = () => {
     fetchStaff();
   }, [mapStaffToDisplay]);
 
+  // Filter staff based on search term and selected role
   const filteredStaff = staff.filter(s => {
-    if (!searchTerm) return true;
-    const searchTermLower = searchTerm.toLowerCase();
-    return (
-      s.fullName.toLowerCase().includes(searchTermLower) ||
-      s.roleNames.some(role => role.toLowerCase().includes(searchTermLower)) ||
-      s.phone.includes(searchTerm) ||
-      s.email.toLowerCase().includes(searchTermLower)
+    // Convert search term to lowercase for case-insensitive comparison
+    const searchLower = searchTerm.toLowerCase();
+    
+    // Check if staff matches search term
+    const matchesSearch = !searchTerm || (
+      s.fullName.toLowerCase().includes(searchLower) ||
+      s.phone.toLowerCase().includes(searchLower) ||
+      s.email.toLowerCase().includes(searchLower)
     );
+    
+    // Check if staff matches selected role
+    const matchesRole = !selectedRole || s.roleNames.includes(selectedRole);
+    
+    // Return true only if both conditions are met
+    return matchesSearch && matchesRole;
   });
 
 
@@ -305,23 +322,23 @@ const StaffManager = () => {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="text"
-                placeholder="Tìm kiếm theo tên, chức vụ, số điện thoại..."
+                placeholder="Tìm kiếm theo tên, số điện thoại..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
               />
             </div>
-            <button
-              onClick={() => {
-                // Thực hiện tìm kiếm trực tiếp trên state staff gốc
-                // Không cần setStaff vì đã dùng filteredStaff cho render
-                setSearchTerm(searchTerm);
-              }}
-              className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+            <select
+              value={selectedRole}
+              onChange={(e) => setSelectedRole(e.target.value)}
+              className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
             >
-              <Search className="w-5 h-5" />
-              Tìm kiếm
-            </button>
+              {ROLE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -454,11 +471,12 @@ const StaffManager = () => {
                       onChange={(e) => setNewStaff(prev => ({ ...prev, roleNames: [e.target.value] }))}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                     >
-                      <option value="">Chọn chức vụ</option>
+                      <option value="">Chọn vai trò</option>
                       <option value="ROLE_MANAGER">Quản lý</option>
                       <option value="ROLE_WAITER">Phục vụ</option>
                       <option value="ROLE_CHEF">Đầu bếp</option>
                       <option value="ROLE_RECEPTIONIST">Thu ngân</option>
+                      <option value="ROLE_CUSTOMER">Khách hàng</option>
                     </select>
                   </div>
                   <div>

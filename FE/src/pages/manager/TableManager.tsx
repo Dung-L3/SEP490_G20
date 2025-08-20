@@ -99,8 +99,10 @@ const TableManager: FC = () => {
 
   const handleUpdateTable = async (table: UiTable) => {
     try {
-      if (isTableNameDuplicate(table.name, table.id)) {
-        setError('Tên bàn đã tồn tại. Vui lòng chọn tên khác!');
+      // Validate tên bàn
+      const validation = validateTableName(table.name, table.id);
+      if (!validation.isValid) {
+        setError(validation.error || 'Tên bàn không hợp lệ!');
         return;
       }
 
@@ -140,18 +142,32 @@ const TableManager: FC = () => {
     }
   };
 
-  const isTableNameDuplicate = (tableName: string, excludeId?: number): boolean => {
+  const validateTableName = (tableName: string, excludeId?: number): { isValid: boolean; error?: string } => {
+    // Kiểm tra tên bàn rỗng
+    if (!tableName || tableName.trim() === '') {
+      return { isValid: false, error: 'Tên bàn không được để trống!' };
+    }
+
+    // Kiểm tra tên bàn trùng
     const normalizedName = tableName.trim().toLowerCase();
-    return tables.some(table => 
+    const isDuplicate = tables.some(table => 
       table.name.toLowerCase() === normalizedName && 
       (excludeId === undefined || table.id !== excludeId)
     );
+
+    if (isDuplicate) {
+      return { isValid: false, error: `Bàn "${tableName}" đã tồn tại. Vui lòng chọn tên khác!` };
+    }
+
+    return { isValid: true };
   };
 
   const handleCreateTable = async () => {
     try {
-      if (isTableNameDuplicate(newTable.tableName)) {
-        setError('Tên bàn đã tồn tại. Vui lòng chọn tên khác!');
+      // Validate tên bàn
+      const validation = validateTableName(newTable.tableName);
+      if (!validation.isValid) {
+        setError(validation.error || 'Tên bàn không hợp lệ!');
         return;
       }
 
