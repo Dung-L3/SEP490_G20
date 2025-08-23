@@ -40,7 +40,6 @@ const Header = () => {
                 </span>
               )}
             </Link>
-            <Link to="/takeaway-order" className="hover:text-yellow-400 transition-colors font-medium">Đơn mang đi</Link>
             {currentUser ? (
               <div className="flex items-center gap-2">
                 <span className="text-yellow-400 font-bold">{currentUser}</span>

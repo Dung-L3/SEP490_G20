@@ -1,343 +1,289 @@
-/* src/pages/receptionist/TakeawayOrder.tsx */
-import React, { useEffect, useState, type FormEvent } from 'react';
+// src/pages/receptionist/TakeawayOrder.tsx
+import React, { useState, useEffect} from 'react';
+import type { FormEvent } from 'react';
 import axios from 'axios';
-import { message } from 'antd';
-import TaskbarReceptionist from '../../components/TaskbarReceptionist';
-import { Link, useNavigate } from 'react-router-dom';
+//import type { AxiosError } from 'axios';
+import { useNavigate } from 'react-router-dom';
 
+interface Dish { dishId: number; dishName: string; price: number; }
+interface Combo { comboId: number; comboName: string; price: number; }
 type ItemKind = 'dish' | 'combo';
+
 interface OrderItem {
-  kind: ItemKind;                 // từ /menu luôn có kind
-  dishId?: number | null;
-  comboId?: number | null;
+  kind?: ItemKind;
+  dishId?: number;
+  comboId?: number;
   name?: string;
   quantity: number;
-  unitPrice?: number;
+  unitPrice: number;
   notes?: string;
 }
 
-const STORAGE_KEY = 'takeaway_selection';   // dùng chung với trang Public
-
 const formatVnd = (n?: number) =>
-    typeof n === 'number' ? `${n.toLocaleString('vi-VN')} đ` : '0 đ';
+  typeof n === 'number' ? `${n.toLocaleString('vi-VN')} đ` : '0 đ';
 
 const TakeawayOrder: React.FC = () => {
-  const navigate = useNavigate();
-
-  // ===== FORM =====
+  const navigate = useNavigate(); // <-- thêm
   const [customerName, setCustomerName] = useState('');
   const [phone, setPhone] = useState('');
-  const [orderNotes, setOrderNotes] = useState('');
+  const [notes, setNotes] = useState('');
   const [items, setItems] = useState<OrderItem[]>([]);
+  const [dishes, setDishes] = useState<Dish[]>([]);
+  const [combos, setCombos] = useState<Combo[]>([]);
   const [subTotal, setSubTotal] = useState(0);
-  const [submitting, setSubmitting] = useState(false);
 
-  // ===== Đọc món đã chọn từ localStorage (do /menu ghi) =====
-  const loadFromStorage = () => {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      setItems([]);
-      return;
-    }
-    try {
-      const arr = JSON.parse(raw) as OrderItem[];
-      setItems(Array.isArray(arr) ? arr : []);
-    } catch {
-      setItems([]);
-    }
-  };
 
   useEffect(() => {
-    loadFromStorage();
-    // nếu người dùng mở menu ở tab khác rồi quay lại (optional): nghe event storage
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY) loadFromStorage();
+    const fetchMeta = async () => {
+      try {
+        const [dRes, cRes] = await Promise.all([
+          axios.get<Dish[]>('/api/dishes'),
+          axios.get<Combo[]>('/api/combos'),
+        ]);
+        setDishes(dRes.data);
+        setCombos(cRes.data);
+      } catch (err) {
+        console.warn('Không tải được dishes/combos', err);
+      }
     };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
+    void fetchMeta();
   }, []);
 
-  // ===== Tính subtotal =====
   useEffect(() => {
-    setSubTotal(
-        items.reduce((s, it) => s + (it.unitPrice ?? 0) * (it.quantity ?? 0), 0)
-    );
+    const sum = items.reduce((acc, it) => acc + (it.unitPrice || 0) * (it.quantity || 0), 0);
+    setSubTotal(sum);
   }, [items]);
 
-  const handleClearItems = () => {
-    localStorage.removeItem(STORAGE_KEY);
-    setItems([]);
+  const addItem = () => setItems(prev => [...prev, { kind: undefined, quantity: 1, unitPrice: 0 }]);
+  const removeItem = (idx: number) => setItems(prev => prev.filter((_, i) => i !== idx));
+
+  const changeKind = (idx: number, kind?: ItemKind) => {
+    const next = [...items];
+    const it = { ...next[idx] };
+    it.kind = kind;
+    it.dishId = undefined;
+    it.comboId = undefined;
+    it.name = undefined;
+    it.unitPrice = 0;
+    next[idx] = it;
+    setItems(next);
   };
 
-  // cập nhật 1 item + đồng bộ localStorage
-  const updateItemField = (idx: number, patch: Partial<OrderItem>) => {
-    setItems(prev => {
-      const next = [...prev];
-      next[idx] = { ...next[idx], ...patch };
-      // đồng bộ lại giỏ trong localStorage để nếu rời trang vẫn giữ đúng
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      return next;
-    });
+  const updateItem = (idx: number, field: keyof OrderItem, value: string) => {
+    const next = [...items];
+    const it = { ...next[idx] };
+
+    if (field === 'dishId') {
+      const dish = dishes.find(d => d.dishId === +value);
+      it.dishId = dish?.dishId;
+      it.name = dish?.dishName;
+      it.unitPrice = dish?.price ?? 0;
+    } else if (field === 'comboId') {
+      const combo = combos.find(c => c.comboId === +value);
+      it.comboId = combo?.comboId;
+      it.name = combo?.comboName;
+      it.unitPrice = combo?.price ?? 0;
+    } else if (field === 'quantity') {
+      it.quantity = Math.max(1, +value || 1);
+    } else if (field === 'notes') {
+      it.notes = value;
+    }
+
+    next[idx] = it;
+    setItems(next);
   };
 
-  // ===== Submit tạo đơn =====
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    if (!customerName.trim() || !phone.trim()) {
-      message.info('Vui lòng nhập tên khách hàng và số điện thoại');
-      return;
-    }
-    if (items.length === 0) {
-      message.info('Bạn chưa chọn món — bấm “+ Chọn món”.');
-      return;
-    }
-
-    // map đúng định dạng gửi BE
-    const mapped = items
-        .map((it) => {
-          const base = {
-            quantity: it.quantity,
-            unitPrice: it.unitPrice ?? 0,
-            notes: it.notes,
-          };
-          if (it.kind === 'dish' && typeof it.dishId === 'number') {
-            return { ...base, dishId: it.dishId, comboId: null };
-          }
-          if (it.kind === 'combo' && typeof it.comboId === 'number') {
-            return { ...base, comboId: it.comboId, dishId: null };
-          }
-          return null;
-        })
-        .filter((x): x is NonNullable<typeof x> => x !== null);
-
-    if (mapped.length === 0) {
-      message.error('Các món đã chọn thiếu mã món/combo. Vui lòng chọn lại từ menu.');
-      return;
-    }
-
-    const payload = {
-      customerName,
-      phone,
-      notes: orderNotes,
-      items: mapped,
-      orderType: 'TAKEAWAY',
-      source: 'RECEPTION_TAKEAWAY',
-    };
-
-    try {
-      setSubmitting(true);
-      const res = await axios.post('/api/receptionist/orders/takeaway', payload, {
-        withCredentials: true,
-      });
-      message.success('Tạo đơn mang đi thành công');
-
-      const orderId = (res?.data && (res.data.orderId ?? res.data.id)) as number | undefined;
-      if (orderId) {
-        // báo Chef reload + highlight
-        sessionStorage.setItem(
-            'chef_force_reload',
-            JSON.stringify({ orderId, ts: Date.now() })
-        );
-        // sang bếp
-        navigate(`/chef?highlight=${orderId}`);
-        // xoá giỏ sau khi gửi
-        localStorage.removeItem(STORAGE_KEY);
-        return;
-      }
-
-      // fallback: reset form
-      localStorage.removeItem(STORAGE_KEY);
-      setItems([]);
-      setCustomerName('');
-      setPhone('');
-      setOrderNotes('');
-    } catch (err) {
-      console.error(err);
-      message.error('Tạo đơn thất bại');
-    } finally {
-      setSubmitting(false);
-    }
+  const payload = {
+    customerName,
+    phone,
+    notes,
+    items: items.map(it => ({
+      dishId: it.kind === 'dish' ? it.dishId : undefined,
+      comboId: it.kind === 'combo' ? it.comboId : undefined,
+      quantity: it.quantity,
+      unitPrice: it.unitPrice,
+      notes: it.notes,
+    })),
   };
 
-  const returnTo = '/receptionist/takeaway';
+  try {
+    await axios.post('/api/receptionist/orders/takeaway', payload);
+    navigate('/chef');
+  } catch (err) {
+    console.error(err);
+    alert('Tạo đơn thất bại');
+  }
+};
+
 
   return (
-      <div className="flex min-h-screen bg-gray-50">
-        {/* Sidebar */}
-        <div className="w-64 min-h-screen sticky top-0 z-10">
-          <TaskbarReceptionist />
+    <div className="max-w-6xl mx-auto p-6">
+      <h1 className="text-2xl font-semibold mb-6">Đơn Mang Đi</h1>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block mb-1">Tên khách hàng</label>
+            <input
+              type="text"
+              className="w-full border rounded px-3 py-2"
+              value={customerName}
+              onChange={e => setCustomerName(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <label className="block mb-1">Số điện thoại</label>
+            <input
+              type="tel"
+              className="w-full border rounded px-3 py-2"
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              required
+            />
+          </div>
         </div>
 
-        {/* Main */}
-        <div className="flex-1 min-w-0 p-8">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Tạo đơn Mang Đi</h1>
-            <p className="text-gray-600">
-              Nhập thông tin khách hàng, bấm “+ Chọn món” để mở menu, sau đó tạo đơn.
-            </p>
+        {/* Danh sách món */}
+        <div>
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="text-xl font-medium">Món</h2>
+            <button type="button" onClick={addItem} className="bg-blue-600 text-white px-4 py-1 rounded">
+              + Thêm món
+            </button>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Thông tin khách */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block mb-1 font-medium">Tên khách hàng</label>
-                  <input
-                      type="text"
-                      className="w-full border rounded px-3 py-2"
-                      value={customerName}
-                      onChange={e => setCustomerName(e.target.value)}
-                      required
-                  />
-                </div>
-                <div>
-                  <label className="block mb-1 font-medium">Số điện thoại</label>
-                  <input
-                      type="tel"
-                      className="w-full border rounded px-3 py-2"
-                      value={phone}
-                      onChange={e => setPhone(e.target.value)}
-                      required
-                  />
-                </div>
-              </div>
-
-              {/* Món đã chọn (giống Public) */}
-              <div className="bg-white border rounded-lg">
-                <div className="flex items-center justify-between p-3 border-b">
-                  <h2 className="font-semibold">Món đã chọn</h2>
-                  <div className="flex gap-2">
-                    <Link
-                        to={`/menu?mode=takeaway&return=${encodeURIComponent(returnTo)}`}
-                        className="px-3 py-1 rounded bg-blue-600 text-white"
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="border px-2 py-1">Loại</th>
+                <th className="border px-2 py-1">Món/Combo</th>
+                <th className="border px-2 py-1">Số lượng</th>
+                <th className="border px-2 py-1">Giá</th>
+                <th className="border px-2 py-1">Ghi chú</th>
+                <th className="border px-2 py-1 w-24">{/* trống */}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((it, idx) => (
+                <tr key={idx}>
+                  <td className="border px-2 py-1">
+                    <select
+                      className="w-full"
+                      value={it.kind ?? ''}
+                      onChange={e =>
+                        changeKind(idx, (e.target.value || undefined) as ItemKind | undefined)
+                      }
                     >
-                      + Chọn món
-                    </Link>
-                    {items.length > 0 && (
-                        <button
-                            type="button"
-                            onClick={handleClearItems}
-                            className="px-3 py-1 rounded bg-gray-200"
-                        >
-                          Xoá hết
-                        </button>
-                    )}
-                  </div>
-                </div>
+                      <option value="">Chọn</option>
+                      <option value="dish">Món lẻ</option>
+                      <option value="combo">Combo</option>
+                    </select>
+                  </td>
 
-                <div className="p-3">
-                  {items.length === 0 ? (
-                      <div className="text-gray-500">Chưa có món nào. Bấm “+ Chọn món”.</div>
-                  ) : (
-                      <table className="w-full border-collapse">
-                        <thead>
-                        <tr className="bg-gray-50">
-                          <th className="border px-2 py-1 text-left">Tên</th>
-                          <th className="border px-2 py-1">SL</th>
-                          <th className="border px-2 py-1 text-right">Đơn giá</th>
-                          <th className="border px-2 py-1 text-right">Tạm tính</th>
-                          <th className="border px-2 py-1">Ghi chú</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {items.map((it, i) => (
-                            <tr key={i}>
-                              <td className="border px-2 py-1">
-                                {it.name ||
-                                    (it.kind === 'dish'
-                                        ? `Món #${it.dishId}`
-                                        : `Combo #${it.comboId}`)}
-                              </td>
-                              <td className="border px-2 py-1 text-center">
-                                <input
-                                    type="number"
-                                    min={1}
-                                    className="w-16 border rounded px-2 py-1 text-center"
-                                    value={it.quantity}
-                                    onChange={(e) =>
-                                        updateItemField(i, {
-                                          quantity: Math.max(1, Number(e.target.value) || 1),
-                                        })
-                                    }
-                                />
-                              </td>
-                              <td className="border px-2 py-1 text-right">{formatVnd(it.unitPrice)}</td>
-                              <td className="border px-2 py-1 text-right">
-                                {formatVnd((it.unitPrice ?? 0) * (it.quantity ?? 0))}
-                              </td>
-                              <td className="border px-2 py-1">
-                                <input
-                                    type="text"
-                                    className="w-full border rounded px-1 py-1 text-sm"
-                                    value={it.notes ?? ''}
-                                    onChange={e => updateItemField(i, { notes: e.target.value })}
-                                    placeholder="Ghi chú"
-                                />
-                              </td>
-                            </tr>
+                  <td className="border px-2 py-1">
+                    {it.kind === 'dish' ? (
+                      <select
+                        className="w-full"
+                        value={it.dishId ?? ''}
+                        onChange={e => updateItem(idx, 'dishId', e.target.value)}
+                      >
+                        <option value="">Chọn món</option>
+                        {dishes.map(d => (
+                          <option key={d.dishId} value={d.dishId}>
+                            {d.dishName}
+                          </option>
                         ))}
-                        </tbody>
-                        <tfoot>
-                        <tr>
-                          <td className="border px-2 py-2 text-right font-semibold" colSpan={3}>
-                            Tổng
-                          </td>
-                          <td className="border px-2 py-2 text-right font-semibold">
-                            {formatVnd(subTotal)}
-                          </td>
-                          <td className="border" />
-                        </tr>
-                        </tfoot>
-                      </table>
-                  )}
-                </div>
-              </div>
+                      </select>
+                    ) : it.kind === 'combo' ? (
+                      <select
+                        className="w-full"
+                        value={it.comboId ?? ''}
+                        onChange={e => updateItem(idx, 'comboId', e.target.value)}
+                      >
+                        <option value="">Chọn combo</option>
+                        {combos.map(c => (
+                          <option key={c.comboId} value={c.comboId}>
+                            {c.comboName}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="text-gray-400">Chọn loại trước</span>
+                    )}
+                  </td>
 
-              {/* Ghi chú đơn */}
-              <div>
-                <label className="block mb-1 font-medium">Ghi chú đơn hàng</label>
-                <textarea
-                    className="w-full border rounded px-3 py-2"
-                    rows={3}
-                    value={orderNotes}
-                    onChange={e => setOrderNotes(e.target.value)}
-                />
-              </div>
+                  <td className="border px-2 py-1">
+                    <input
+                      type="number"
+                      min={1}
+                      className="w-24 border rounded px-1"
+                      value={it.quantity}
+                      onChange={e => updateItem(idx, 'quantity', e.target.value)}
+                    />
+                  </td>
 
-              <div className="flex justify-end items-center gap-3 text-lg font-semibold">
-                <span>SubTotal:</span>
-                <span>{formatVnd(subTotal)}</span>
-              </div>
+                  <td className="border px-2 py-1 text-right">{formatVnd(it.unitPrice)}</td>
 
-              <div className="flex justify-end gap-2">
-                <button
-                    type="button"
-                    onClick={() => {
-                      setCustomerName('');
-                      setPhone('');
-                      setOrderNotes('');
-                      handleClearItems();
-                    }}
-                    className="px-4 py-2 border rounded-lg"
-                    disabled={submitting}
-                >
-                  Xóa form
-                </button>
-                <button
-                    type="submit"
-                    className="bg-emerald-600 text-white px-6 py-2 rounded hover:bg-emerald-700 disabled:opacity-60"
-                    disabled={submitting || items.length === 0}
-                >
-                  {submitting ? 'Đang tạo…' : 'Tạo đơn'}
-                </button>
-              </div>
-            </form>
-          </div>
+                  <td className="border px-2 py-1">
+                    <input
+                      type="text"
+                      className="w-full border rounded px-2 py-1"
+                      value={it.notes ?? ''}
+                      onChange={e => updateItem(idx, 'notes', e.target.value)}
+                    />
+                  </td>
+
+                  <td className="border px-2 py-1 text-center">
+                    <button
+                      type="button"
+                      onClick={() => removeItem(idx)}
+                      className="bg-red-600 text-white px-3 py-1 rounded"
+                    >
+                      Xóa
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {items.length === 0 && (
+                <tr>
+                  <td className="border px-2 py-3 text-center" colSpan={6}>
+                    Chưa có món nào — bấm “+ Thêm món”
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
-      </div>
+
+        <div>
+          <label className="block mb-1">Ghi chú đơn hàng</label>
+          <textarea
+            className="w-full border rounded px-3 py-2"
+            rows={3}
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+          />
+        </div>
+
+        {/* Tổng tiền */}
+        <div className="flex justify-end gap-2 text-lg font-medium">
+          <span>SubTotal:</span>
+          <span>{formatVnd(subTotal)}</span>
+        </div>
+
+        <div className="text-right">
+          <button type="submit" className="bg-green-600 text-white px-6 py-2 rounded">
+            Tạo đơn
+          </button>
+        </div>
+      </form>
+    </div>
   );
 };
+
 
 export default TakeawayOrder;
