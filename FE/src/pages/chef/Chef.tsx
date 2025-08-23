@@ -169,6 +169,15 @@ const OrderCard = ({ orderIdx, order, currentTime }: OrderCardProps) => {
   const minutes = Math.floor(elapsedTime / 60);
   const seconds = elapsedTime % 60;
 
+  const meta = order as { orderType?: string; source?: string; tableNumber?: string | number };
+
+  const isTakeaway =
+      (meta.orderType?.toUpperCase() === 'TAKEAWAY') ||
+      meta.source === 'PUBLIC_TAKEAWAY' ||
+      meta.source === 'RECEPTION_TAKEAWAY' ||
+      !meta.tableNumber ||
+      String(meta.tableNumber).toLowerCase().includes('không xác định');
+
   const handleStatusChange = async (newStatus: string) => {
     if (!confirm('Bạn có chắc chắn muốn thay đổi trạng thái?')) return;
     
@@ -204,7 +213,10 @@ const OrderCard = ({ orderIdx, order, currentTime }: OrderCardProps) => {
               <span className="text-white font-bold text-sm">#{orderIdx + 1}</span>
             </div>
             <div>
-              <h3 className="text-white font-semibold">{order.tableNumber}</h3>
+              <h3 className="text-white font-semibold"> {
+                isTakeaway ? 'Đơn mang đi' : (meta.tableNumber ?? '')
+              }
+              </h3>
               <p className="text-slate-300 text-xs">Mã đơn: #{order.orderId}</p>
             </div>
           </div>

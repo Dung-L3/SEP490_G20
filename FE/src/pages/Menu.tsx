@@ -7,8 +7,16 @@ import type { Category } from '../api/categoryApi';
 import type { Dish } from '../api/dishApi';
 import { comboApi } from '../api/comboApi';
 import type { ComboDTO } from '../api/comboApi';
+import {useNavigate, useSearchParams} from "react-router-dom";
+
+const STORAGE_KEY = 'takeaway_selection';
 
 const Menu = () => {
+  const nav = useNavigate();
+  const [params] = useSearchParams();
+  const isTakeawayMode = params.get('mode') === 'takeaway';
+  const returnTo = params.get('return');
+
   const [categories, setCategories] = useState<Category[]>([]);
   const [dishes, setDishes] = useState<Record<number, Dish[]>>({});
   const [combos, setCombos] = useState<ComboDTO[]>([]);
@@ -42,6 +50,55 @@ const Menu = () => {
     loadData();
   }, []);
 
+  const goBackAfterPick = () => {
+    if (returnTo) nav(decodeURIComponent(returnTo)); // <- quan trọng
+    else nav(-1);
+  };
+
+  const addToTakeawaySelection = (item: {
+    kind: 'dish' | 'combo';
+    dishId?: number | null;
+    comboId?: number | null;
+    name: string;
+    unitPrice: number;
+    quantity: number;
+  }) => {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const arr: any[] = raw ? JSON.parse(raw) : [];
+    const idx = arr.findIndex(
+        x => (x.dishId ?? 0) === (item.dishId ?? 0) && (x.comboId ?? 0) === (item.comboId ?? 0)
+    );
+    if (idx >= 0) arr[idx].quantity += item.quantity;
+    else arr.push(item);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+  };
+
+  const handleChooseDish = (dish: Dish) => {
+    if (!isTakeawayMode) return;
+    addToTakeawaySelection({
+      kind: 'dish',
+      dishId: dish.dishId,
+      comboId: null,
+      name: dish.dishName,
+      unitPrice: dish.price,
+      quantity: 1,
+    });
+    goBackAfterPick(); // 👈 thay nav(-1)
+  };
+
+  const handleChooseCombo = (combo: ComboDTO) => {
+    if (!isTakeawayMode) return;
+    addToTakeawaySelection({
+      kind: 'combo',
+      comboId: combo.comboId,
+      dishId: null,
+      name: combo.comboName,
+      unitPrice: combo.price,
+      quantity: 1,
+    });
+    goBackAfterPick(); // 👈 thay nav(-1)
+  };
+
   return (
       <div className="min-h-screen bg-gray-900">
         <Header />
@@ -68,10 +125,16 @@ const Menu = () => {
                       <div className="p-6">
                         <h3 className="text-xl font-bold text-white mb-2">{combo.comboName}</h3>
                         <p className="text-gray-300 mb-4 line-clamp-2">
-                          {combo.comboItems.map(item => item.dishName).join(', ')}
+                          {(combo.comboItems?.map(item => item.dishName).join(', ')) ?? ''}
                         </p>
-                        <div className="w-full bg-red-600 text-yellow-400 py-2 rounded-lg font-semibold text-center cursor-pointer hover:bg-red-700">
-                          Xem Chi Tiết
+                        <div
+                            className="w-full bg-red-600 text-yellow-400 py-2 rounded-lg font-semibold text-center cursor-pointer hover:bg-red-700"
+                            onClick={() => {
+                              if (isTakeawayMode) handleChooseCombo(combo);
+                              else nav(`/combos/${combo.comboId}`);
+                            }}
+                        >
+                          {isTakeawayMode ? 'Chọn combo' : 'Xem Chi Tiết'}
                         </div>
                       </div>
                     </div>
@@ -99,8 +162,14 @@ const Menu = () => {
                           <div className="p-6">
                             <h3 className="text-xl font-bold text-white mb-2">{dish.dishName}</h3>
                             <p className="text-gray-300 mb-4">Món {dish.dishName} đặc biệt</p>
-                            <div className="w-full bg-red-600 text-yellow-400 py-2 rounded-lg font-semibold text-center">
-                              Xem Chi Tiết
+                            <div
+                                className="w-full bg-red-600 text-yellow-400 py-2 rounded-lg font-semibold text-center cursor-pointer hover:bg-red-700"
+                                onClick={() => {
+                                  if (isTakeawayMode) handleChooseDish(dish);
+                                  else nav(`/dishes/${dish.dishId}`);
+                                }}
+                            >
+                              {isTakeawayMode ? 'Chọn món' : 'Xem Chi Tiết'}
                             </div>
                           </div>
                         </div>
