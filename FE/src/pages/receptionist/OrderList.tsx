@@ -7,13 +7,13 @@ import TaskbarReceptionist from '../../components/TaskbarReceptionist';
 interface Order {
   orderId: number;
   orderType: string;
-  customerName?: string | null; // <= có thể null
-  tableName?: string | null;    // <= có thể null
+  customerName?: string | null; 
+  tableName?: string | null;    
   subTotal: number;
   discountAmount: number;
   finalTotal: number;
   createdAt: string;
-  phone?: string | null;        // <= THÊM: số ĐT khách (có thể null)
+  phone?: string | null;        
 }
 
 interface Promotion {
@@ -40,7 +40,7 @@ const OrderList: React.FC = () => {
   const [promosError, setPromosError] = useState<string | null>(null);
   const [selectedPromoCode, setSelectedPromoCode] = useState<string>('');
 
-  // Error hiển thị trong modal
+  // Error hiển thị trong modal (server-side/general)
   const [error, setError] = useState<string | null>(null);
 
   // THÊM: state số điện thoại nhập trong modal
@@ -50,6 +50,13 @@ const OrderList: React.FC = () => {
     useState<'cash' | 'card' | 'bankTransfer'>('cash');
 
   const navigate = useNavigate();
+
+  // NEW: regex & helpers cho phone
+  const PHONE_RE = /^0\d{9}$/; // 10 số, bắt đầu bằng 0
+  const sanitizePhone = (v: string) => v.replace(/\D/g, '').slice(0, 10); // chỉ số, tối đa 10
+  const phoneValid = phone === '' || PHONE_RE.test(phone); // cho phép trống; nếu có thì phải hợp lệ
+  const phoneInvalidMsg =
+    phone && !phoneValid ? 'Số điện thoại không hợp lệ. Yêu cầu 10 số và bắt đầu bằng 0.' : '';
 
   // Load danh sách đơn chưa thanh toán
   useEffect(() => {
@@ -77,11 +84,11 @@ const OrderList: React.FC = () => {
   // Mở modal + load promotions hợp lệ
   const handleRowClick = (order: Order) => {
     setSelectedOrder(order);
-    setModalPaymentMethod('cash'); // reset mặc định
-    setSelectedPromoCode('');      // mặc định không áp mã
+    setModalPaymentMethod('cash'); 
+    setSelectedPromoCode('');      
     setPromosError(null);
     setError(null);
-    setPhone(order.phone ?? '');   // THÊM: đưa sẵn phone của order (nếu có) vào input
+    setPhone(order.phone ? sanitizePhone(order.phone) : '');   // NEW: sanitize khi mở
     setModalOpen(true);
 
     setPromosLoading(true);
@@ -101,8 +108,14 @@ const OrderList: React.FC = () => {
     if (!selectedOrder) return;
     setError(null);
 
-    const trimmedPhone = phone.trim();
-    const prevPhone = (selectedOrder.phone ?? '').trim();
+    // NEW: kiểm tra hợp lệ lần cuối trước khi gọi API
+    if (!phoneValid) {
+      setError('Số điện thoại không hợp lệ. Yêu cầu 10 số và bắt đầu bằng 0.');
+      return;
+    }
+
+    const trimmedPhone = sanitizePhone(phone.trim()); // NEW: sanitize cấp cuối
+    const prevPhone = sanitizePhone((selectedOrder.phone ?? '').trim());
 
     // 1) Cập nhật phone nếu có nhập và khác trước đó
     if (trimmedPhone && trimmedPhone !== prevPhone) {
@@ -244,7 +257,7 @@ const OrderList: React.FC = () => {
               Thanh toán cho đơn #{selectedOrder.orderId}
             </h3>
 
-            {/* Error */}
+            {/* Error (server/general) */}
             {error && (
               <div className="mb-3 text-sm text-red-600">
                 {error}
@@ -254,12 +267,21 @@ const OrderList: React.FC = () => {
             {/* Số điện thoại khách */}
             <label className="block text-sm mb-1">Số điện thoại (khách)</label>
             <input
+              // NEW: giới hạn và lọc input chỉ còn số, tối đa 10
               type="tel"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={10}
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => setPhone(sanitizePhone(e.target.value))}
+              onBlur={() => setPhone(prev => sanitizePhone(prev.trim()))}
               placeholder="VD: 0372698544"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-4"
+              className={`w-full px-3 py-2 border rounded-lg mb-1 ${phone && !phoneValid ? 'border-red-500' : 'border-gray-300'}`}
             />
+            {/* NEW: hiển thị lỗi ngay dưới input */}
+            {phoneInvalidMsg && (
+              <div className="text-xs text-red-600 mb-3">{phoneInvalidMsg}</div>
+            )}
 
             {/* Phương thức thanh toán */}
             <label className="block text-sm mb-1">Phương thức thanh toán</label>
@@ -299,8 +321,9 @@ const OrderList: React.FC = () => {
               </button>
               <button
                 onClick={handleProceed}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                disabled={promosLoading}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                // NEW: disable khi phone không hợp lệ hoặc đang loading promos
+                disabled={!phoneValid || promosLoading}
               >
                 Tiếp tục
               </button>
