@@ -1,13 +1,19 @@
 import React, { useState } from 'react';
 import type { DishModalProps } from '../types/DishModalProps';
 
-export default function DishEditModal({ dish, onChange, onImageUrl, onCancel, onSave }: DishModalProps) {
+export default function DishEditModal({ dish, onChange, onImageUrl, onCancel, onSave, error }: DishModalProps) {
   const [imageUrl, setImageUrl] = useState(dish.imageUrl || '');
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg w-full max-w-md p-6">
         <h2 className="text-xl font-bold mb-4">Sửa món ăn</h2>
+        
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+            {error}
+          </div>
+        )}
         
         <div className="space-y-4">
           <div>

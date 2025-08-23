@@ -5,6 +5,10 @@ import axiosClient from './axiosClient';
 const API_URL = '/users';
 const AUTH_API_URL = '/auth';
 
+interface Role {
+  roleName: string;
+}
+
 interface StaffResponse {
   id: number;
   username: string;
@@ -13,21 +17,38 @@ interface StaffResponse {
   phone: string;
   status: boolean;
   createdAt?: string;
-  roleName: string;  
+  roleName?: string;
+  roles?: Role[];
 }
 
 const mapToStaff = (data: StaffResponse): Staff => {
   if (!data) {
     throw new Error('Invalid staff data received from server');
   }
+
+  let roleNames: string[] = [];
+  
+  // Handle different role formats from API
+  if (data.roleName) {
+    // Single role as string
+    const roleName = data.roleName.toUpperCase();
+    roleNames = [roleName.startsWith('ROLE_') ? roleName : `ROLE_${roleName}`];
+  } else if (data.roles && Array.isArray(data.roles)) {
+    // Array of roles
+    roleNames = data.roles.map(role => {
+      const roleName = role.roleName.toUpperCase();
+      return roleName.startsWith('ROLE_') ? roleName : `ROLE_${roleName}`;
+    });
+  }
+
   return {
     id: data.id || 0,
     username: data.username || '',
     fullName: data.fullName || '',
     email: data.email || '',
     phone: data.phone || '',
-    status: data.status ?? false,
-    roleNames: data.roleName ? [`ROLE_${data.roleName.toUpperCase()}`] : [] // Convert to array and add ROLE_ prefix
+    status: data.status ?? true,
+    roleNames: roleNames
   };
 };
 
@@ -67,28 +88,26 @@ export const staffApi = {
 
   create: async (request: StaffRequest): Promise<Staff> => {
     try {
-      // Convert StaffRequest to RegisterRequest format
+      // Ensure roleName is properly formatted
+      const roleName = request.roleNames[0]?.replace('ROLE_', '') || 'STAFF';
+      
       const registerRequest = {
         username: request.username,
         password: request.passwordHash || '123456', // Default password if not provided
         fullName: request.fullName,
         email: request.email,
         phone: request.phone,
-        roleName: request.roleNames?.[0]?.replace('ROLE_', '').toLowerCase() || 'staff' // Remove ROLE_ prefix and convert to lowercase
+        roleName: roleName // Send without ROLE_ prefix
       };
 
       const response = await axiosClient.post(`${AUTH_API_URL}/register/employee`, registerRequest);
+      console.log('Create response:', response.data);
 
-      // Map response data to Staff object
-      return {
-        id: response.data.id || 0,
-        username: response.data.username,
-        fullName: response.data.fullName,
-        email: response.data.email,
-        phone: response.data.phone,
-        status: response.data.status ?? true,
-        roleNames: response.data.roles?.map((role: { roleName: string }) => role.roleName) || []
-      };
+      // Map the response to ensure proper role format
+      return mapToStaff({
+        ...response.data,
+        roleName: roleName // Add back the role from our request if not in response
+      });
     } catch (error: unknown) {
       console.error('Error creating staff:', error);
       
@@ -119,14 +138,16 @@ export const staffApi = {
     try {
       console.log('Updating staff:', id, request);
       
-      // Chuẩn bị dữ liệu gửi đi
+      // Ensure roleName is properly formatted
+      const roleName = request.roleNames[0]?.replace('ROLE_', '') || 'STAFF';
+      
       const updateRequest = {
         username: request.username,
         fullName: request.fullName,
         email: request.email,
         phone: request.phone,
         status: request.status,
-        roleName: request.roleNames?.[0]?.replace('ROLE_', '') || 'staff' // Remove ROLE_ prefix, leave case as is
+        roleName: roleName // Send without ROLE_ prefix
       };
 
       console.log('Update request data:', updateRequest);
@@ -137,7 +158,11 @@ export const staffApi = {
         throw new Error('Không nhận được phản hồi từ server');
       }
 
-      return mapToStaff(response.data);
+      // Map the response and ensure proper role format
+      return mapToStaff({
+        ...response.data,
+        roleName: roleName // Add back the role from our request if not in response
+      });
     } catch (error: unknown) {
       console.error('Error updating staff:', error);
       

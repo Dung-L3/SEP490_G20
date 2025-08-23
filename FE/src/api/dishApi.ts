@@ -11,6 +11,15 @@ export interface Dish {
 
 const API_URL = '/api/dishes';
 
+export interface DishPayload {
+  dishName: string;
+  categoryId: number;
+  price: number;
+  status: boolean;
+  unit: string;
+  imageUrl?: string;
+}
+
 export const dishApi = {
   getAll: async (): Promise<Dish[]> => {
     try {
@@ -87,9 +96,59 @@ export const dishApi = {
     }
   },
 
+  create: async (dishPayload: DishPayload): Promise<Dish> => {
+    try {
+      const response = await fetch(`${API_URL}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dishPayload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Có lỗi xảy ra khi tạo món ăn mới');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error creating dish:', error);
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Có lỗi xảy ra khi tạo món ăn mới');
+    }
+  },
+
+  update: async (dishId: number, dishPayload: DishPayload): Promise<Dish> => {
+    try {
+      const response = await fetch(`${API_URL}/${dishId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dishPayload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Có lỗi xảy ra khi cập nhật món ăn');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error updating dish:', error);
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Có lỗi xảy ra khi cập nhật món ăn');
+    }
+  },
+
   deleteDish: async (dishId: number): Promise<void> => {
     try {
-      const response = await fetch(`/api/dishes/${dishId}?name=${Math.random().toString(36).substring(2, 10)}`, {
+      const response = await fetch(`${API_URL}/${dishId}?name=${Math.random().toString(36).substring(2, 10)}`, {
         method: 'DELETE',
       });
 

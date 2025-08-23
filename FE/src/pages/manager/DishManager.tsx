@@ -11,7 +11,7 @@ interface Dish {
   price: number;
   status: boolean;
   unit: string;
-  imageUrl: string;
+  imageUrl?: string;
   createdAt: string;
 }
 
@@ -21,6 +21,7 @@ const DishManager = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [addOpen, setAddOpen] = useState(false);
   const [addError, setAddError] = useState('');
+  const [editError, setEditError] = useState('');
   const [editDish, setEditDish] = useState<Dish | null>(null);
   // Khởi tạo giá trị mặc định cho món mới
   const defaultDishState: Dish = {
@@ -72,28 +73,26 @@ const DishManager = () => {
     }
   };
 
-  const handleAddSave = async () => {
+  const handleAddSave = async (): Promise<void> => {
     try {
       // Reset error message
       setAddError('');
 
       // Validate required fields
-      const validationErrors = [];
       if (!newDish.dishName.trim()) {
-        validationErrors.push('Vui lòng nhập tên món ăn');
+        setAddError('Vui lòng nhập tên món ăn');
+        return;
       }
       if (!newDish.unit.trim()) {
-        validationErrors.push('Vui lòng nhập đơn vị');
+        setAddError('Vui lòng nhập đơn vị');
+        return;
       }
       if (newDish.price <= 0) {
-        validationErrors.push('Vui lòng nhập giá hợp lệ');
+        setAddError('Vui lòng nhập giá hợp lệ');
+        return;
       }
       if (!newDish.categoryId) {
-        validationErrors.push('Vui lòng chọn danh mục');
-      }
-
-      if (validationErrors.length > 0) {
-        setAddError(validationErrors.join(', '));
+        setAddError('Vui lòng chọn danh mục');
         return;
       }
       
@@ -109,105 +108,84 @@ const DishManager = () => {
 
       console.log('Sending dish payload:', dishPayload);
 
-      // Gọi API tạo món mới
-      const response = await fetch('/api/dishes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(dishPayload)
-      });
-
-      if (!response.ok) {
-        let errorMessage = 'Lỗi khi tạo món ăn mới';
-        try {
-          const errorData = await response.json();
-          console.error('API Error:', errorData);
-          if (errorData.message) {
-            errorMessage = errorData.message;
-          } else if (errorData.error) {
-            errorMessage = errorData.error;
-          }
-        } catch (e) {
-          console.error('Error parsing error response:', e);
-        }
-        throw new Error(errorMessage);
-      }
-
-      await response.json(); // Đảm bảo response đã được đọc
-      // Cập nhật danh sách món ăn sau khi thêm thành công
-      const updatedDishes = await fetch('/api/dishes', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      }).then(res => res.json());
+      // Gọi API tạo món mới thông qua dishApi
+      const createdDish = await dishApi.create(dishPayload);
       
-      setDishes(updatedDishes);
+      // Cập nhật state
+      setDishes(dishes => [...dishes, createdDish]);
       setAddOpen(false);
       setNewDish(defaultDishState);
       setAddError('');
+      // Hiển thị thông báo thành công
+      alert('Thêm món ăn mới thành công!');
     } catch (error) {
       console.error('Error creating dish:', error);
+      if (error instanceof Error) {
+        setAddError(error.message);
+      }
       setAddError(error instanceof Error ? error.message : 'Có lỗi xảy ra khi thêm món ăn');
     }
   };
 
   const handleAddCancel = () => {
     setAddOpen(false);
-    setAddError('');
+    setNewDish(defaultDishState);
+    setAddError(''); // Clear any errors when closing
   };
 
   const handleEdit = (dish: Dish) => {
     setEditDish(dish);
+    setEditError(''); // Clear any errors when opening edit modal
   };
 
 
 
-  const handleEditSave = async () => {
+  const handleEditSave = async (): Promise<void> => {
     try {
-      if (editDish) {
-        // Validate required fields
-        if (!editDish.dishName.trim()) {
-          throw new Error('Vui lòng nhập tên món ăn!');
-        }
-        if (!editDish.unit.trim()) {
-          throw new Error('Vui lòng nhập đơn vị!');
-        }
-        if (editDish.price <= 0) {
-          throw new Error('Vui lòng nhập giá hợp lệ!');
-        }
-        if (!editDish.categoryId) {
-          throw new Error('Vui lòng chọn danh mục!');
-        }
-        
-        // Nếu không có ảnh, sử dụng ảnh mặc định
-        if (!editDish.imageUrl) {
-          editDish.imageUrl = 'https://res.cloudinary.com/dx1iwvfdm/image/upload/v1704297479/default-image_qo4zv3.jpg';
-        }
-
-        const response = await fetch(`/api/dishes/${editDish.dishId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(editDish)
-        });
-
-        if (!response.ok) {
-          throw new Error('Lỗi khi cập nhật món ăn');
-        }
-
-        const updatedDish = await response.json();
-        setDishes(dishes => dishes.map(dish => dish.dishId === editDish.dishId ? updatedDish : dish));
-        setEditDish(null);
+      setEditError('');
+      
+      if (!editDish) {
+        setEditError('Không tìm thấy thông tin món ăn');
+        return;
       }
+
+      // Validate required fields
+      if (!editDish.dishName.trim()) {
+        setEditError('Vui lòng nhập tên món ăn');
+        return;
+      }
+      if (!editDish.unit.trim()) {
+        setEditError('Vui lòng nhập đơn vị');
+        return;
+      }
+      if (editDish.price <= 0) {
+        setEditError('Vui lòng nhập giá hợp lệ');
+        return;
+      }
+      if (!editDish.categoryId) {
+        setEditError('Vui lòng chọn danh mục');
+        return;
+      }
+        
+      // Nếu không có ảnh, sử dụng ảnh mặc định
+      if (!editDish.imageUrl) {
+        editDish.imageUrl = 'https://res.cloudinary.com/dx1iwvfdm/image/upload/v1704297479/default-image_qo4zv3.jpg';
+      }
+
+      // Gửi yêu cầu cập nhật thông qua dishApi
+      const updatedDish = await dishApi.update(editDish.dishId, editDish);
+      
+      // Cập nhật state
+      setDishes(prevDishes => prevDishes.map(d => 
+        d.dishId === editDish.dishId ? {...d, ...updatedDish} : d
+      ));
+      setEditDish(null);
     } catch (error: unknown) {
       console.error('Error updating dish:', error);
       if (error instanceof Error) {
-        alert(error.message);
+        setEditError(error.message);
       } else {
-        alert('Có lỗi xảy ra khi cập nhật món ăn');
+        setEditError('Có lỗi xảy ra khi cập nhật món ăn');
       }
     }
   };
@@ -369,6 +347,7 @@ const DishManager = () => {
         {addOpen && (
           <DishAddModal
             dish={newDish}
+            error={addError}
             onChange={(e) => {
               const { name, value } = e.target;
               setNewDish(prev => {
@@ -405,14 +384,12 @@ const DishManager = () => {
             onSave={handleAddSave}
           />
         )}
-        {addError && (
-          <div style={{ color: 'red', marginTop: 12, fontWeight: 600 }}>{addError}</div>
-        )}
 
         {/* Modal chỉnh sửa món ăn */}
         {editDish && (
           <DishEditModal
             dish={editDish}
+            error={editError}
             onChange={(e) => {
               const { name, value } = e.target;
               if (name === 'dishName') {

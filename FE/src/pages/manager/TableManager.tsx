@@ -11,6 +11,7 @@ const TableManager: FC = () => {
   const [searchQuery, setSearchQuery] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState('');
+  const [modalError, setModalError] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedTable, setSelectedTable] = useState<UiTable | null>(null);
@@ -92,8 +93,31 @@ const TableManager: FC = () => {
     setFilteredTables(filtered);
   }, [searchQuery, tables, selectedArea, windowFilter]);
 
+  const handleCloseCreateModal = () => {
+    setShowCreateModal(false);
+    setModalError('');
+    setNewTable({
+      tableId: 0,
+      tableName: '',
+      areaId: 1,
+      tableType: '4 người',
+      status: 'Available',
+      isWindow: false,
+      notes: '',
+      createdAt: new Date().toISOString(),
+      orders: []
+    });
+  };
+
+  const handleCloseEditModal = () => {
+    setShowEditModal(false);
+    setModalError('');
+    setSelectedTable(null);
+  };
+
   const handleTableClick = (table: UiTable) => {
     setSelectedTable(table);
+    setModalError('');
     setShowEditModal(true);
   };
 
@@ -102,10 +126,11 @@ const TableManager: FC = () => {
       // Validate tên bàn
       const validation = validateTableName(table.name, table.id);
       if (!validation.isValid) {
-        setError(validation.error || 'Tên bàn không hợp lệ!');
+        setModalError(validation.error || 'Tên bàn không hợp lệ!');
         return;
       }
 
+      setModalError(''); // Clear previous error
       setIsLoading(true);
       const apiTable = mapUiTableToApiTable(table);
       console.log('Sending update with data:', { ...apiTable, tableId: table.id });
@@ -120,7 +145,7 @@ const TableManager: FC = () => {
       setSelectedTable(null);
     } catch (err) {
       console.error('Error updating table:', err);
-      setError(err instanceof Error ? err.message : 'Failed to update table');
+      setModalError(err instanceof Error ? err.message : 'Failed to update table');
     } finally {
       setIsLoading(false);
     }
@@ -167,10 +192,11 @@ const TableManager: FC = () => {
       // Validate tên bàn
       const validation = validateTableName(newTable.tableName);
       if (!validation.isValid) {
-        setError(validation.error || 'Tên bàn không hợp lệ!');
+        setModalError(validation.error || 'Tên bàn không hợp lệ!');
         return;
       }
 
+      setModalError(''); // Clear previous error
       setIsLoading(true);
       const tableToCreate = {
         tableName: newTable.tableName.trim(),
@@ -371,7 +397,7 @@ const TableManager: FC = () => {
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold text-gray-900">Thêm bàn mới</h2>
                 <button
-                  onClick={() => setShowCreateModal(false)}
+                  onClick={handleCloseCreateModal}
                   className="text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-full p-1"
                 >
                   <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -381,6 +407,11 @@ const TableManager: FC = () => {
               </div>
             </div>
             <div className="p-6 space-y-6">
+              {modalError && (
+                <div className="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+                  {modalError}
+                </div>
+              )}
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tên bàn</label>
@@ -389,10 +420,10 @@ const TableManager: FC = () => {
                     value={newTable.tableName}
                     onChange={(e) => {
                       setNewTable({...newTable, tableName: e.target.value});
-                      setError(''); // Xóa thông báo lỗi khi người dùng thay đổi tên
+                      setModalError(''); // Xóa thông báo lỗi khi người dùng thay đổi tên
                     }}
                     className={`block w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                      error && error.includes('tên bàn') ? 'border-red-500' : 'border-gray-300'
+                      modalError ? 'border-red-500' : 'border-gray-300'
                     }`}
                     placeholder="Nhập tên bàn..."
                   />
@@ -451,7 +482,7 @@ const TableManager: FC = () => {
             </div>
             <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end space-x-3">
               <button
-                onClick={() => setShowCreateModal(false)}
+                onClick={handleCloseCreateModal}
                 className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 Hủy
@@ -477,7 +508,7 @@ const TableManager: FC = () => {
                   Chỉnh sửa bàn {selectedTable.name}
                 </h2>
                 <button
-                  onClick={() => setShowEditModal(false)}
+                  onClick={handleCloseEditModal}
                   className="text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-full p-1"
                 >
                   <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -487,6 +518,11 @@ const TableManager: FC = () => {
               </div>
             </div>
             <div className="p-6 space-y-6">
+              {modalError && (
+                <div className="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+                  {modalError}
+                </div>
+              )}
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tên bàn</label>
@@ -495,15 +531,12 @@ const TableManager: FC = () => {
                     value={selectedTable.name}
                     onChange={(e) => {
                       setSelectedTable({...selectedTable, name: e.target.value});
-                      setError(''); // Xóa thông báo lỗi khi người dùng thay đổi tên
+                      setModalError(''); // Xóa thông báo lỗi khi người dùng thay đổi tên
                     }}
                     className={`block w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                      error && error.includes('tên bàn') ? 'border-red-500' : 'border-gray-300'
+                      modalError ? 'border-red-500' : 'border-gray-300'
                     }`}
                   />
-                  {error && error.includes('tên bàn') && (
-                    <p className="mt-1 text-sm text-red-500">{error}</p>
-                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Khu vực</label>
@@ -564,7 +597,7 @@ const TableManager: FC = () => {
               </button>
               <div className="flex space-x-3">
                 <button
-                  onClick={() => setShowEditModal(false)}
+                  onClick={handleCloseEditModal}
                   className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   Hủy
