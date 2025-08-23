@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 // src/pages/OrderManager.tsx
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import TaskbarReceptionist from '../../components/TaskbarReceptionist';
 
 interface Order {
@@ -28,6 +28,29 @@ interface Promotion {
   isActive: boolean;
 }
 
+// ====== [TAKEAWAY+] phần nhận đơn mang đi đẩy sang ======
+interface TakeawayOrderResponse {
+  orderId: number;
+  customerName: string;
+  phone: string;
+  notes?: string;
+  subTotal: number;
+  finalTotal: number;
+}
+type NavState = { newOrder?: TakeawayOrderResponse };
+
+const mapTakeawayToOrder = (t: TakeawayOrderResponse): Order => ({
+  orderId: t.orderId,
+  orderType: 'TAKEAWAY',
+  customerName: t.customerName,
+  tableName: 'Mang đi',
+  subTotal: t.subTotal,
+  discountAmount: 0,
+  finalTotal: t.finalTotal,
+  createdAt: new Date().toISOString(),
+  phone: t.phone ?? null,
+});
+
 const OrderList: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [search, setSearch] = useState('');
@@ -50,6 +73,53 @@ const OrderList: React.FC = () => {
     useState<'cash' | 'card' | 'bankTransfer'>('cash');
 
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const navState = (location.state || {}) as NavState;
+    const newMapped = navState.newOrder
+        ? mapTakeawayToOrder(navState.newOrder)
+        : undefined;
+
+    const run = async () => {
+      try {
+        const res = await fetch('/api/receptionist/orders/unpaid', {
+          credentials: 'include',
+        });
+        if (!res.ok) throw new Error('Failed unpaid API');
+        const data: Order[] = await res.json();
+        if (cancelled) return;
+
+        setOrders(() => {
+          const merged = [...(newMapped ? [newMapped] : []), ...data];
+          const seen = new Set<number>();
+          return merged.filter(o => (seen.has(o.orderId) ? false : (seen.add(o.orderId), true)));
+        });
+      } catch (e) {
+        if (cancelled) return;
+        // fallback: nếu fetch lỗi nhưng có đơn mới từ Takeaway thì vẫn hiển thị
+        if (newMapped) {
+          setOrders(prev => {
+            const merged = [newMapped, ...prev];
+            const seen = new Set<number>();
+            return merged.filter(o => (seen.has(o.orderId) ? false : (seen.add(o.orderId), true)));
+          });
+        } else {
+          setOrders([]); // giữ hành vi cũ khi lỗi
+        }
+      } finally {
+        // xoá state điều hướng để tránh add lặp khi back/refresh
+        if (navState.newOrder) {
+          navigate(location.pathname, { replace: true, state: {} });
+        }
+      }
+    };
+
+    run();
+    return () => { cancelled = true; };
+  }, [location.state, location.pathname, navigate]); // [TAKEAWAY+]
 
   // NEW: regex & helpers cho phone
   const PHONE_RE = /^0\d{9}$/; // 10 số, bắt đầu bằng 0
