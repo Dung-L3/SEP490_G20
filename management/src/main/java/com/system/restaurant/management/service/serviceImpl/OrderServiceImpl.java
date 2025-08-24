@@ -5,15 +5,9 @@ import com.system.restaurant.management.dto.OrderRequestDto;
 import com.system.restaurant.management.dto.TableOrderRequest;
 import com.system.restaurant.management.dto.TableOrderResponse;
 import com.system.restaurant.management.dto.OrderItemRequest;
-import com.system.restaurant.management.entity.Order;
-import com.system.restaurant.management.entity.OrderDetail;
-import com.system.restaurant.management.entity.OrderStatus;
-import com.system.restaurant.management.entity.Dish;
+import com.system.restaurant.management.entity.*;
 import com.system.restaurant.management.exception.ResourceNotFoundException;
-import com.system.restaurant.management.repository.OrderRepository;
-import com.system.restaurant.management.repository.OrderDetailRepository;
-import com.system.restaurant.management.repository.DishRepository;
-import com.system.restaurant.management.repository.OrderStatusRepository;
+import com.system.restaurant.management.repository.*;
 import com.system.restaurant.management.service.OrderService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +32,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderDetailRepository orderDetailRepository;
     private final DishRepository dishRepository;
     private final OrderStatusRepository statusRepo;
+    private final ComboItemRepository comboItemRepository;
 
     // ====== QR MENU METHODS ======
     @Override
@@ -195,6 +190,11 @@ public class OrderServiceImpl implements OrderService {
                 .orElseThrow(() -> new ResourceNotFoundException("Order detail not found"));
         detail.setStatusId(4); // Cancelled
         orderDetailRepository.save(detail);
+        
+        // Cập nhật lại tổng tiền của order
+        Order order = orderRepository.findById(detail.getOrderId())
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+        updateOrderTotals(order);
     }
 
     private OrderDto mapToDto(Order order) {
@@ -243,25 +243,57 @@ public class OrderServiceImpl implements OrderService {
         Order order = findOrCreatePendingOrder(request.getTableId());
         OrderItemRequest item = request.getItem();
 
-        OrderDetail detail = new OrderDetail();
-        detail.setOrderId(order.getOrderId());
-        detail.setDishId(item.getDishId());
-        detail.setComboId(item.getComboId());
-        detail.setQuantity(item.getQuantity());
-        detail.setUnitPrice(item.getUnitPrice());
-        detail.setStatusId(1); // Pending
-        detail.setNotes(item.getNotes());
+        if (item.getComboId() != null) {
+            // Lấy danh sách các món trong combo
+            List<ComboItem> comboItems = comboItemRepository.findByComboId(item.getComboId());
+            BigDecimal comboPricePerUnit = item.getUnitPrice();
+            
+            // Tính giá cho mỗi món trong combo dựa trên tỷ lệ
+            int totalQuantityInCombo = comboItems.stream()
+                .mapToInt(ComboItem::getQuantity)
+                .sum();
+                
+            for (ComboItem comboItem : comboItems) {
+                OrderDetail detail = new OrderDetail();
+                detail.setOrderId(order.getOrderId());
+                detail.setDishId(comboItem.getDishId());
+                detail.setComboId(item.getComboId()); // Thêm ComboId
+                detail.setQuantity(item.getQuantity() * comboItem.getQuantity());
+                
+                // Tính giá cho từng món trong combo
+                BigDecimal ratio = BigDecimal.valueOf(comboItem.getQuantity())
+                    .divide(BigDecimal.valueOf(totalQuantityInCombo), 2, BigDecimal.ROUND_HALF_UP);
+                detail.setUnitPrice(comboPricePerUnit.multiply(ratio));
+                
+                detail.setStatusId(1); // Pending
+                detail.setNotes("Combo: " + item.getNotes());
+                detail.setIsRefunded(0); // Thêm IsRefunded
+                orderDetailRepository.save(detail);
+            }
+        } else {
+            // Xử lý món đơn lẻ như trước
+            OrderDetail detail = new OrderDetail();
+            detail.setOrderId(order.getOrderId());
+            detail.setDishId(item.getDishId());
+            detail.setQuantity(item.getQuantity());
+            detail.setUnitPrice(item.getUnitPrice());
+            detail.setStatusId(1); // Pending
+            detail.setNotes(item.getNotes());
+            detail.setIsRefunded(0);
+            orderDetailRepository.save(detail);
+        }
 
-        orderDetailRepository.save(detail);
         updateOrderTotals(order);
-
         return convertToTableOrderResponse(order);
     }
 
     @Override
     public TableOrderResponse updateTableOrderItem(Integer tableId, Integer dishId, Integer quantity) {
-        Order order = orderRepository.findPendingOrderByTableId(tableId)
-                .orElseThrow(() -> new ResourceNotFoundException("No pending order found"));
+        List<Order> pendingOrders = orderRepository.findPendingOrdersByTableId(tableId);
+        if (pendingOrders.isEmpty()) {
+            throw new ResourceNotFoundException("No pending order found");
+        }
+        Order order = pendingOrders.get(0); // Get most recent order
 
         OrderDetail detail = orderDetailRepository.findByOrderIdAndDishId(order.getOrderId(), dishId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order item not found"));
@@ -275,8 +307,11 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public TableOrderResponse removeTableOrderItem(Integer tableId, Integer dishId) {
-        Order order = orderRepository.findPendingOrderByTableId(tableId)
-                .orElseThrow(() -> new ResourceNotFoundException("No pending order found"));
+        List<Order> pendingOrders = orderRepository.findPendingOrdersByTableId(tableId);
+        if (pendingOrders.isEmpty()) {
+            throw new ResourceNotFoundException("No pending order found");
+        }
+        Order order = pendingOrders.get(0); // Get most recent order
 
         OrderDetail detail = orderDetailRepository.findByOrderIdAndDishId(order.getOrderId(), dishId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order item not found"));
@@ -289,29 +324,39 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public void cancelTableOrder(Integer tableId) {
-        Order order = orderRepository.findPendingOrderByTableId(tableId)
-                .orElseThrow(() -> new ResourceNotFoundException("No pending order found"));
-        order.setStatusId(4); // Cancelled
-        orderRepository.save(order);
+        List<Order> pendingOrders = orderRepository.findPendingOrdersByTableId(tableId);
+        if (!pendingOrders.isEmpty()) {
+            Order order = pendingOrders.get(0); // Get most recent order
+            order.setStatusId(4); // Cancelled
+            orderRepository.save(order);
+        }
     }
 
     private Order findOrCreatePendingOrder(Integer tableId) {
-        return orderRepository.findPendingOrderByTableId(tableId)
-                .orElseGet(() -> {
-                    Order newOrder = new Order();
-                    newOrder.setOrderType("DINEIN");
-                    newOrder.setTableId(tableId);
-                    newOrder.setStatusId(1); // Pending
-                    newOrder.setSubTotal(BigDecimal.ZERO);
-                    newOrder.setDiscountAmount(BigDecimal.ZERO);
-                    newOrder.setFinalTotal(BigDecimal.ZERO);
-                    return orderRepository.save(newOrder);
-                });
+        List<Order> pendingOrders = orderRepository.findPendingOrdersByTableId(tableId);
+        
+        if (!pendingOrders.isEmpty()) {
+            // Lấy order mới nhất (đã được sắp xếp theo createdAt DESC)
+            return pendingOrders.get(0);
+        }
+
+        // Tạo order mới nếu không tìm thấy
+        Order newOrder = new Order();
+        newOrder.setOrderType("DINEIN");
+        newOrder.setTableId(tableId);
+        newOrder.setStatusId(1); // Pending
+        newOrder.setSubTotal(BigDecimal.ZERO);
+        newOrder.setDiscountAmount(BigDecimal.ZERO);
+        newOrder.setFinalTotal(BigDecimal.ZERO);
+        newOrder.setCreatedAt(LocalDateTime.now());
+        newOrder.setIsRefunded(0);
+        return orderRepository.save(newOrder);
     }
 
     private void updateOrderTotals(Order order) {
         List<OrderDetail> details = orderDetailRepository.findByOrderId(order.getOrderId());
         BigDecimal subTotal = details.stream()
+                .filter(detail -> detail.getStatusId() != 4) // Chỉ tính các món không bị hủy
                 .map(detail -> detail.getUnitPrice().multiply(BigDecimal.valueOf(detail.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 

@@ -33,11 +33,11 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
     List<Order> findByOrderType(String orderType);
 
     // table ordering
-    @Query("SELECT o FROM Order o WHERE o.tableId = :tableId AND o.statusId = 1")
-    Optional<Order> findPendingOrderByTableId(@Param("tableId") Integer tableId);
+    @Query("SELECT o FROM Order o WHERE o.tableId = :tableId AND o.statusId = 1 ORDER BY o.createdAt DESC")
+    List<Order> findPendingOrdersByTableId(@Param("tableId") Integer tableId);
 
-    @Query("SELECT o FROM Order o WHERE o.tableId = :tableId AND o.statusId IN (1, 2)")
-    Optional<Order> findActiveOrderByTableId(@Param("tableId") Integer tableId);
+    @Query("SELECT o FROM Order o WHERE o.tableId = :tableId AND o.statusId IN (1, 2) ORDER BY o.createdAt DESC")
+    List<Order> findActiveOrdersByTableId(@Param("tableId") Integer tableId);
 
     @EntityGraph(attributePaths = {
             "orderDetails",

@@ -22,10 +22,10 @@ public class OrderDetail {
     @Column(name = "OrderID", nullable = false)
     private Integer orderId;
 
-    @Column(name = "DishID", nullable = false)
+    @Column(name = "DishID")
     private Integer dishId;
 
-    @Column(name = "ComboID", nullable = false)
+    @Column(name = "ComboID")
     private Integer comboId;
 
     @Column(name = "Quantity", nullable = false)
@@ -64,6 +64,10 @@ public class OrderDetail {
         }
         if (isRefunded == null) {
             isRefunded = 0;
+        }
+        // Validate dishId hoặc comboId phải có giá trị
+        if (dishId == null && comboId == null) {
+            throw new IllegalStateException("Either DishID or ComboID must be provided");
         }
     }
 

@@ -30,9 +30,10 @@ import ReservationList from './pages/receptionist/ReservationList';
 import ForgotPassword from './pages/ForgotPassword';
 import VerifyOtp      from './pages/VerifyOtp';
 import ResetPassword  from './pages/ResetPassword';
-import TakeawayOrder from './pages/receptionist/TakeawayOrder';
+// import TakeawayOrder from './pages/receptionist/TakeawayOrder';
 import ComboManager from './pages/manager/ComboManager';
 import PromotionsManager from './pages/manager/PromotionsManager';
+//import TakeawayOrderPublic from './pages/TakeawayOrderPublic';
 // import TakeawayOrderPublic from './pages/TakeawayOrderPublic';
 
 function App() {
@@ -67,6 +68,7 @@ function App() {
           <Route path="/waiter/orders" element={<WaiterOrder />} /> {/* Route cho waiter đặt món */}
           <Route path="/waiter/tables" element={<WaiterTableView />} /> {/* Route cho waiter xem bàn */}
           <Route path="/chef" element={<Chef />} /> {/* Route cho trang Chef (bếp trưởng) */}
+           {/*<Route path="/takeaway-order" element={<TakeawayOrderPublic />} /> Route cho trang đơn hàng mang đi công khai*/}
           {/* <Route path="/takeaway-order" element={<TakeawayOrderPublic />} /> Route cho trang đơn hàng mang đi công khai */}
 
           {/* QR Menu Routes */}
@@ -78,7 +80,7 @@ function App() {
             <Route path="/receptionist/:orderId/payment" element={<OrderPayment />} />
             <Route path="/receptionist"element={<ReceptionistHome/>} />
             <Route path="/receptionist/reservations"element={<ReservationList/>} />
-              <Route path="/receptionist/takeaway" element={<TakeawayOrder />} /> {/* Route cho trang đơn hàng mang đi */}
+              {/*<Route path="/receptionist/takeaway" element={<TakeawayOrder />} /> /!* Route cho trang đơn hàng mang đi *!/*/}
             </Routes>
           </AuthProvider>
         </Router>

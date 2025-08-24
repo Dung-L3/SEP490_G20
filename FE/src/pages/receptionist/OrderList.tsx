@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 // src/pages/OrderManager.tsx
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate} from 'react-router-dom';
 import TaskbarReceptionist from '../../components/TaskbarReceptionist';
 
 interface Order {
@@ -28,6 +28,7 @@ interface Promotion {
   isActive: boolean;
 }
 
+
 const OrderList: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [search, setSearch] = useState('');
@@ -50,6 +51,14 @@ const OrderList: React.FC = () => {
     useState<'cash' | 'card' | 'bankTransfer'>('cash');
 
   const navigate = useNavigate();
+
+
+  // NEW: regex & helpers cho phone
+  const PHONE_RE = /^0\d{9}$/; // 10 số, bắt đầu bằng 0
+  const sanitizePhone = (v: string) => v.replace(/\D/g, '').slice(0, 10); // chỉ số, tối đa 10
+  const phoneValid = phone === '' || PHONE_RE.test(phone); // cho phép trống; nếu có thì phải hợp lệ
+  const phoneInvalidMsg =
+    phone && !phoneValid ? 'Số điện thoại không hợp lệ. Yêu cầu 10 số và bắt đầu bằng 0.' : '';
 
   // Load danh sách đơn chưa thanh toán
   useEffect(() => {
