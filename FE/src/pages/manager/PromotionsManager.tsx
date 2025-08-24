@@ -74,6 +74,7 @@ const PromotionsManager: FC = () => {
   const [editForm, setEditForm] = useState<PromotionPayload & { promoId: number }>({ ...emptyPayload, promoId: 0 });
 
   // NEW: lỗi hiển thị đỏ trong modal
+  // Lỗi hiển thị đỏ trong modal
   const [createErr, setCreateErr] = useState<string | null>(null);
   const [editErr, setEditErr] = useState<string | null>(null);
 
@@ -121,8 +122,20 @@ const PromotionsManager: FC = () => {
     setFiltered(tmp);
   }, [search, activeFilter, dateFrom, dateTo, pageData]);
 
-  // Validate
-  const validatePayload = (pl: PromotionPayload): string | null => {
+  // // Validate
+  // const validatePayload = (pl: PromotionPayload): string | null => {
+  // NEW: Hàm kiểm tra trùng mã ngay trên trang đang hiển thị
+  const codeClashLocal = (code: string, ignoreId?: number) => {
+    const c = code.trim().toLowerCase();
+    if (!c || !pageData) return false;
+    return pageData.content.some(p =>
+      p.promoId !== (ignoreId ?? -1) &&
+      p.promoCode.trim().toLowerCase() === c
+    );
+  };
+
+  // CHANGED: nhận thêm ignoreId để dùng cho Edit (cho phép giữ nguyên mã của chính bản ghi)
+  const validatePayload = (pl: PromotionPayload, ignoreId?: number): string | null => {
     if (!pl.promoCode.trim()) return 'Vui lòng nhập mã (promoCode).';
     if (!pl.promoName.trim()) return 'Vui lòng nhập tên chương trình.';
     if (!pl.startDate) return 'Vui lòng chọn ngày bắt đầu.';
@@ -138,6 +151,12 @@ const PromotionsManager: FC = () => {
     // usageLimit bắt buộc, min 0
     if (!Number.isFinite(pl.usageLimit)) return 'Vui lòng nhập Usage limit (số).';
     if (pl.usageLimit < 0) return 'Usage limit không được âm.';
+
+    // NEW: kiểm tra trùng mã trên trang hiện tại
+    if (codeClashLocal(pl.promoCode, ignoreId)) {
+      return 'Mã khuyến mãi (promoCode) đã tồn tại ở trang hiện tại. Vui lòng nhập mã khác.';
+    }
+
     return null;
   };
 
@@ -177,6 +196,11 @@ const PromotionsManager: FC = () => {
       });
       if (!res.ok) {
         const t = await res.text();
+        // NEW: bắt duplicate từ server (ví dụ UNIQUE/409)
+        if (res.status === 409 || /duplicate|exists|unique|constraint/i.test(t)) {
+          setCreateErr('Mã khuyến mãi (promoCode) đã tồn tại trong hệ thống.');
+          return;
+        }
         throw new Error(`Tạo mã thất bại: ${res.status} ${t}`);
       }
       setIsCreateOpen(false);
@@ -191,7 +215,8 @@ const PromotionsManager: FC = () => {
 
   const handleUpdate = async () => {
     const { promoId, ...payload } = editForm;
-    const msg = validatePayload(payload);
+    // const msg = validatePayload(payload);
+    const msg = validatePayload(payload, promoId); // CHANGED: truyền promoId để bỏ qua chính nó
     if (msg) { setEditErr(msg); return; }
     setLoading(true);
     try {
@@ -203,6 +228,11 @@ const PromotionsManager: FC = () => {
       });
       if (!res.ok) {
         const t = await res.text();
+        // NEW: bắt duplicate từ server
+        if (res.status === 409 || /duplicate|exists|unique|constraint/i.test(t)) {
+          setEditErr('Mã khuyến mãi (promoCode) đã tồn tại trong hệ thống.');
+          return;
+        }
         throw new Error(`Cập nhật thất bại: ${res.status} ${t}`);
       }
       setIsEditOpen(false);
@@ -353,7 +383,12 @@ const PromotionsManager: FC = () => {
                     <input
                       value={createForm.promoCode}
                       onChange={e=>{ setCreateForm(s=>({...s, promoCode: e.target.value})); setCreateErr(null); }}
-                      className="w-full border rounded px-2 py-1"
+                      onBlur={()=>{ // NEW: báo trùng ngay khi rời ô
+                        if (codeClashLocal(createForm.promoCode)) {
+                          setCreateErr('Mã khuyến mãi (promoCode) đã tồn tại ở trang hiện tại. Vui lòng nhập mã khác.');
+                        }
+                      }}
+                      className={`w-full border rounded px-2 py-1 ${createErr?.includes('Mã khuyến mãi') ? 'border-red-500' : ''}`}
                       required
                     />
                   </div>
@@ -467,7 +502,12 @@ const PromotionsManager: FC = () => {
                     <input
                       value={editForm.promoCode}
                       onChange={e=>{ setEditForm(s=>({...s, promoCode: e.target.value})); setEditErr(null); }}
-                      className="w-full border rounded px-2 py-1"
+                      onBlur={()=>{ // NEW: báo trùng ngay khi rời ô
+                        if (codeClashLocal(editForm.promoCode, editForm.promoId)) {
+                          setEditErr('Mã khuyến mãi (promoCode) đã tồn tại ở trang hiện tại. Vui lòng nhập mã khác.');
+                        }
+                      }}
+                      className={`w-full border rounded px-2 py-1 ${editErr?.includes('Mã khuyến mãi') ? 'border-red-500' : ''}`}
                       required
                     />
                   </div>

@@ -146,8 +146,6 @@ const ReservationList: React.FC = () => {
       alert('Chỉ có thể hủy khi đơn đang Pending.');
       return;
     }
-    const ok = window.confirm(`Bạn có chắc muốn hủy đặt bàn #${selectedReservation.reservationId}?`);
-    if (!ok) return;
 
     setCancelling(true);
     fetch(`${RESERVATIONS_API}/${selectedReservation.reservationId}/status?status=Cancelled`, {
