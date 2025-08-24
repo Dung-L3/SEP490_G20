@@ -195,6 +195,11 @@ public class OrderServiceImpl implements OrderService {
                 .orElseThrow(() -> new ResourceNotFoundException("Order detail not found"));
         detail.setStatusId(4); // Cancelled
         orderDetailRepository.save(detail);
+        
+        // Cập nhật lại tổng tiền của order
+        Order order = orderRepository.findById(detail.getOrderId())
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+        updateOrderTotals(order);
     }
 
     private OrderDto mapToDto(Order order) {
@@ -312,6 +317,7 @@ public class OrderServiceImpl implements OrderService {
     private void updateOrderTotals(Order order) {
         List<OrderDetail> details = orderDetailRepository.findByOrderId(order.getOrderId());
         BigDecimal subTotal = details.stream()
+                .filter(detail -> detail.getStatusId() != 4) // Chỉ tính các món không bị hủy
                 .map(detail -> detail.getUnitPrice().multiply(BigDecimal.valueOf(detail.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
