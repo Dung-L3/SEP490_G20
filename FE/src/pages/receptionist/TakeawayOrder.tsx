@@ -1,289 +1,418 @@
-// src/pages/receptionist/TakeawayOrder.tsx
-import React, { useState, useEffect} from 'react';
-import type { FormEvent } from 'react';
+/* src/pages/receptionist/TakeawayOrder.tsx */
+import React, { useEffect, useState, type FormEvent } from 'react';
 import axios from 'axios';
-//import type { AxiosError } from 'axios';
-import { useNavigate } from 'react-router-dom';
+import TaskbarReceptionist from '../../components/TaskbarReceptionist';
+import { Link } from 'react-router-dom';
 
-interface Dish { dishId: number; dishName: string; price: number; }
-interface Combo { comboId: number; comboName: string; price: number; }
 type ItemKind = 'dish' | 'combo';
-
 interface OrderItem {
-  kind?: ItemKind;
-  dishId?: number;
-  comboId?: number;
+  kind: ItemKind;
+  dishId?: number | null;
+  comboId?: number | null;
   name?: string;
   quantity: number;
-  unitPrice: number;
+  unitPrice?: number;
   notes?: string;
 }
 
+const STORAGE_KEY = 'takeaway_selection';
+
 const formatVnd = (n?: number) =>
-  typeof n === 'number' ? `${n.toLocaleString('vi-VN')} đ` : '0 đ';
+    typeof n === 'number' ? `${n.toLocaleString('vi-VN')} đ` : '0 đ';
+
+// ===== Validate rules =====
+const PHONE_RE = /^\d{10}$/;           // đúng 10 chữ số
+const NAME_NO_DIGIT_RE = /^[^\d]+$/;   // không chứa số
+const MIN_NAME_LEN = 10;               // tối thiểu 10 ký tự
+const MAX_NOTE_LEN = 200;              // ghi chú tối đa 200 ký tự
 
 const TakeawayOrder: React.FC = () => {
-  const navigate = useNavigate(); // <-- thêm
+  // ===== FORM STATE =====
   const [customerName, setCustomerName] = useState('');
   const [phone, setPhone] = useState('');
-  const [notes, setNotes] = useState('');
+  const [orderNotes, setOrderNotes] = useState('');
   const [items, setItems] = useState<OrderItem[]>([]);
-  const [dishes, setDishes] = useState<Dish[]>([]);
-  const [combos, setCombos] = useState<Combo[]>([]);
   const [subTotal, setSubTotal] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
 
+  // ===== Load giỏ từ localStorage =====
+  const loadFromStorage = () => {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      setItems([]);
+      return;
+    }
+    try {
+      const arr = JSON.parse(raw) as OrderItem[];
+      setItems(Array.isArray(arr) ? arr : []);
+    } catch {
+      setItems([]);
+    }
+  };
 
   useEffect(() => {
-    const fetchMeta = async () => {
-      try {
-        const [dRes, cRes] = await Promise.all([
-          axios.get<Dish[]>('/api/dishes'),
-          axios.get<Combo[]>('/api/combos'),
-        ]);
-        setDishes(dRes.data);
-        setCombos(cRes.data);
-      } catch (err) {
-        console.warn('Không tải được dishes/combos', err);
-      }
+    loadFromStorage();
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY) loadFromStorage();
     };
-    void fetchMeta();
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   }, []);
 
+  // ===== Tính subtotal =====
   useEffect(() => {
-    const sum = items.reduce((acc, it) => acc + (it.unitPrice || 0) * (it.quantity || 0), 0);
-    setSubTotal(sum);
+    setSubTotal(items.reduce((s, it) => s + (it.unitPrice ?? 0) * (it.quantity ?? 0), 0));
   }, [items]);
 
-  const addItem = () => setItems(prev => [...prev, { kind: undefined, quantity: 1, unitPrice: 0 }]);
-  const removeItem = (idx: number) => setItems(prev => prev.filter((_, i) => i !== idx));
-
-  const changeKind = (idx: number, kind?: ItemKind) => {
-    const next = [...items];
-    const it = { ...next[idx] };
-    it.kind = kind;
-    it.dishId = undefined;
-    it.comboId = undefined;
-    it.name = undefined;
-    it.unitPrice = 0;
-    next[idx] = it;
-    setItems(next);
+  const handleClearItems = () => {
+    localStorage.removeItem(STORAGE_KEY);
+    setItems([]);
   };
 
-  const updateItem = (idx: number, field: keyof OrderItem, value: string) => {
-    const next = [...items];
-    const it = { ...next[idx] };
+  // cập nhật 1 item + đồng bộ localStorage
+  const updateItemField = (idx: number, patch: Partial<OrderItem>) => {
+    setItems(prev => {
+      const next = [...prev];
+      const merged = { ...next[idx], ...patch };
 
-    if (field === 'dishId') {
-      const dish = dishes.find(d => d.dishId === +value);
-      it.dishId = dish?.dishId;
-      it.name = dish?.dishName;
-      it.unitPrice = dish?.price ?? 0;
-    } else if (field === 'comboId') {
-      const combo = combos.find(c => c.comboId === +value);
-      it.comboId = combo?.comboId;
-      it.name = combo?.comboName;
-      it.unitPrice = combo?.price ?? 0;
-    } else if (field === 'quantity') {
-      it.quantity = Math.max(1, +value || 1);
-    } else if (field === 'notes') {
-      it.notes = value;
+      // Chuẩn hoá quantity nếu có
+      if (patch.quantity != null) {
+        const q = Number(patch.quantity);
+        merged.quantity = Number.isFinite(q) && q >= 1 ? Math.floor(q) : 1;
+      }
+      // Cắt ghi chú món nếu quá dài
+      if (typeof patch.notes === 'string') {
+        merged.notes = patch.notes.slice(0, MAX_NOTE_LEN);
+      }
+
+      next[idx] = merged;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+
+  // ===== Validate form =====
+  const validateForm = (): string[] => {
+    const errs: string[] = [];
+    const nameTrim = customerName.trim();
+    const phoneTrim = phone.trim();
+
+    if (!nameTrim) {
+      errs.push('Vui lòng nhập tên khách hàng.');
+    } else if (!NAME_NO_DIGIT_RE.test(nameTrim)) {
+      errs.push('Tên khách hàng không được chứa số.');
+    } else if (nameTrim.length < MIN_NAME_LEN) {
+      errs.push(`Tên khách hàng phải có ít nhất ${MIN_NAME_LEN} ký tự.`);
     }
 
-    next[idx] = it;
-    setItems(next);
+    if (!PHONE_RE.test(phoneTrim)) {
+      errs.push('Số điện thoại phải gồm đúng 10 chữ số.');
+    }
+
+    if (items.length === 0) {
+      errs.push('Bạn chưa chọn món — bấm “+ Chọn món”.');
+    }
+
+    items.forEach((it, idx) => {
+      if (!Number.isInteger(it.quantity) || it.quantity < 1) {
+        errs.push(`Món #${idx + 1} (“${it.name ?? 'Không tên'}”) có SL không hợp lệ.`);
+      }
+      if (typeof it.notes === 'string' && it.notes.length > MAX_NOTE_LEN) {
+        errs.push(`Ghi chú của món #${idx + 1} vượt quá ${MAX_NOTE_LEN} ký tự.`);
+      }
+    });
+
+    if (orderNotes.length > MAX_NOTE_LEN) {
+      errs.push(`Ghi chú đơn hàng vượt quá ${MAX_NOTE_LEN} ký tự.`);
+    }
+
+    return errs;
   };
 
+  // ===== Submit =====
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  const payload = {
-    customerName,
-    phone,
-    notes,
-    items: items.map(it => ({
-      dishId: it.kind === 'dish' ? it.dishId : undefined,
-      comboId: it.kind === 'combo' ? it.comboId : undefined,
-      quantity: it.quantity,
-      unitPrice: it.unitPrice,
-      notes: it.notes,
-    })),
+    // Chuẩn hoá trước khi validate
+    const nameTrim = customerName.trim();
+    const phoneTrim = phone.trim();
+    if (nameTrim !== customerName) setCustomerName(nameTrim);
+    if (phoneTrim !== phone) setPhone(phoneTrim);
+
+    const errs = validateForm();
+    if (errs.length) {
+      alert(errs.join('\n'));
+      return;
+    }
+
+    const mapped = items
+        .map(it => {
+          const base = {
+            quantity: it.quantity,
+            unitPrice: it.unitPrice ?? 0,
+            notes: it.notes,
+          };
+          if (it.kind === 'dish' && typeof it.dishId === 'number') {
+            return { ...base, dishId: it.dishId, comboId: null };
+          }
+          if (it.kind === 'combo' && typeof it.comboId === 'number') {
+            return { ...base, comboId: it.comboId, dishId: null };
+          }
+          return null;
+        })
+        .filter((x): x is NonNullable<typeof x> => x !== null);
+
+    if (mapped.length === 0) {
+      alert('Các món đã chọn thiếu mã món/combo. Vui lòng chọn lại từ menu.');
+      return;
+    }
+
+    const payload = {
+      customerName: nameTrim,
+      phone: phoneTrim,
+      notes: orderNotes,
+      items: mapped,
+      orderType: 'TAKEAWAY',
+      source: 'RECEPTION_TAKEAWAY',
+    };
+
+    try {
+      setSubmitting(true);
+      const res = await axios.post('/api/receptionist/orders/takeaway', payload, {
+        withCredentials: true,
+      });
+
+      alert('Tạo đơn mang đi thành công');
+
+      // Lấy orderId (nếu có) để Chef biết đơn mới
+      const orderId = (res?.data && (res.data.orderId ?? res.data.id)) as number | undefined;
+      if (orderId) {
+        // Báo Chef tự reload + highlight đơn mới
+        sessionStorage.setItem(
+            'chef_force_reload',
+            JSON.stringify({ orderId, ts: Date.now() })
+        );
+      }
+
+      // 1) Clear giỏ + reset form
+      localStorage.removeItem(STORAGE_KEY);
+      setItems([]);
+      setCustomerName('');
+      setPhone('');
+      setOrderNotes('');
+
+      // 2) Refresh lại đúng trang hiện tại (không rời trang, không mở tab mới)
+      window.location.reload();
+      return;
+    } catch (err) {
+      console.error(err);
+      alert('Tạo đơn thất bại');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  try {
-    await axios.post('/api/receptionist/orders/takeaway', payload);
-    navigate('/chef');
-  } catch (err) {
-    console.error(err);
-    alert('Tạo đơn thất bại');
-  }
-};
-
+  const returnTo = '/receptionist/takeaway';
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <h1 className="text-2xl font-semibold mb-6">Đơn Mang Đi</h1>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block mb-1">Tên khách hàng</label>
-            <input
-              type="text"
-              className="w-full border rounded px-3 py-2"
-              value={customerName}
-              onChange={e => setCustomerName(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <label className="block mb-1">Số điện thoại</label>
-            <input
-              type="tel"
-              className="w-full border rounded px-3 py-2"
-              value={phone}
-              onChange={e => setPhone(e.target.value)}
-              required
-            />
-          </div>
+      <div className="flex min-h-screen bg-gray-50">
+        {/* Sidebar */}
+        <div className="w-64 min-h-screen sticky top-0 z-10">
+          <TaskbarReceptionist />
         </div>
 
-        {/* Danh sách món */}
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="text-xl font-medium">Món</h2>
-            <button type="button" onClick={addItem} className="bg-blue-600 text-white px-4 py-1 rounded">
-              + Thêm món
-            </button>
+        {/* Main */}
+        <div className="flex-1 min-w-0 p-8">
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Đơn Mang Đi</h1>
+            <p className="text-gray-600">
+              Trang tạo đơn mang đi cho khách hàng của lễ tân
+            </p>
           </div>
 
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="border px-2 py-1">Loại</th>
-                <th className="border px-2 py-1">Món/Combo</th>
-                <th className="border px-2 py-1">Số lượng</th>
-                <th className="border px-2 py-1">Giá</th>
-                <th className="border px-2 py-1">Ghi chú</th>
-                <th className="border px-2 py-1 w-24">{/* trống */}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((it, idx) => (
-                <tr key={idx}>
-                  <td className="border px-2 py-1">
-                    <select
-                      className="w-full"
-                      value={it.kind ?? ''}
-                      onChange={e =>
-                        changeKind(idx, (e.target.value || undefined) as ItemKind | undefined)
-                      }
-                    >
-                      <option value="">Chọn</option>
-                      <option value="dish">Món lẻ</option>
-                      <option value="combo">Combo</option>
-                    </select>
-                  </td>
-
-                  <td className="border px-2 py-1">
-                    {it.kind === 'dish' ? (
-                      <select
-                        className="w-full"
-                        value={it.dishId ?? ''}
-                        onChange={e => updateItem(idx, 'dishId', e.target.value)}
-                      >
-                        <option value="">Chọn món</option>
-                        {dishes.map(d => (
-                          <option key={d.dishId} value={d.dishId}>
-                            {d.dishName}
-                          </option>
-                        ))}
-                      </select>
-                    ) : it.kind === 'combo' ? (
-                      <select
-                        className="w-full"
-                        value={it.comboId ?? ''}
-                        onChange={e => updateItem(idx, 'comboId', e.target.value)}
-                      >
-                        <option value="">Chọn combo</option>
-                        {combos.map(c => (
-                          <option key={c.comboId} value={c.comboId}>
-                            {c.comboName}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <span className="text-gray-400">Chọn loại trước</span>
-                    )}
-                  </td>
-
-                  <td className="border px-2 py-1">
-                    <input
-                      type="number"
-                      min={1}
-                      className="w-24 border rounded px-1"
-                      value={it.quantity}
-                      onChange={e => updateItem(idx, 'quantity', e.target.value)}
-                    />
-                  </td>
-
-                  <td className="border px-2 py-1 text-right">{formatVnd(it.unitPrice)}</td>
-
-                  <td className="border px-2 py-1">
-                    <input
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Thông tin khách */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block mb-1 font-medium">Tên khách hàng</label>
+                  <input
                       type="text"
-                      className="w-full border rounded px-2 py-1"
-                      value={it.notes ?? ''}
-                      onChange={e => updateItem(idx, 'notes', e.target.value)}
-                    />
-                  </td>
+                      className="w-full border rounded px-3 py-2"
+                      value={customerName}
+                      onChange={e => {
+                        // Chặn số trong tên
+                        const v = e.target.value.replace(/\d+/g, '');
+                        setCustomerName(v);
+                      }}
+                      required
+                  />
+                  <div className="text-xs text-gray-500 mt-1">
+                    Không chứa số, tối thiểu {MIN_NAME_LEN} ký tự.
+                  </div>
+                </div>
+                <div>
+                  <label className="block mb-1 font-medium">Số điện thoại</label>
+                  <input
+                      type="tel"
+                      inputMode="numeric"
+                      pattern="\d{10}"
+                      maxLength={10}
+                      className="w-full border rounded px-3 py-2"
+                      value={phone}
+                      onChange={e => {
+                        // Chỉ cho phép số, tối đa 10
+                        const onlyDigits = e.target.value.replace(/\D+/g, '').slice(0, 10);
+                        setPhone(onlyDigits);
+                      }}
+                      required
+                  />
+                  <div className="text-xs text-gray-500 mt-1">
+                    Yêu cầu đúng 10 chữ số.
+                  </div>
+                </div>
+              </div>
 
-                  <td className="border px-2 py-1 text-center">
-                    <button
-                      type="button"
-                      onClick={() => removeItem(idx)}
-                      className="bg-red-600 text-white px-3 py-1 rounded"
+              {/* Món đã chọn */}
+              <div className="bg-white border rounded-lg">
+                <div className="flex items-center justify-between p-3 border-b">
+                  <h2 className="font-semibold">Món đã chọn</h2>
+                  <div className="flex gap-2">
+                    <Link
+                        to={`/menu?mode=takeaway&return=${encodeURIComponent(returnTo)}`}
+                        className="px-3 py-1 rounded bg-blue-600 text-white"
                     >
-                      Xóa
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {items.length === 0 && (
-                <tr>
-                  <td className="border px-2 py-3 text-center" colSpan={6}>
-                    Chưa có món nào — bấm “+ Thêm món”
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                      + Chọn món
+                    </Link>
+                    {items.length > 0 && (
+                        <button
+                            type="button"
+                            onClick={handleClearItems}
+                            className="px-3 py-1 rounded bg-gray-200"
+                        >
+                          Xoá hết
+                        </button>
+                    )}
+                  </div>
+                </div>
 
-        <div>
-          <label className="block mb-1">Ghi chú đơn hàng</label>
-          <textarea
-            className="w-full border rounded px-3 py-2"
-            rows={3}
-            value={notes}
-            onChange={e => setNotes(e.target.value)}
-          />
-        </div>
+                <div className="p-3">
+                  {items.length === 0 ? (
+                      <div className="text-gray-500">Chưa có món nào. Bấm “+ Chọn món”.</div>
+                  ) : (
+                      <table className="w-full border-collapse">
+                        <thead>
+                        <tr className="bg-gray-50">
+                          <th className="border px-2 py-1 text-left">Tên</th>
+                          <th className="border px-2 py-1">SL</th>
+                          <th className="border px-2 py-1 text-right">Đơn giá</th>
+                          <th className="border px-2 py-1 text-right">Tạm tính</th>
+                          <th className="border px-2 py-1">Ghi chú</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {items.map((it, i) => (
+                            <tr key={i}>
+                              <td className="border px-2 py-1">
+                                {it.name ||
+                                    (it.kind === 'dish'
+                                        ? `Món #${it.dishId}`
+                                        : `Combo #${it.comboId}`)}
+                              </td>
+                              <td className="border px-2 py-1 text-center">
+                                <input
+                                    type="number"
+                                    min={1}
+                                    className="w-16 border rounded px-2 py-1 text-center"
+                                    value={it.quantity}
+                                    onChange={e =>
+                                        updateItemField(i, {
+                                          quantity: Math.max(1, Number(e.target.value) || 1),
+                                        })
+                                    }
+                                />
+                              </td>
+                              <td className="border px-2 py-1 text-right">{formatVnd(it.unitPrice)}</td>
+                              <td className="border px-2 py-1 text-right">
+                                {formatVnd((it.unitPrice ?? 0) * (it.quantity ?? 0))}
+                              </td>
+                              <td className="border px-2 py-1">
+                                <input
+                                    type="text"
+                                    className="w-full border rounded px-1 py-1 text-sm"
+                                    value={it.notes ?? ''}
+                                    onChange={e =>
+                                        updateItemField(i, { notes: e.target.value.slice(0, MAX_NOTE_LEN) })
+                                    }
+                                    placeholder="Ghi chú"
+                                />
+                                <div className="text-[10px] text-gray-500 mt-0.5">
+                                  Tối đa {MAX_NOTE_LEN} ký tự
+                                </div>
+                              </td>
+                            </tr>
+                        ))}
+                        </tbody>
+                        <tfoot>
+                        <tr>
+                          <td className="border px-2 py-2 text-right font-semibold" colSpan={3}>
+                            Tổng
+                          </td>
+                          <td className="border px-2 py-2 text-right font-semibold">
+                            {formatVnd(subTotal)}
+                          </td>
+                          <td className="border" />
+                        </tr>
+                        </tfoot>
+                      </table>
+                  )}
+                </div>
+              </div>
 
-        {/* Tổng tiền */}
-        <div className="flex justify-end gap-2 text-lg font-medium">
-          <span>SubTotal:</span>
-          <span>{formatVnd(subTotal)}</span>
-        </div>
+              {/* Ghi chú đơn */}
+              <div>
+                <label className="block mb-1 font-medium">Ghi chú đơn hàng</label>
+                <textarea
+                    className="w-full border rounded px-3 py-2"
+                    rows={3}
+                    value={orderNotes}
+                    onChange={e => setOrderNotes(e.target.value.slice(0, MAX_NOTE_LEN))}
+                />
+                <div className="text-xs text-gray-500 mt-1">Tối đa {MAX_NOTE_LEN} ký tự</div>
+              </div>
 
-        <div className="text-right">
-          <button type="submit" className="bg-green-600 text-white px-6 py-2 rounded">
-            Tạo đơn
-          </button>
+              <div className="flex justify-end items-center gap-3 text-lg font-semibold">
+                <span>SubTotal:</span>
+                <span>{formatVnd(subTotal)}</span>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <button
+                    type="button"
+                    onClick={() => {
+                      setCustomerName('');
+                      setPhone('');
+                      setOrderNotes('');
+                      handleClearItems();
+                    }}
+                    className="px-4 py-2 border rounded-lg"
+                    disabled={submitting}
+                >
+                  Xóa form
+                </button>
+                <button
+                    type="submit"
+                    className="bg-emerald-600 text-white px-6 py-2 rounded hover:bg-emerald-700 disabled:opacity-60"
+                    disabled={submitting || items.length === 0}
+                >
+                  {submitting ? 'Đang tạo…' : 'Tạo đơn'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </form>
-    </div>
+      </div>
   );
 };
-
 
 export default TakeawayOrder;
