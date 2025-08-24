@@ -32,6 +32,9 @@ const Login = () => {
 
       // Thực hiện login
       try {
+        if (!res.role) {
+          throw new Error('Không nhận được thông tin quyền truy cập');
+        }
         login(username, res.role);
 
         // Kiểm tra dữ liệu đã được lưu
