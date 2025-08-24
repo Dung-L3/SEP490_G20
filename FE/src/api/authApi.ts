@@ -1,11 +1,13 @@
 import axiosClient from './axiosClient';
 
 interface LoginResponse {
-  mess?: string;
-  role?: string;
+  mess: string;
+  role: string;
+  token?: string;
+  username?: string;
 }
 
-export async function loginApi(data: { username: string; password: string }) {
+export async function loginApi(data: { username: string; password: string }): Promise<LoginResponse> {
   try {
     console.log('Login request data:', data);
     
