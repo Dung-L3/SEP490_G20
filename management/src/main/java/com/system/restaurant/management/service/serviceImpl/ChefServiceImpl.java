@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 public class ChefServiceImpl implements ChefService {
 
     private final OrderDetailRepository orderDetailRepository;
+    private final OrderService orderService;
 
     @Override
     public List<KitchenOrderDTO> getPendingOrders() {
@@ -130,5 +131,25 @@ public class ChefServiceImpl implements ChefService {
             case "CANCELLED" -> 4;
             default -> throw new IllegalArgumentException("Invalid status: " + status);
         };
+    }
+
+    @Override
+    public void cancelOrder(Integer orderDetailId) {
+        try {
+            OrderDetail orderDetail = orderDetailRepository.findById(orderDetailId)
+                    .orElseThrow(() -> new RuntimeException("Order detail not found with ID: " + orderDetailId));
+
+            // Đặt trạng thái là CANCELLED (4)
+            orderDetail.setStatusId(4);
+            orderDetailRepository.save(orderDetail);
+
+            // Cập nhật lại tổng tiền của order
+            orderService.cancelOrderDetail(orderDetailId);
+
+            log.info("Cancelled order detail {} and updated order totals", orderDetailId);
+        } catch (Exception e) {
+            log.error("Error cancelling order: ", e);
+            throw new RuntimeException("Failed to cancel order", e);
+        }
     }
 }
