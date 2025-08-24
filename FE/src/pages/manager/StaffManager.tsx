@@ -28,6 +28,8 @@ const StaffManager = () => {
   const [addOpen, setAddOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
+  const [modalError, setModalError] = useState<string>('');
+  const [editModalError, setEditModalError] = useState<string>('');
   const [newStaff, setNewStaff] = useState<StaffRequest>({
     fullName: '',
     email: '',
@@ -48,23 +50,35 @@ const StaffManager = () => {
   }) => {
     try {
       setLoading(true);
-      // Đảm bảo roleName không null và chuyển đổi sang định dạng phù hợp
-      const processedStaffData = {
-        ...staffData,
-        roleName: staffData.roleName || 'ROLE_STAFF' // Giá trị mặc định nếu roleName là null
+      setModalError('');
+
+      // Đảm bảo roleName đúng định dạng
+      let role = staffData.roleName;
+      if (!role.startsWith('ROLE_')) {
+        role = `ROLE_${role}`;
+      }
+      
+      const staffRequest: StaffRequest = {
+        username: staffData.username,
+        passwordHash: staffData.password,
+        fullName: staffData.fullName,
+        email: staffData.email,
+        phone: staffData.phone,
+        roleNames: [role],
+        status: true
       };
       
-      const newStaff = await registerEmployeeApi(processedStaffData);
-      // Thêm nhân viên mới vào danh sách
+      const newStaff = await staffApi.create(staffRequest);
+      // Thêm nhân viên mới vào danh sách với chức năng đã được ánh xạ đúng
       setStaff(prev => [...prev, mapStaffToDisplay(newStaff)]);
       setAddOpen(false);
       setError(''); // Clear any previous errors
     } catch (error) {
       console.error('Error registering employee:', error);
       if (error instanceof Error) {
-        setError(error.message);
+        setModalError(error.message);
       } else {
-        setError('Không thể thêm nhân viên mới');
+        setModalError('Không thể thêm nhân viên mới');
       }
     } finally {
       setLoading(false);
@@ -165,29 +179,67 @@ const StaffManager = () => {
 
 
   const handleEditSave = async () => {
+    setEditModalError('');
+
     if (!editStaff || editStaff.id === 0) {
-      setError('Không tìm thấy thông tin nhân viên');
+      setEditModalError('Không tìm thấy thông tin nhân viên');
       return;
     }
 
-    // Validate input
-    if (!editStaff.fullName.trim() || !editStaff.email.trim() || !editStaff.phone.trim() || !editStaff.username.trim()) {
-      setError('Vui lòng điền đầy đủ thông tin');
+    // Validate each field
+    if (!editStaff.fullName.trim()) {
+      setEditModalError('Vui lòng nhập họ tên');
+      return;
+    }
+    if (!editStaff.email.trim()) {
+      setEditModalError('Vui lòng nhập email');
+      return;
+    }
+    if (!editStaff.phone.trim()) {
+      setEditModalError('Vui lòng nhập số điện thoại');
+      return;
+    }
+    if (!editStaff.username.trim()) {
+      setEditModalError('Vui lòng nhập tên đăng nhập');
+      return;
+    }
+    if (!editStaff.roleNames || editStaff.roleNames.length === 0) {
+      setEditModalError('Vui lòng chọn chức vụ');
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(editStaff.email.trim())) {
+      setEditModalError('Email không hợp lệ');
+      return;
+    }
+
+    // Validate phone number
+    const phoneRegex = /^\d{10}$/;
+    if (!phoneRegex.test(editStaff.phone.trim())) {
+      setEditModalError('Số điện thoại phải có 10 chữ số');
       return;
     }
 
     try {
       setLoading(true);
-      setError(''); // Reset error state
 
       console.log('Current staff data:', editStaff);
+      
+      // Đảm bảo role name có định dạng đúng
+      let role = editStaff.roleNames[0];
+      if (!role.startsWith('ROLE_')) {
+        role = `ROLE_${role}`;
+      }
+
       const staffRequest: StaffRequest = {
         username: editStaff.username.trim(),
         fullName: editStaff.fullName.trim(),
         email: editStaff.email.trim(),
         phone: editStaff.phone.trim(),
         status: editStaff.status,
-        roleNames: editStaff.roleNames,  // Keep existing roles
+        roleNames: [role],  // Gửi role đã được format
         passwordHash: '' // Empty password means no change
       };
       console.log('Sending update request:', staffRequest);
@@ -204,9 +256,9 @@ const StaffManager = () => {
     } catch (err) {
       console.error('Error updating staff:', err);
       if (err instanceof Error) {
-        setError(err.message);
+        setEditModalError(err.message);
       } else {
-        setError('Không thể cập nhật thông tin nhân viên');
+        setEditModalError('Không thể cập nhật thông tin nhân viên');
       }
     } finally {
       setLoading(false);
@@ -214,9 +266,45 @@ const StaffManager = () => {
   };
 
   const handleAddSave = async () => {
-    if (!newStaff.fullName.trim() || newStaff.roleNames.length === 0 || !newStaff.phone.trim() || 
-        !newStaff.username.trim() || !newStaff.email.trim()) {
-      setError('Vui lòng điền đầy đủ thông tin');
+    setModalError('');
+
+    // Validate all fields
+    if (!newStaff.fullName.trim()) {
+      setModalError('Vui lòng nhập họ tên');
+      return;
+    }
+    if (!newStaff.email.trim()) {
+      setModalError('Vui lòng nhập email');
+      return;
+    }
+    if (!newStaff.phone.trim()) {
+      setModalError('Vui lòng nhập số điện thoại');
+      return;
+    }
+    if (!newStaff.username.trim()) {
+      setModalError('Vui lòng nhập tên đăng nhập');
+      return;
+    }
+    if (!newStaff.passwordHash.trim()) {
+      setModalError('Vui lòng nhập mật khẩu');
+      return;
+    }
+    if (newStaff.roleNames.length === 0) {
+      setModalError('Vui lòng chọn chức vụ');
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newStaff.email.trim())) {
+      setModalError('Email không hợp lệ');
+      return;
+    }
+
+    // Validate phone number
+    const phoneRegex = /^\d{10}$/;
+    if (!phoneRegex.test(newStaff.phone.trim())) {
+      setModalError('Số điện thoại phải có 10 chữ số');
       return;
     }
 
@@ -236,8 +324,12 @@ const StaffManager = () => {
       });
       setError('');
     } catch (err) {
-      setError('Không thể thêm nhân viên mới');
       console.error('Error creating staff:', err);
+      if (err instanceof Error) {
+        setModalError(err.message);
+      } else {
+        setModalError('Không thể thêm nhân viên mới');
+      }
     } finally {
       setLoading(false);
     }
@@ -430,6 +522,11 @@ const StaffManager = () => {
             <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Thêm nhân viên mới</h2>
+                {modalError && (
+                  <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                    {modalError}
+                  </div>
+                )}
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Họ tên</label>
@@ -537,6 +634,11 @@ const StaffManager = () => {
             <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Chỉnh sửa thông tin</h2>
+                {editModalError && (
+                  <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                    {editModalError}
+                  </div>
+                )}
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Họ tên</label>
@@ -574,6 +676,22 @@ const StaffManager = () => {
                       onChange={(e) => setEditStaff(prev => ({ ...prev!, username: e.target.value }))}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                     />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Chức vụ</label>
+                    <select
+                      name="roleName"
+                      value={editStaff.roleNames[0] || ''}
+                      onChange={(e) => setEditStaff(prev => ({ ...prev!, roleNames: [e.target.value] }))}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                    >
+                      <option value="">Chọn vai trò</option>
+                      {ROLE_OPTIONS.filter(role => role.value !== '').map(role => (
+                        <option key={role.value} value={role.value}>
+                          {role.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
                 <div className="flex gap-3 mt-8">

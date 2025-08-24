@@ -35,6 +35,7 @@ import ComboManager from './pages/manager/ComboManager';
 import PromotionsManager from './pages/manager/PromotionsManager';
 //import TakeawayOrderPublic from './pages/TakeawayOrderPublic';
 
+
 function App() {
   return (
     <CartProvider>
@@ -68,7 +69,7 @@ function App() {
           <Route path="/waiter/tables" element={<WaiterTableView />} /> {/* Route cho waiter xem bàn */}
           <Route path="/chef" element={<Chef />} /> {/* Route cho trang Chef (bếp trưởng) */}
            {/*<Route path="/takeaway-order" element={<TakeawayOrderPublic />} /> Route cho trang đơn hàng mang đi công khai*/}
-
+         
           {/* QR Menu Routes */}
           <Route path="/menu/:tableId" element={<QRMenu />} /> {/* Route cho trang QR menu khách hàng */}
           <Route path="/qr-manager" element={<QRCodeManager />} /> {/* Route cho trang quản lý QR codes */}

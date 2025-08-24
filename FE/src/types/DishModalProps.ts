@@ -8,9 +8,10 @@ export interface DishModalProps {
     price: number;
     status: boolean;
     unit: string;
-    imageUrl: string;
+    imageUrl?: string;
     createdAt?: string;
   };
+  error?: string;
   onChange: (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
   onImageUrl: (value: string) => void;
   onCancel: () => void;
