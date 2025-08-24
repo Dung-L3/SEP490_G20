@@ -1,10 +1,12 @@
 import axios from 'axios';
 
 const axiosClient = axios.create({
-    baseURL: '/api',
+    baseURL: 'http://localhost:8080/api',
     headers: {
-        'Content-Type': 'application/json'
-    }
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+    },
+    timeout: 10000 // 10 seconds
 });
 
 // Add request interceptor to inject auth token

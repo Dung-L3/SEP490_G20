@@ -2,15 +2,14 @@ import Header from '../components/Header';
 import { loginApi } from '../api/authApi';
 import Footer from '../components/Footer';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const navigate = useNavigate();
-  const { setCurrentUser } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,49 +17,74 @@ const Login = () => {
       setError('Vui lòng nhập đầy đủ thông tin.');
       return;
     }
+
     setError('');
+    setIsLoading(true);
+
     try {
+      console.log('Attempting login with:', { username });
       const res = await loginApi({ username, password });
+      console.log('Server response:', res);
       
-      // Cập nhật thông tin người dùng vào localStorage và AuthContext
-      localStorage.setItem('currentUser', username);
-      localStorage.setItem('userRole', res.role);
-      setCurrentUser(username);
-      
-      alert(res.message || 'Đăng nhập thành công!');
-      
-      // Điều hướng dựa trên role
-      const role = res.role.toUpperCase();
-      console.log('User role:', role); // Debug log
-      
-      switch(role) {
-        case 'ROLE_MANAGER':
-        case 'MANAGER':
-          navigate('/manager');
-          break;
-        case 'ROLE_WAITER':
-        case 'WAITER':
-          navigate('/waiter/orders');
-          break;
-        case 'ROLE_CHEF':
-        case 'CHEF':
-          navigate('/chef');
-          break;
-        case 'ROLE_RECEPTIONIST':
-        case 'RECEPTIONIST':
-          navigate('/receptionist');
-          break;
-        case 'ROLE_CUSTOMER':
-        case 'CUSTOMER':
-          navigate('/');
-          break;
-        default:
-          console.log('Role không khớp:', role); // Log để debug
-          navigate('/');
+      if (!res || !res.token) {
+        throw new Error('Không nhận được token từ server');
+      }
+
+      // Thực hiện login
+      try {
+        login(username, res.role);
+
+        // Kiểm tra dữ liệu đã được lưu
+        const savedData = {
+          token: localStorage.getItem('token'),
+          currentUser: localStorage.getItem('currentUser'),
+          userRole: localStorage.getItem('userRole'),
+          isAuthenticated: localStorage.getItem('isAuthenticated')
+        };
+
+        console.log('Saved authentication data:', savedData);
+
+        if (!savedData.token || !savedData.currentUser || !savedData.userRole) {
+          throw new Error('Lưu thông tin đăng nhập thất bại');
+        }
+
+        // Điều hướng dựa trên role
+        const role = savedData.userRole.toUpperCase();
+        console.log('Redirecting with role:', role);
+
+        switch(role) {
+          case 'ROLE_MANAGER':
+          case 'MANAGER':
+            window.location.href = '/manager';
+            break;
+          case 'ROLE_WAITER':
+          case 'WAITER':
+            window.location.href = '/waiter/orders';
+            break;
+          case 'ROLE_CHEF':
+          case 'CHEF':
+            window.location.href = '/chef';
+            break;
+          case 'ROLE_RECEPTIONIST':
+          case 'RECEPTIONIST':
+            window.location.href = '/receptionist';
+            break;
+          case 'ROLE_CUSTOMER':
+          case 'CUSTOMER':
+            window.location.href = '/';
+            break;
+          default:
+            throw new Error(`Role không hợp lệ: ${role}`);
+        }
+      } catch (error) {
+        throw new Error('Xử lý đăng nhập thất bại: ' + (error as Error).message);
       }
     } catch (error) {
-      console.error('Login error:', error);
-      setError('Sai tài khoản hoặc mật khẩu');
+      console.error('Login failed:', error);
+      setError((error as Error).message || 'Đăng nhập thất bại. Vui lòng thử lại.');
+      localStorage.clear();
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -93,8 +117,9 @@ const Login = () => {
           <button
             type="submit"
             className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-2 rounded-lg transition-colors text-lg shadow mb-4"
+            disabled={isLoading}
           >
-            Đăng nhập
+            {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </button>
           <div className="text-center">
             <span className="text-gray-300 mr-2">Chưa có tài khoản?</span>

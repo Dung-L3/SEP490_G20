@@ -2,6 +2,7 @@ import { type ComponentType } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import type { Role } from '../config/roleConfig';
 import { canAccessPath } from '../config/roleConfig';
+import { useAuth } from '../hooks/useAuth';
 
 interface ProtectedComponentProps {
   Component: ComponentType;
@@ -9,26 +10,32 @@ interface ProtectedComponentProps {
 }
 
 export const ProtectedComponent = ({ Component, requiredRole }: ProtectedComponentProps) => {
-  const userRole = localStorage.getItem('userRole') as Role | null;
+  const { isAuthenticated, userRole } = useAuth();
   const location = useLocation();
   
-  console.warn('Protected Component Check:');
-  console.warn('Current Role:', userRole);
-  console.warn('Required Role:', requiredRole);
-  console.warn('Current Path:', location.pathname);
+  console.warn('Protected Component Check:', {
+    path: location.pathname,
+    isAuthenticated,
+    userRole,
+    requiredRole
+  });
 
-  if (!userRole) {
-    console.warn('No role found - redirecting to login');
-    alert('Vui lòng đăng nhập để truy cập trang này');
-    return <Navigate to="/login" replace />;
+  // Kiểm tra đăng nhập
+  if (!isAuthenticated) {
+    console.warn('Authentication required - redirecting to login');
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   // Kiểm tra quyền truy cập dựa trên role và đường dẫn
-  const hasAccess = canAccessPath(userRole, location.pathname);
+  const hasAccess = userRole && canAccessPath(userRole, location.pathname);
   
   if (!hasAccess) {
-    console.warn('Access denied:', { current: userRole, required: requiredRole, path: location.pathname });
-    alert(`Bạn không có quyền truy cập trang này.`);
+    console.warn('Access denied:', { 
+      current: userRole, 
+      required: requiredRole, 
+      path: location.pathname 
+    });
+    alert('Bạn không có quyền truy cập trang này');
     return <Navigate to="/" replace />;
   }
 
