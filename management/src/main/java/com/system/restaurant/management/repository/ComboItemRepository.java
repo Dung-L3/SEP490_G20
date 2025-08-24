@@ -8,10 +8,15 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface ComboItemRepository extends JpaRepository<ComboItem, ComboItemId> {
 
     @Modifying
     @Query("DELETE FROM ComboItem ci WHERE ci.comboId = :comboId")
     void deleteByComboId(@Param("comboId") Integer comboId);
+
+    @Query("SELECT ci FROM ComboItem ci WHERE ci.comboId = :comboId")
+    List<ComboItem> findByComboId(@Param("comboId") Integer comboId);
 }

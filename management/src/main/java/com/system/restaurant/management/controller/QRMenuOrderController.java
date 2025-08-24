@@ -1,7 +1,6 @@
 package com.system.restaurant.management.controller;
 
-import com.system.restaurant.management.dto.OrderDto;
-import com.system.restaurant.management.dto.OrderRequestDto;
+import com.system.restaurant.management.dto.*;
 import com.system.restaurant.management.entity.Order;
 import com.system.restaurant.management.entity.OrderDetail;
 import com.system.restaurant.management.entity.Dish;
@@ -71,16 +70,37 @@ public class QRMenuOrderController {
             // Tạo order details
             if (savedOrder.getOrderId() != null) {
                 for (Map<String, Object> item : items) {
-                    OrderDetail detail = new OrderDetail();
-                    detail.setOrderId(savedOrder.getOrderId());
-                    detail.setDishId((Integer) item.get("dishId"));
-                    detail.setQuantity((Integer) item.get("quantity"));
-                    detail.setUnitPrice(new BigDecimal(item.get("unitPrice").toString()));
-                    detail.setStatusId(1); // Pending
-                    detail.setIsRefunded(0);
-                    detail.setNotes((String) item.getOrDefault("notes", ""));
-                    
-                    orderDetailRepository.save(detail);
+                    Boolean isCombo = (Boolean) item.getOrDefault("isCombo", false);
+                    Integer comboId = (Integer) item.get("comboId");
+
+                    if (isCombo && comboId != null) {
+                        // Xử lý combo bằng OrderService
+                        OrderItemRequest orderItem = new OrderItemRequest();
+                        orderItem.setDishId((Integer) item.get("dishId"));
+                        orderItem.setComboId(comboId);
+                        orderItem.setQuantity((Integer) item.get("quantity"));
+                        orderItem.setUnitPrice(new BigDecimal(item.get("unitPrice").toString()));
+                        orderItem.setNotes((String) item.getOrDefault("notes", ""));
+                        orderItem.setIsCombo(true);
+
+                        TableOrderRequest tableRequest = new TableOrderRequest();
+                        tableRequest.setTableId(tableId);
+                        tableRequest.setItem(orderItem);
+                        
+                        orderService.addTableOrderItem(tableRequest);
+                    } else {
+                        // Xử lý món đơn lẻ như trước
+                        OrderDetail detail = new OrderDetail();
+                        detail.setOrderId(savedOrder.getOrderId());
+                        detail.setDishId((Integer) item.get("dishId"));
+                        detail.setQuantity((Integer) item.get("quantity"));
+                        detail.setUnitPrice(new BigDecimal(item.get("unitPrice").toString()));
+                        detail.setStatusId(1); // Pending
+                        detail.setIsRefunded(0);
+                        detail.setNotes((String) item.getOrDefault("notes", ""));
+                        
+                        orderDetailRepository.save(detail);
+                    }
                 }
             }
 
