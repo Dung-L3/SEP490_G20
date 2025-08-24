@@ -2,13 +2,13 @@
 import { useState } from 'react';
 import { ChefHat, Menu, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useCart } from '../contexts/CartContext';
+// import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { cart } = useCart();
-  const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+  // const { cart } = useCart();
+  // const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const { currentUser, logout } = useAuth();
 
   const handleLogout = () => {
@@ -21,26 +21,26 @@ const Header = () => {
         <div className="flex justify-between items-center py-4">
           <div className="flex items-center space-x-3">
             <ChefHat className="w-8 h-8 text-yellow-500" />
-            <div>
+            <Link to="/">
               <h1 className="text-2xl font-bold">Nhà Hàng Hương Quê</h1>
               <p className="text-yellow-400 text-sm">Hương vị truyền thống</p>
-            </div>
+            </Link>
           </div>
 
           {/* Desktop Menu */}
           <nav className="hidden md:flex space-x-8">
-            <Link to="/" className="hover:text-yellow-400 transition-colors font-medium">Trang Chủ</Link>
+            {/*<Link to="/" className="hover:text-yellow-400 transition-colors font-medium">Trang Chủ</Link>*/}
             <Link to="/menu" className="hover:text-yellow-400 transition-colors font-medium">Thực Đơn</Link>
-            <Link to="/cart" className="hover:text-yellow-400 transition-colors font-medium flex items-center relative">
-              {/* ...giỏ hàng... */}
-              Giỏ hàng
-              {cartCount > 0 && (
-                <span className="absolute -top-2 -right-3 bg-red-600 text-yellow-400 text-xs font-bold rounded-full px-2 py-0.5">
-                  {cartCount}
-                </span>
-              )}
-            </Link>
-            {/*<Link to="/takeaway-order" className="hover:text-yellow-400 transition-colors font-medium">Đơn mang đi</Link>*/}
+            {/*<Link to="/cart" className="hover:text-yellow-400 transition-colors font-medium flex items-center relative">*/}
+            {/*  /!* ...giỏ hàng... *!/*/}
+            {/*  Giỏ hàng*/}
+            {/*  {cartCount > 0 && (*/}
+            {/*    <span className="absolute -top-2 -right-3 bg-red-600 text-yellow-400 text-xs font-bold rounded-full px-2 py-0.5">*/}
+            {/*      {cartCount}*/}
+            {/*    </span>*/}
+            {/*  )}*/}
+            {/*</Link>*/}
+            <Link to="/takeaway-order" className="hover:text-yellow-400 transition-colors font-medium">Đơn mang đi</Link>
             {currentUser ? (
               <div className="flex items-center gap-2">
                 <span className="text-yellow-400 font-bold">{currentUser}</span>
