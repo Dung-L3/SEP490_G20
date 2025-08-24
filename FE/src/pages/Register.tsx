@@ -12,24 +12,31 @@ const Register = () => {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({
+    username: '',
+    password: '',
+    confirmPassword: '',
+    fullName: '',
+    phone: '',
+    email: ''
+  });
   const navigate = useNavigate();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username || !password || !confirmPassword || !fullName || !phone || !email) {
-      setError('Vui lòng nhập đầy đủ thông tin.');
-      return;
-    }
-    if (!/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email)) {
-      setError('Email không hợp lệ.');
-      return;
-    }
-    if (!/^\d{10}$/.test(phone)) {
-      setError('Số điện thoại phải đủ 10 số.');
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError('Mật khẩu xác nhận không khớp.');
+    const errors: any = {};
+    if (!fullName) errors.fullName = 'Vui lòng nhập họ và tên.';
+    if (!email) errors.email = 'Vui lòng nhập email.';
+    else if (!/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email)) errors.email = 'Email không hợp lệ.';
+    if (!phone) errors.phone = 'Vui lòng nhập số điện thoại.';
+    else if (!/^\d{10}$/.test(phone)) errors.phone = 'Số điện thoại phải đủ 10 số.';
+    if (!username) errors.username = 'Vui lòng nhập tên đăng nhập.';
+    if (!password) errors.password = 'Vui lòng nhập mật khẩu.';
+    if (!confirmPassword) errors.confirmPassword = 'Vui lòng xác nhận mật khẩu.';
+    else if (password !== confirmPassword) errors.confirmPassword = 'Mật khẩu xác nhận không khớp.';
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      setError('Vui lòng kiểm tra lại thông tin.');
       return;
     }
     setError('');
@@ -66,6 +73,7 @@ const Register = () => {
               onChange={e => setFullName(e.target.value)}
               autoFocus
             />
+            {fieldErrors.fullName && <div className="text-red-500 text-sm mt-1">{fieldErrors.fullName}</div>}
           </div>
           <div className="mb-4">
             <label className="block text-gray-300 mb-1">Email</label>
@@ -76,6 +84,7 @@ const Register = () => {
               onChange={e => setEmail(e.target.value)}
               placeholder="Nhập email của bạn"
             />
+            {fieldErrors.email && <div className="text-red-500 text-sm mt-1">{fieldErrors.email}</div>}
           </div>
           <div className="mb-4">
             <label className="block text-gray-300 mb-1">Số điện thoại</label>
@@ -83,9 +92,16 @@ const Register = () => {
               type="tel"
               className="w-full px-4 py-2 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
               value={phone}
-              onChange={e => setPhone(e.target.value)}
-              maxLength={11}
+              onChange={e => {
+                // Chỉ cho phép nhập số
+                const value = e.target.value.replace(/[^0-9]/g, '');
+                setPhone(value);
+              }}
+              maxLength={10}
+              pattern="[0-9]*"
+              inputMode="numeric"
             />
+            {fieldErrors.phone && <div className="text-red-500 text-sm mt-1">{fieldErrors.phone}</div>}
           </div>
           <div className="mb-4">
             <label className="block text-gray-300 mb-1">Tên đăng nhập</label>
@@ -95,6 +111,7 @@ const Register = () => {
               value={username}
               onChange={e => setUsername(e.target.value)}
             />
+            {fieldErrors.username && <div className="text-red-500 text-sm mt-1">{fieldErrors.username}</div>}
           </div>
           <div className="mb-4">
             <label className="block text-gray-300 mb-1">Mật khẩu</label>
@@ -104,6 +121,7 @@ const Register = () => {
               value={password}
               onChange={e => setPassword(e.target.value)}
             />
+            {fieldErrors.password && <div className="text-red-500 text-sm mt-1">{fieldErrors.password}</div>}
           </div>
           <div className="mb-6">
             <label className="block text-gray-300 mb-1">Xác nhận mật khẩu</label>
@@ -113,6 +131,7 @@ const Register = () => {
               value={confirmPassword}
               onChange={e => setConfirmPassword(e.target.value)}
             />
+            {fieldErrors.confirmPassword && <div className="text-red-500 text-sm mt-1">{fieldErrors.confirmPassword}</div>}
           </div>
           <button
             type="submit"
