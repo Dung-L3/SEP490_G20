@@ -16,10 +16,12 @@ public class CorsConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**")
-                .allowedOrigins(
-                    "http://localhost:5173",
-                    "http://127.0.0.1:5173", 
-                    "http://192.168.31.166:5173"
+                .allowedOriginPatterns(
+                    "http://localhost:*",
+                    "http://127.0.0.1:*",
+                    "http://192.168.*:*",  // Chấp nhận tất cả IP trong mạng 192.168.*.*
+                    "http://172.16.*:*",   // Chấp nhận tất cả IP trong mạng 172.16.*.*
+                    "http://10.*:*"        // Chấp nhận tất cả IP trong mạng 10.*.*.*
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
                 .allowedHeaders("*")
@@ -33,7 +35,9 @@ public class CorsConfig implements WebMvcConfigurer {
         configuration.setAllowedOriginPatterns(Arrays.asList(
             "http://localhost:*",
             "http://127.0.0.1:*",
-            "http://192.168.31.166:*"
+            "http://192.168.*:*",  // Chấp nhận tất cả IP trong mạng 192.168.*.*
+            "http://172.16.*:*",   // Chấp nhận tất cả IP trong mạng 172.16.*.*
+            "http://10.*:*"        // Chấp nhận tất cả IP trong mạng 10.*.*.*
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("*"));

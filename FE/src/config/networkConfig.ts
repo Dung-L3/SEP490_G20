@@ -2,7 +2,7 @@
 // Thay đổi IP ở đây khi chuyển máy khác
 export const NETWORK_CONFIG = {
   // IP của máy tính (thay đổi khi cần)
-  LOCAL_IP: '192.168.24.101',
+  LOCAL_IP: '192.168.24.103',
   
   // Port của frontend
   FRONTEND_PORT: 5173,

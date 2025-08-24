@@ -65,8 +65,10 @@ export interface Order {
   notes?: string;
 }
 
-const BASE_URL = '/api';
-const API_URL = '/api/v1/orders';
+import { BACKEND_URL } from '../config/networkConfig';
+
+const BASE_URL = `${BACKEND_URL}/api`;
+const API_URL = `${BACKEND_URL}/api/v1/orders`;
 
 export const fetchOccupiedTables = async (): Promise<TableInfo[]> => {
   const response = await fetch(`${BASE_URL}/waiter/tables?status=Đang phục vụ,OCCUPIED`, {
@@ -128,6 +130,7 @@ export const orderApi = {
     try {
       const response = await fetch(`${API_URL}/create`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
