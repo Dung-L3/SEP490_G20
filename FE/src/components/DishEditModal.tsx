@@ -45,14 +45,20 @@ export default function DishEditModal({ dish, onChange, onImageUrl, onCancel, on
 
           <div>
             <label className="block text-sm font-medium text-gray-700">Đơn vị *</label>
-            <input
-              type="text"
+            <select
               name="unit"
               value={dish.unit}
               onChange={onChange}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              placeholder="Ví dụ: Bát, Đĩa, Phần,..."
-            />
+            >
+              <option value="">Chọn đơn vị</option>
+              <option value="Bát">Bát</option>
+              <option value="Đĩa">Đĩa</option>
+              <option value="Phần">Phần</option>
+              <option value="Cốc">Cốc</option>
+              <option value="Chai">Chai</option>
+              <option value="Lon">Lon</option>
+            </select>
           </div>
 
           <div>

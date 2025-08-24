@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Clock, ChefHat, Utensils, AlertCircle } from 'lucide-react';
 import type { KitchenOrderItem, OrderStatus } from '../../api/chefApi';
 import { fetchPendingOrders, statusList, updateOrderStatus, cancelOrder } from '../../api/chefApi';
+import TaskbarChef from './TaskbarChef';
 
 interface OrderCardProps {
   orderIdx: number;
@@ -45,8 +46,10 @@ const Chef = () => {
   const totalOrders = pendingOrders.length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-4">
-      <div className="max-w-6xl mx-auto">
+    <div className="flex min-h-screen">
+      <TaskbarChef />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-4 flex-1" style={{ marginLeft: '220px' }}>
+        <div className="max-w-6xl mx-auto">
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-8 border border-slate-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -106,10 +109,11 @@ const Chef = () => {
             />
           </div>
         )}
+        </div>
       </div>
     </div>
   );
-};
+}
 
 const LoadingSection = () => (
   <div className="bg-white rounded-2xl shadow-lg p-12 text-center border border-slate-200">

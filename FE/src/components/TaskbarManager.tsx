@@ -1,9 +1,20 @@
 
 import { useNavigate } from 'react-router-dom';
-import { ChefHat } from 'lucide-react';
+import { LogOut, ChefHat, UserCircle } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 const TaskbarManager = () => {
   const navigate = useNavigate();
+  const { currentUser, logout } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/');
+    } catch (error) {
+      console.error('Lỗi đăng xuất:', error);
+    }
+  };
   return (
     <div style={{
       background: '#f3f4f6',
@@ -25,6 +36,13 @@ const TaskbarManager = () => {
           <div>
             <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#111827', display: 'block' }}>Nhà Hàng Hương Quê</span>
             <span style={{ fontSize: '12px', color: '#eab308' }}>Hương vị truyền thống</span>
+          </div>
+        </div>
+        <div className="mb-6">
+          <h2 className="font-bold text-lg">Quản lý</h2>
+          <div className="flex items-center gap-2 text-sm text-gray-600 mt-2 px-2 py-1 bg-gray-50 rounded-md">
+            <UserCircle size={18} className="text-gray-500" />
+            <span>{currentUser || 'Manager'}</span>
           </div>
         </div>
         <button
@@ -209,27 +227,12 @@ const TaskbarManager = () => {
       >Quản lý QR</button>
       </div>
       <button
-        style={{
-          background: '#ef4444',
-          border: 'none',
-          color: '#fff',
-          fontSize: '16px',
-          padding: '10px 0',
-          textAlign: 'center',
-          width: '100%',
-          cursor: 'pointer',
-          borderRadius: '4px',
-          marginTop: '16px',
-          marginBottom: '8px',
-          transition: 'background 0.2s',
-        }}
-        onMouseOver={e => (e.currentTarget.style.background = '#dc2626')}
-        onMouseOut={e => (e.currentTarget.style.background = '#ef4444')}
-        onClick={() => {
-          // Gọi API logout nếu cần
-          navigate('/');
-        }}
-      >Đăng xuất</button>
+        className="flex items-center gap-2 px-4 py-2 w-full text-left text-red-600 hover:bg-red-50 rounded transition-colors"
+        onClick={handleLogout}
+      >
+        <LogOut size={20} className="text-red-600" />
+        <span>Đăng xuất</span>
+      </button>
     </div>
   );
 };
