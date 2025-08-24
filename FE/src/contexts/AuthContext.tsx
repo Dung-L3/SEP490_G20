@@ -1,115 +1,182 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
+import type { Role } from '../config/roleConfig';
+import { canAccessPath } from '../config/roleConfig';
 
 interface AuthContextType {
   currentUser: string | null;
-  userRole: string | null;
+  userRole: Role | null;
   isAuthenticated: boolean;
-  setCurrentUser: (user: string | null) => void;
   login: (user: string, role: string) => void;
   logout: () => void;
-  checkAccess: (requiredRole: string, path: string) => boolean;
+  checkAccess: (requiredRole: Role, path: string) => boolean;
 }
+
+// Define valid roles
+const VALID_ROLES = ['MANAGER', 'CHEF', 'WAITER', 'RECEPTIONIST'] as const;
+type ValidRole = typeof VALID_ROLES[number];
+
+// Chuẩn hóa role từ localStorage
+const normalizeRole = (role: string | null): Role | null => {
+  if (!role) return null;
+  const normalized = role.toUpperCase().replace('ROLE_', '');
+  if (!VALID_ROLES.includes(normalized as ValidRole)) {
+    return null;
+  }
+  return normalized as Role;
+};
 
 // Khởi tạo với giá trị từ localStorage nếu có
 const getInitialAuthState = () => ({
   currentUser: localStorage.getItem('currentUser'),
-  userRole: localStorage.getItem('userRole'),
+  userRole: normalizeRole(localStorage.getItem('userRole')),
   isAuthenticated: localStorage.getItem('isAuthenticated') === 'true'
 });
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  // Khởi tạo state với giá trị từ localStorage
   const initialState = getInitialAuthState();
   const [currentUser, setCurrentUser] = useState<string | null>(initialState.currentUser);
-  const [userRole, setUserRole] = useState<string | null>(initialState.userRole);
+  const [userRole, setUserRole] = useState<Role | null>(initialState.userRole);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(initialState.isAuthenticated);
 
-  useEffect(() => {
-    const checkAuthStatus = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const user = localStorage.getItem('currentUser');
-        const role = localStorage.getItem('userRole');
-        const isAuth = localStorage.getItem('isAuthenticated');
+  const checkAuthStatus = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const user = localStorage.getItem('currentUser');
+      const role = localStorage.getItem('userRole');
+      const isAuth = localStorage.getItem('isAuthenticated');
 
-        console.log('Auth status check:', { token, user, role, isAuth });
+      console.log('Auth status check:', { token, user, role, isAuth });
+      
+      // Nếu đang ở trang login
+      if (window.location.pathname === '/login') {
+        // Nếu đã đăng nhập, chuyển đến trang phù hợp
+        if (token && user && role && isAuth === 'true') {
+          console.log('User already logged in, redirecting...');
+          const normalizedRole = normalizeRole(role);
+          
+          if (!normalizedRole) {
+            throw new Error('Invalid role: ' + role);
+          }
 
-        // Nếu đang ở trang login
-        if (window.location.pathname === '/login') {
-          // Nếu đã đăng nhập, chuyển đến trang phù hợp
+          const defaultPaths: Record<Role, string> = {
+            MANAGER: '/manager',
+            CHEF: '/chef',
+            WAITER: '/waiter/tables',
+            RECEPTIONIST: '/receptionist'
+          };
+
+          const defaultPath = defaultPaths[normalizedRole];
+          if (!defaultPath) {
+            throw new Error('Invalid role path for: ' + normalizedRole);
+          }
+
+          setCurrentUser(user);
+          setUserRole(normalizedRole);
+          setIsAuthenticated(true);
+          window.location.href = defaultPath;
+        }
+      } 
+      // Nếu không ở trang login
+      else {
+        // Danh sách các đường dẫn không cần xác thực hoặc các trang công khai
+        const publicPaths = [
+          '/login', 
+          '/register', 
+          '/forgot-password',
+          '/',
+          '/home',
+          '/menu'
+        ];
+        const currentPath = window.location.pathname;
+
+        // Nếu đang ở trang không cần xác thực hoặc trang công khai
+        if (publicPaths.includes(currentPath)) {
+          // Cập nhật state nếu có thông tin đăng nhập hợp lệ
           if (token && user && role && isAuth === 'true') {
-            console.log('User already logged in, redirecting...');
-            setCurrentUser(user);
-            setUserRole(role);
-            setIsAuthenticated(true);
-
-            const normalizedRole = role.toUpperCase();
-            switch(normalizedRole) {
-              case 'ROLE_MANAGER':
-              case 'MANAGER':
-                window.location.href = '/manager';
-                break;
-              case 'ROLE_CHEF':
-              case 'CHEF':
-                window.location.href = '/chef';
-                break;
-              case 'ROLE_WAITER':
-              case 'WAITER':
-                window.location.href = '/waiter/tables';
-                break;
-              case 'ROLE_RECEPTIONIST':
-              case 'RECEPTIONIST':
-                window.location.href = '/receptionist';
-                break;
-              default:
-                console.log('Invalid role:', normalizedRole);
+            const normalizedRole = normalizeRole(role);
+            if (normalizedRole) {
+              setCurrentUser(user);
+              setUserRole(normalizedRole);
+              setIsAuthenticated(true);
             }
           }
-        } 
-        // Nếu không ở trang login
-        else {
-          // Kiểm tra xem có đủ thông tin xác thực không
-          if (token && user && role && isAuth === 'true') {
-            console.log('Session valid, updating state');
-            setCurrentUser(user);
-            setUserRole(role);
-            setIsAuthenticated(true);
-          } else {
-            console.log('Invalid session, redirecting to login');
-            // Xóa toàn bộ thông tin xác thực
-            const keysToRemove = ['currentUser', 'userRole', 'token', 'userId', 'role', 'user', 'auth', 'isAuthenticated'];
-            keysToRemove.forEach(key => localStorage.removeItem(key));
-            
-            setCurrentUser(null);
-            setUserRole(null);
-            setIsAuthenticated(false);
-            
-            window.location.href = '/login';
-          }
+          return;
         }
-      } catch (error) {
-        console.error('Error checking auth status:', error);
-      }
-    };
 
+        // Kiểm tra xem có đủ thông tin xác thực không
+        if (token && user && role && isAuth === 'true') {
+          console.log('Session valid, checking role access');
+          const normalizedRole = normalizeRole(role);
+          if (!normalizedRole) {
+            throw new Error('Invalid role in session: ' + role);
+          }
+
+          // Nếu không phải MANAGER, kiểm tra xem có đang cố truy cập vào khu vực của role khác không
+          if (normalizedRole !== 'MANAGER') {
+            const currentRolePath = `/${normalizedRole.toLowerCase()}`;
+            if (!currentPath.toLowerCase().startsWith(currentRolePath)) {
+              console.warn('User attempting to access unauthorized area');
+              // Tạo một đường dẫn mặc định dựa trên role
+              const defaultPaths: Record<Role, string> = {
+                MANAGER: '/manager',
+                CHEF: '/chef',
+                WAITER: '/waiter/tables',
+                RECEPTIONIST: '/receptionist'
+              };
+
+              const correctPath = defaultPaths[normalizedRole];
+              alert(`Bạn không có quyền truy cập vào trang này. Đang chuyển hướng về trang ${normalizedRole.toLowerCase()}`);
+              window.location.href = correctPath;
+              return;
+            }
+          }
+
+          setCurrentUser(user);
+          setUserRole(normalizedRole);
+          setIsAuthenticated(true);
+        } else {
+          console.log('Invalid session, redirecting to login');
+          // Xóa toàn bộ thông tin xác thực
+          const keysToRemove = ['currentUser', 'userRole', 'token', 'userId', 'role', 'user', 'auth', 'isAuthenticated'];
+          keysToRemove.forEach(key => localStorage.removeItem(key));
+          
+          setCurrentUser(null);
+          setUserRole(null);
+          setIsAuthenticated(false);
+          
+          window.location.href = '/login';
+        }
+      }
+    } catch (error) {
+      console.error('Error checking auth status:', error);
+    }
+  };
+
+  useEffect(() => {
     checkAuthStatus();
   }, []);
 
   const login = (user: string, role: string) => {
     console.log('Login called with:', { user, role });
     
+    // Chuẩn hóa role
+    const normalizedRole = normalizeRole(role);
+    if (!normalizedRole) {
+      throw new Error('Invalid role: ' + role);
+    }
+    
     // Lưu thông tin vào localStorage
     try {
       localStorage.setItem('currentUser', user);
-      localStorage.setItem('userRole', role);
+      localStorage.setItem('userRole', normalizedRole);
       localStorage.setItem('isAuthenticated', 'true');
       
       // Cập nhật state
       setCurrentUser(user);
-      setUserRole(role);
+      setUserRole(normalizedRole);
       setIsAuthenticated(true);
       
       // Verify data was saved
@@ -157,26 +224,59 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const checkAccess = (requiredRole: string, path: string): boolean => {
-    // Manager có thể truy cập tất cả các trang
-    if (userRole === 'Manager') {
+  const checkAccess = (requiredRole: Role, path: string): boolean => {
+    // Danh sách các đường dẫn công khai mà mọi role đều có thể truy cập
+    const publicPaths = ['/', '/home', '/menu', '/login', '/register', '/forgot-password'];
+    
+    // Nếu là trang công khai, cho phép truy cập
+    if (publicPaths.includes(path)) {
       return true;
     }
 
-    // Kiểm tra role cụ thể với path
-    if (userRole !== requiredRole) {
+    // Nếu chưa đăng nhập, không cho phép truy cập các trang private
+    if (!userRole || !isAuthenticated) {
       return false;
     }
 
-    // Kiểm tra path có phù hợp với role không
-    const rolePathMap: { [key: string]: string[] } = {
-      'Chef': ['/chef'],
-      'Waiter': ['/waiter/orders', '/waiter/tables', '/waiter/order'],
-      'Receptionist': ['/receptionist', '/receptionist/orders', '/receptionist/payment']
-    };
+    console.log('Checking access:', {
+      userRole,
+      requiredRole,
+      path,
+      isAuthenticated
+    });
 
-    const allowedPaths = rolePathMap[requiredRole] || [];
-    return allowedPaths.some(allowedPath => path.startsWith(allowedPath));
+    // Nếu là MANAGER, cho phép truy cập mọi trang
+    if (userRole === 'MANAGER') {
+      return true;
+    }
+
+    // Với các role khác, kiểm tra xem có đang cố truy cập vào khu vực của role khác không
+    if (!path.toLowerCase().startsWith(`/${userRole.toLowerCase()}`)) {
+      console.warn('Path prefix mismatch:', {
+        path,
+        expectedPrefix: `/${userRole.toLowerCase()}`
+      });
+      return false;
+    }
+
+    // Kiểm tra xem role của user có khớp với role yêu cầu không
+    if (userRole !== requiredRole) {
+      console.warn('Role mismatch:', {
+        userRole,
+        requiredRole
+      });
+      return false;
+    }
+
+    // Sử dụng canAccessPath từ roleConfig cho kiểm tra chi tiết hơn
+    const hasPathAccess = canAccessPath(userRole, path);
+    
+    console.log('Access check result:', {
+      roleMatch: userRole === requiredRole,
+      pathAccess: hasPathAccess
+    });
+
+    return hasPathAccess;
   };
 
   return (
@@ -185,10 +285,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         currentUser, 
         userRole, 
         isAuthenticated,
-        setCurrentUser, 
         login,
         logout,
-        checkAccess 
+        checkAccess
       }}
     >
       {children}
