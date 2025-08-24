@@ -11,7 +11,8 @@ import { Plus, Minus, ShoppingCart } from 'lucide-react';
 import { comboApi, type ComboDTO } from '../api/comboApi';
 
 interface CartItem {
-  id: number;
+  id: string;  // Changed to string to support prefix identifiers
+  originalId: number; // The original ID (dishId or comboId)
   name: string;
   price: number;
   quantity: number;
@@ -73,10 +74,19 @@ const QRMenu: FC = () => {
 
   const addToCart = (item: Dish | ComboDTO, isCombo = false) => {
     setCart(prevCart => {
-      const existingItem = prevCart.find(cartItem => cartItem.id === (isCombo ? (item as ComboDTO).comboId : (item as Dish).dishId));
+      const itemId = isCombo 
+        ? `combo_${(item as ComboDTO).comboId}` 
+        : `dish_${(item as Dish).dishId}`;
+      
+      const originalId = isCombo 
+        ? (item as ComboDTO).comboId 
+        : (item as Dish).dishId;
+
+      const existingItem = prevCart.find(cartItem => cartItem.id === itemId);
+
       if (existingItem) {
         return prevCart.map(cartItem =>
-          cartItem.id === (isCombo ? (item as ComboDTO).comboId : (item as Dish).dishId)
+          cartItem.id === itemId
             ? { ...cartItem, quantity: cartItem.quantity + 1 }
             : cartItem
         );
@@ -84,7 +94,8 @@ const QRMenu: FC = () => {
         if (isCombo) {
           const combo = item as ComboDTO;
           return [...prevCart, {
-            id: combo.comboId,
+            id: `combo_${combo.comboId}`,
+            originalId: combo.comboId,
             name: combo.comboName,
             price: combo.price,
             quantity: 1,
@@ -98,7 +109,8 @@ const QRMenu: FC = () => {
         } else {
           const dish = item as Dish;
           return [...prevCart, {
-            id: dish.dishId,
+            id: `dish_${dish.dishId}`,
+            originalId: dish.dishId,
             name: dish.dishName,
             price: dish.price,
             quantity: 1,
@@ -109,7 +121,7 @@ const QRMenu: FC = () => {
     });
   };
 
-  const removeFromCart = (itemId: number) => {
+  const removeFromCart = (itemId: string) => {
     setCart(prevCart => {
       return prevCart.map(item =>
         item.id === itemId
@@ -119,8 +131,9 @@ const QRMenu: FC = () => {
     });
   };
 
-  const getItemQuantity = (itemId: number) => {
-    const item = cart.find(item => item.id === itemId);
+  const getItemQuantity = (itemId: number, isCombo: boolean = false) => {
+    const searchId = isCombo ? `combo_${itemId}` : `dish_${itemId}`;
+    const item = cart.find(item => item.id === searchId);
     return item ? item.quantity : 0;
   };
 
@@ -151,7 +164,7 @@ const QRMenu: FC = () => {
           // Nếu là combo
           return {
             dishId: null,
-            comboId: item.id,
+            comboId: item.originalId,
             quantity: item.quantity,
             notes: item.notes || '',
             unitPrice: item.price,
@@ -160,7 +173,7 @@ const QRMenu: FC = () => {
         } else {
           // Nếu là món thường
           return {
-            dishId: item.id,
+            dishId: item.originalId,
             comboId: null,
             quantity: item.quantity,
             notes: item.notes || '',
@@ -282,15 +295,15 @@ const QRMenu: FC = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <button
-                        onClick={() => removeFromCart(combo.comboId)}
-                        disabled={getItemQuantity(combo.comboId) === 0}
+                        onClick={() => removeFromCart(`combo_${combo.comboId}`)}
+                        disabled={getItemQuantity(combo.comboId, true) === 0}
                         className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Minus size={16} />
                       </button>
                       
                       <span className="w-8 text-center font-medium">
-                        {getItemQuantity(combo.comboId)}
+                        {getItemQuantity(combo.comboId, true)}
                       </span>
                       
                       <button
@@ -342,7 +355,7 @@ const QRMenu: FC = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                         <button
-                          onClick={() => removeFromCart(dish.dishId)}
+                          onClick={() => removeFromCart(`dish_${dish.dishId}`)}
                           disabled={getItemQuantity(dish.dishId) === 0}
                           className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                         >
@@ -354,7 +367,7 @@ const QRMenu: FC = () => {
                         </span>
                         
                         <button
-                          onClick={() => addToCart(dish)}
+                          onClick={() => addToCart(dish, false)}
                           className="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center"
                         >
                           <Plus size={16} />
@@ -450,7 +463,15 @@ const QRMenu: FC = () => {
                     </button>
                     <span className="w-8 text-center text-sm">{item.quantity}</span>
                     <button
-                      onClick={() => addToCart(item.isCombo ? combos.find(c => c.comboId === item.id)! : dishes.find(d => d.dishId === item.id)!, item.isCombo)}
+                      onClick={() => {
+                        if (item.isCombo) {
+                          const combo = combos.find(c => c.comboId === item.originalId);
+                          if (combo) addToCart(combo, true);
+                        } else {
+                          const dish = dishes.find(d => d.dishId === item.originalId);
+                          if (dish) addToCart(dish, false);
+                        }
+                      }}
                       className="w-6 h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center"
                     >
                       <Plus size={12} />
