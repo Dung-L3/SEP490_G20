@@ -24,6 +24,10 @@ export async function loginApi(data: { username: string; password: string }): Pr
       throw new Error('Phản hồi không hợp lệ từ server');
     }
 
+    if (result.mess === 'Tài khoản của bạn đã bị vô hiệu hóa') {
+      throw new Error('Tài khoản của bạn đã bị vô hiệu hóa');
+    }
+
     if (result.mess !== 'Đăng nhập thành công') {
       throw new Error(result.mess);
     }
