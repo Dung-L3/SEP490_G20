@@ -430,8 +430,6 @@ const OrderList: React.FC = () => {
                 onClick={handleProceed}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                 disabled={!phoneValid || promosLoading}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                disabled={promosLoading}
               >
                 Tiếp tục
               </button>

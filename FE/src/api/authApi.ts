@@ -1,6 +1,7 @@
 import axiosClient from './axiosClient';
 
 interface LoginResponse {
+  withCredentials: true,                
   mess: string;
   role: string;
   token?: string;
@@ -12,7 +13,7 @@ export async function loginApi(data: { username: string; password: string }): Pr
     console.log('Login request data:', data);
     
     // Sử dụng axiosClient thay vì fetch trực tiếp
-    const response = await axiosClient.post('/auth/login', data);
+    const response = await axiosClient.post('/auth/login', data, { withCredentials: true });
     
     console.log('Raw response:', response.data);
 
