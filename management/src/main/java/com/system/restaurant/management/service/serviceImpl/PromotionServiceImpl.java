@@ -35,8 +35,6 @@ public class PromotionServiceImpl implements PromotionService {
      private final PromotionRepository promotionRepository;
      private final PromoUsageRepository promoUsageRepository;
      private final OrderRepository orderRepository;
-    private final CustomerRepository customerRepository;
-    private static final String LOYAL_CODE = "SALE FOR LOYAL CUSTOMER";
 
     @Override
     public Promotion create(PromotionRequestDto dto) {
@@ -82,24 +80,11 @@ public class PromotionServiceImpl implements PromotionService {
 
     public List<Promotion> listValidPromotions(String phone) {
         LocalDate today = LocalDate.now(ZoneId.of("Asia/Bangkok"));
-
-        boolean eligibleForLoyalCode;
-        if (phone != null && !phone.isBlank()) {
-            Integer points = customerRepository.findLoyaltyPointsByPhone(phone)
-                    .orElse(0);
-            eligibleForLoyalCode = points > 59;
-        } else {
-            eligibleForLoyalCode = false;
-        }
-
         return promotionRepository.findAll().stream()
                 .filter(p -> Boolean.TRUE.equals(p.getIsActive()))
                 .filter(p -> !today.isBefore(p.getStartDate()))
                 .filter(p -> !today.isAfter(p.getEndDate()))
                 .filter(p -> p.getUsageLimit() == null || p.getUsageLimit() > 0)
-                .filter(p -> {
-                    boolean isLoyalCode = p.getPromoCode().equalsIgnoreCase(LOYAL_CODE);
-                    return !(isLoyalCode && !eligibleForLoyalCode);})
                 .sorted(Comparator.comparing(Promotion::getEndDate))
                 .toList();
     }

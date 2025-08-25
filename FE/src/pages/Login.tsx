@@ -80,7 +80,7 @@ const Login = () => {
             window.location.href = '/chef';
             break;
           case 'ROLE_RECEPTIONIST':
-            window.location.href = '/receptionist';
+            window.location.href = '/receptionist/reservations';
             break;
           case 'ROLE_CUSTOMER':
             window.location.href = '/menu';

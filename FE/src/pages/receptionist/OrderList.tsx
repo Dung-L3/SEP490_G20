@@ -281,7 +281,7 @@ const OrderList: React.FC = () => {
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Khách hàng</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Bàn</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Tổng tiền</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Thời gian</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Thời gian</th>          
                 </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
