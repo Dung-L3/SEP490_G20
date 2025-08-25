@@ -252,7 +252,7 @@ const TakeawayOrder: React.FC = () => {
                       className="w-full border rounded px-3 py-2"
                       value={customerName}
                       onChange={e => setCustomerName(e.target.value)}
-                      placeholder="Ví dụ: Anh Nam"
+                      placeholder="Ví dụ: Anh Nam (có thể để trống)"
                   />
                 </div>
                 <div>

@@ -242,8 +242,8 @@ const TakeawayOrderPublic: React.FC = () => {
                                     type="text"
                                     className="w-full p-3 mt-2 text-lg text-gray-800 rounded-md"
                                     value={customerName}
-                                    onChange={(e) => setCustomerName(e.target.value)}
-                                    placeholder="Ví dụ: Anh Nam "
+                                    onChange={(e) => setCustomerName(e.target.value)} // FREE
+                                    placeholder="Ví dụ: Anh Nam (có thể để trống)"
                                 />
                             </div>
                             <div>
