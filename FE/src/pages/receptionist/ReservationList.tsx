@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 // src/pages/ReservationManager.tsx
 import React, { useEffect, useState, useCallback } from 'react';
 import TaskbarReceptionist from '../../components/TaskbarReceptionist';
@@ -48,9 +47,6 @@ const ReservationList: React.FC = () => {
   const [tablesLoading, setTablesLoading] = useState(false);
   const [selectedTableId, setSelectedTableId] = useState<number | ''>('');
 
-  // NEW: trạng thái khi đang huỷ
-  const [cancelling, setCancelling] = useState(false);
-
   // -------- Fetch reservations theo status --------
   const fetchReservations = useCallback(() => {
     setLoading(true);
@@ -80,7 +76,6 @@ const ReservationList: React.FC = () => {
     setSelectedAreaId('');
     setAvailableTables([]);
     setSelectedTableId('');
-    setCancelling(false); // NEW: reset
     setModalOpen(true);
 
     setAreasLoading(true);
@@ -138,37 +133,6 @@ const ReservationList: React.FC = () => {
       });
   };
 
-  // NEW: Hủy đặt bàn (chỉ khi Pending)
-  const handleCancelReservation = () => {
-    if (!selectedReservation) return;
-    if (selectedReservation.statusName !== 'Pending') {
-      // phòng hờ trường hợp UI hiển thị nhưng state đã đổi
-      alert('Chỉ có thể hủy khi đơn đang Pending.');
-      return;
-    }
-
-    setCancelling(true);
-    fetch(`${RESERVATIONS_API}/${selectedReservation.reservationId}/status?status=Cancelled`, {
-      method: 'PATCH',
-      credentials: 'include',
-    })
-      .then(res => {
-        if (!res.ok) throw new Error(`Status ${res.status}`);
-        return res.json();
-      })
-      .then(() => {
-        setModalOpen(false);
-        fetchReservations();
-      })
-      .catch(err => {
-        console.error('Cancel reservation error:', err);
-        alert('Hủy đặt bàn thất bại, vui lòng thử lại');
-      })
-      .finally(() => setCancelling(false));
-  };
-
-  const canCancel = selectedReservation?.statusName === 'Pending'; // NEW
-
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Sidebar */}
@@ -217,13 +181,13 @@ const ReservationList: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {reservations.map((r, xid) => (
+                  {reservations.map(r => (
                     <tr
                       key={r.reservationId}
                       className="hover:bg-gray-50 cursor-pointer"
                       onClick={() => openConfirmModal(r)} // mở modal khi bấm vào hàng
                     >
-                      <td className="px-6 py-4 font-semibold text-blue-700">{xid + 1}</td>
+                      <td className="px-6 py-4 font-semibold text-blue-700">#{r.reservationId}</td>
                       <td className="px-6 py-4">{r.customerName}</td>
                       <td className="px-6 py-4">{r.phone}</td>
                       <td className="px-6 py-4">{r.email}</td>
@@ -283,23 +247,7 @@ const ReservationList: React.FC = () => {
             )}
 
             <div className="mt-2 flex justify-end gap-2">
-              {/* Nút đóng modal */}
-              <button onClick={() => setModalOpen(false)} className="px-4 py-2 border rounded">
-                Huỷ
-              </button>
-
-              {/* NEW: Hủy đặt bàn (chỉ hiện khi Pending) */}
-              {canCancel && (
-                <button
-                    onClick={handleCancelReservation}
-                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
-                    disabled={cancelling}
-                >
-                  {cancelling ? 'Đang hủy...' : 'Hủy đặt bàn'}
-                </button>
-              )}
-
-              {/* Xác nhận / đổi bàn */}
+              <button onClick={() => setModalOpen(false)} className="px-4 py-2 border rounded">Huỷ</button>
               <button
                 onClick={handleConfirm}
                 className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
