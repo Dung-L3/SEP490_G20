@@ -155,12 +155,50 @@ export const staffApi = {
     }
   },
 
+  checkDuplicateInfo: async (email: string, phone: string, currentStaff: Staff): Promise<void> => {
+    try {
+      // Lấy danh sách tất cả nhân viên
+      const allStaff = await staffApi.getAll();
+      
+      // Chỉ kiểm tra nếu email thay đổi
+      if (email !== currentStaff.email) {
+        const duplicateEmail = allStaff.find(staff => 
+          staff.email === email && staff.id !== currentStaff.id
+        );
+        if (duplicateEmail) {
+          throw new Error('Email đã tồn tại');
+        }
+      }
+      
+      // Chỉ kiểm tra nếu phone thay đổi
+      if (phone !== currentStaff.phone) {
+        const duplicatePhone = allStaff.find(staff => 
+          staff.phone === phone && staff.id !== currentStaff.id
+        );
+        if (duplicatePhone) {
+          throw new Error('Số điện thoại đã tồn tại');
+        }
+      }
+    } catch (error) {
+      throw error;
+    }
+  },
+
   update: async (id: number, request: StaffRequest): Promise<Staff> => {
     try {
       console.log('=== Bắt đầu cập nhật nhân viên ===');
       console.log('ID nhân viên cập nhật:', id);
       console.log('Yêu cầu cập nhật:', request);
       console.log('Roles hiện tại:', request.roleNames);
+
+      // Lấy thông tin hiện tại của nhân viên
+      const existingStaff = await staffApi.getById(id);
+      console.log('Thông tin hiện tại của nhân viên:', existingStaff);
+
+      // Chỉ kiểm tra trùng lặp nếu email hoặc phone thay đổi
+      if (request.email !== existingStaff.email || request.phone !== existingStaff.phone) {
+        await staffApi.checkDuplicateInfo(request.email, request.phone, existingStaff);
+      }
       
       // Kiểm tra role
       const roleName = request.roleNames[0];
@@ -237,31 +275,56 @@ export const staffApi = {
     } catch (error: unknown) {
       console.error('Lỗi khi cập nhật nhân viên:', error);
       
+      // Kiểm tra nếu là lỗi từ việc kiểm tra trùng lặp
+      if (error instanceof Error) {
+        if (error.message === 'Email đã tồn tại' || 
+            error.message === 'Số điện thoại đã tồn tại' ||
+            error.message === 'Username đã tồn tại') {
+          throw error; // Throw lại lỗi trùng lặp từ checkDuplicateInfo
+        }
+      }
+      
+      // Xử lý lỗi từ response API
       if (error && typeof error === 'object' && 'response' in error) {
-        const axiosError = error as { response?: { status?: number, data?: { error?: string; trace?: string; message?: string } } };
+        const axiosError = error as { response?: { status?: number, data?: { message?: string } } };
         
-        console.log('Phản hồi lỗi:', axiosError.response?.data);
-        
+        // Lấy thông báo lỗi từ response
+        interface ErrorResponse {
+          message?: string;
+          error?: string;
+          status?: string;
+        }
+        const errorResponse = axiosError.response?.data as ErrorResponse;
+        const errorMessage = errorResponse?.message || errorResponse?.error || '';
+        console.log('Error response from server:', errorResponse);
+
+        // Kiểm tra thông báo lỗi từ backend
+        if (errorMessage === 'Email đã tồn tại' ||
+            errorMessage.includes('email already exists') ||
+            errorMessage.includes('Email already exists')) {
+          throw new Error('Email đã tồn tại');
+        }
+        if (errorMessage === 'Số điện thoại đã tồn tại' ||
+            errorMessage.includes('phone already exists') ||
+            errorMessage.includes('Phone already exists')) {
+          throw new Error('Số điện thoại đã tồn tại');
+        }
+        if (errorMessage === 'Username đã tồn tại' ||
+            errorMessage.includes('username already exists') ||
+            errorMessage.includes('Username already exists') ||
+            errorMessage.includes('UQ__Users__536C85E43A43A2FE')) {
+          throw new Error('Username đã tồn tại');
+        }
+
+        // Xử lý các lỗi HTTP status
         if (axiosError.response?.status === 405) {
           throw new Error('Phương thức HTTP không được phép. Vui lòng kiểm tra cấu hình API.');
         }
-        
-        if (axiosError.response?.data?.error === 'Internal Server Error') {
-          const trace = axiosError.response.data.trace;
-          if (trace && typeof trace === 'string') {
-            if (trace.includes('Số điện thoại đã tồn tại')) {
-              throw new Error('Số điện thoại đã tồn tại');
-            }
-            if (trace.includes('Email đã tồn tại')) {
-              throw new Error('Email đã tồn tại');
-            }
-            if (trace.includes('Username đã tồn tại')) {
-              throw new Error('Username đã tồn tại');
-            }
-          }
+        if (axiosError.response?.status === 400) {
+          throw new Error(errorMessage || 'Dữ liệu không hợp lệ');
         }
         
-        throw new Error(axiosError.response?.data?.message || 'Không thể cập nhật thông tin nhân viên');
+        throw new Error(errorMessage || 'Không thể cập nhật thông tin nhân viên');
       }
       
       throw new Error('Không thể cập nhật thông tin nhân viên');

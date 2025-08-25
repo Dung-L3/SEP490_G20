@@ -73,6 +73,22 @@ public class UserServiceImpl implements UserService {
     public User update(Integer id, UserRequestDto dto) {
         User user = findById(id);
 
+        // Kiểm tra email đã tồn tại chưa (loại trừ email hiện tại của user)
+        if (!dto.getEmail().equals(user.getEmail()) && userRepository.existsByEmail(dto.getEmail())) {
+            throw new IllegalStateException("Email đã tồn tại");
+        }
+
+        // Kiểm tra số điện thoại đã tồn tại chưa (loại trừ số điện thoại hiện tại của user)
+        if (!dto.getPhone().equals(user.getPhone()) && userRepository.existsByPhone(dto.getPhone())) {
+            throw new IllegalStateException("Số điện thoại đã tồn tại");
+        }
+
+        // Kiểm tra username đã tồn tại chưa (loại trừ username hiện tại của user)
+        if (!dto.getUsername().equals(user.getUsername()) && 
+            userRepository.findByUsername(dto.getUsername()).isPresent()) {
+            throw new IllegalStateException("Username đã tồn tại");
+        }
+
         user.setFullName(dto.getFullName());
         user.setEmail(dto.getEmail());
         user.setPhone(dto.getPhone());
