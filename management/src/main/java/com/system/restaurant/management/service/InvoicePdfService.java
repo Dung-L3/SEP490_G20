@@ -44,7 +44,7 @@ public class InvoicePdfService {
                 .orElseThrow(() -> new EntityNotFoundException("Invoice không tồn tại cho order " + orderId));
 
         // 2) Lấy chi tiết món
-        List<OrderDetail> items = orderDetailRepository.findByOrderIdAndStatusId(orderId, 3);
+        List<OrderDetail> items = orderDetailRepository.findByOrderId(orderId);
 
         // 3) Lấy payment record mới nhất
         PaymentRecord pr = paymentRecordRepository
