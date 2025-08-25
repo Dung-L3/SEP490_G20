@@ -31,7 +31,11 @@ const Register = () => {
     if (!phone) errors.phone = 'Vui lòng nhập số điện thoại.';
     else if (!/^\d{10}$/.test(phone)) errors.phone = 'Số điện thoại phải đủ 10 số.';
     if (!username) errors.username = 'Vui lòng nhập tên đăng nhập.';
-    if (!password) errors.password = 'Vui lòng nhập mật khẩu.';
+    if (!password) {
+      errors.password = 'Vui lòng nhập mật khẩu.';
+    } else if (password.length < 8) {
+      errors.password = 'Mật khẩu phải có ít nhất 8 ký tự.';
+    }
     if (!confirmPassword) errors.confirmPassword = 'Vui lòng xác nhận mật khẩu.';
     else if (password !== confirmPassword) errors.confirmPassword = 'Mật khẩu xác nhận không khớp.';
     setFieldErrors(errors);
@@ -53,7 +57,29 @@ const Register = () => {
         navigate('/login');
       })
       .catch(err => {
-        setError(err.message || 'Đăng ký thất bại');
+        // Kiểm tra nếu có response từ server
+        if (err.response?.data?.message) {
+          const errorMessage = err.response.data.message;
+          const newFieldErrors = { ...fieldErrors };
+
+          // Kiểm tra email trùng
+          if (errorMessage.includes('Email đã tồn tại')) {
+            newFieldErrors.email = 'Email này đã được đăng ký';
+          }
+
+          // Kiểm tra username trùng
+          if (errorMessage.includes('duplicate key') && errorMessage.includes('Users')) {
+            newFieldErrors.username = 'Tên đăng nhập này đã tồn tại';
+          }
+
+          // Kiểm tra số điện thoại trùng
+          if (errorMessage.includes('Số điện thoại đã tồn tại') || (errorMessage.includes('duplicate key') && errorMessage.includes('phone'))) {
+            newFieldErrors.phone = 'Số điện thoại này đã được đăng ký';
+          }
+
+          setFieldErrors(newFieldErrors);
+        }
+        setError('Vui lòng kiểm tra lại thông tin đăng ký');
       });
   };
 
