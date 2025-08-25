@@ -1,11 +1,12 @@
-export type Role = 'MANAGER' | 'CHEF' | 'WAITER' | 'RECEPTIONIST';
+export type Role = 'MANAGER' | 'CHEF' | 'WAITER' | 'RECEPTIONIST' | 'CUSTOMER';
 
 // Định nghĩa các prefix path cho mỗi role
 export const ROLE_PATH_PREFIXES: Record<Role, string> = {
   MANAGER: '/manager',
   CHEF: '/chef',
   WAITER: '/waiter',
-  RECEPTIONIST: '/receptionist'
+  RECEPTIONIST: '/receptionist',
+  CUSTOMER: '/menu'
 };
 
 export const ROLE_ACCESS_MAP: Record<Role, string[]> = {
@@ -31,6 +32,14 @@ export const ROLE_ACCESS_MAP: Record<Role, string[]> = {
     '/receptionist/takeaway',
     '/receptionist/reservations',
     '/receptionist/payment/*'
+  ],
+  CUSTOMER: [
+    '/',
+    '/menu',
+    '/menu/*',
+    '/profile',
+    '/orders',
+    '/cart'
   ]
 };
 

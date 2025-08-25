@@ -13,7 +13,7 @@ interface AuthContextType {
 }
 
 // Define valid roles
-const VALID_ROLES = ['MANAGER', 'CHEF', 'WAITER', 'RECEPTIONIST'] as const;
+const VALID_ROLES = ['MANAGER', 'CHEF', 'WAITER', 'RECEPTIONIST', 'CUSTOMER'] as const;
 type ValidRole = typeof VALID_ROLES[number];
 
 // Chuẩn hóa role từ localStorage
@@ -115,7 +115,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
 
           // Nếu không phải MANAGER, kiểm tra xem có đang cố truy cập vào khu vực của role khác không
-          if (normalizedRole !== 'MANAGER') {
+          if (normalizedRole !== 'MANAGER' && normalizedRole !== 'CUSTOMER') {
             const currentRolePath = `/${normalizedRole.toLowerCase()}`;
             if (!currentPath.toLowerCase().startsWith(currentRolePath)) {
               console.warn('User attempting to access unauthorized area');
@@ -124,7 +124,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 MANAGER: '/manager',
                 CHEF: '/chef',
                 WAITER: '/waiter/tables',
-                RECEPTIONIST: '/receptionist'
+                RECEPTIONIST: '/receptionist',
+                CUSTOMER: '/menu'
               };
 
               const correctPath = defaultPaths[normalizedRole];
@@ -163,15 +164,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     console.log('Login called with:', { user, role });
     
     // Chuẩn hóa role
+    let finalRole = role.toUpperCase();
+    if (!finalRole.startsWith('ROLE_')) {
+      finalRole = `ROLE_${finalRole}`;
+    }
+    
+    // Xử lý đặc biệt cho CUSTOMER
+    if (finalRole === 'ROLE_CUSTOMER') {
+      localStorage.setItem('currentUser', user);
+      localStorage.setItem('userRole', finalRole);
+      localStorage.setItem('isAuthenticated', 'true');
+      setCurrentUser(user);
+      setUserRole('CUSTOMER');
+      setIsAuthenticated(true);
+      return;
+    }
+    
+    // Xử lý các role khác
     const normalizedRole = normalizeRole(role);
     if (!normalizedRole) {
+      console.error('Validation failed for role:', { 
+        original: role,
+        normalized: normalizedRole,
+        validRoles: VALID_ROLES
+      });
       throw new Error('Invalid role: ' + role);
     }
     
     // Lưu thông tin vào localStorage
     try {
       localStorage.setItem('currentUser', user);
-      localStorage.setItem('userRole', normalizedRole);
+      localStorage.setItem('userRole', finalRole);
       localStorage.setItem('isAuthenticated', 'true');
       
       // Cập nhật state
