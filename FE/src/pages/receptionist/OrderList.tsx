@@ -1,5 +1,5 @@
 // src/pages/OrderManager.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate, useLocation} from 'react-router-dom';
 import TaskbarReceptionist from '../../components/TaskbarReceptionist';
 
@@ -65,13 +65,15 @@ const OrderList: React.FC = () => {
   // Error hiển thị trong modal
   const [error, setError] = useState<string | null>(null);
 
-  // THÊM: state số điện thoại nhập trong modal
+  // Số điện thoại trong modal
   const [phone, setPhone] = useState<string>('');
 
   const [modalPaymentMethod, setModalPaymentMethod] =
     useState<'cash' | 'card' | 'bankTransfer'>('cash');
 
   const navigate = useNavigate();
+
+  // --- Validate SĐT ---
   const location = useLocation();
 
   useEffect(() => {
@@ -150,26 +152,68 @@ const OrderList: React.FC = () => {
     );
   });
 
-  // Mở modal + load promotions hợp lệ
+  // ===== FETCH promotions mỗi khi mở modal / thay đổi SĐT =====
+  const abortRef = useRef<AbortController | null>(null);
+
+  const fetchValidPromos = useCallback(async (phoneArg: string) => {
+    // Hủy request trước đó nếu còn
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setPromosLoading(true);
+    setPromosError(null);
+
+    try {
+      const q = phoneArg ? `?phone=${encodeURIComponent(phoneArg)}` : '';
+      const res = await fetch(`/api/promotions/validPromotions${q}`, {
+        credentials: 'include',
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        const txt = await res.text().catch(() => '');
+        throw new Error(txt || `Không tải được danh sách mã khuyến mãi (${res.status})`);
+      }
+      const list: Promotion[] = await res.json();
+      setPromotions(list ?? []);
+
+      // Nếu mã đang chọn không còn trong list mới -> reset
+      if (selectedPromoCode && !list.some(p => p.promoCode === selectedPromoCode)) {
+        setSelectedPromoCode('');
+      }
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return; // bỏ qua hủy
+      console.error(err);
+      setPromotions([]);
+      setPromosError(err instanceof Error ? err.message : 'Không tải được danh sách mã');
+    } finally {
+      setPromosLoading(false);
+    }
+  }, [selectedPromoCode]);
+
+  // Gọi khi mở modal lần đầu + khi phone đủ 10 số (hoặc rỗng)
+  useEffect(() => {
+    if (!modalOpen) return;
+    // gọi ngay: nếu rỗng -> trả list không loyal; nếu đủ 10 số -> gọi kèm phone
+    const shouldCall = phone === '' || PHONE_RE.test(phone);
+    if (shouldCall) {
+      fetchValidPromos(phone);
+    }
+  }, [modalOpen, phone, fetchValidPromos]);
+
+  // Mở modal
   const handleRowClick = (order: Order) => {
     setSelectedOrder(order);
+    setModalPaymentMethod('cash');
+    setSelectedPromoCode('');
     setModalPaymentMethod('cash'); // reset mặc định
     setSelectedPromoCode('');      // mặc định không áp mã
     setPromosError(null);
     setError(null);
+    setPhone(order.phone ? sanitizePhone(order.phone) : '');
     setPhone(order.phone ?? '');   // THÊM: đưa sẵn phone của order (nếu có) vào input
     setModalOpen(true);
-
-    setPromosLoading(true);
-    fetch('/api/promotions/validPromotions', { credentials: 'include' })
-      .then(res => (res.ok ? res.json() : Promise.reject('Không tải được danh sách mã khuyến mãi')))
-      .then((list: Promotion[]) => setPromotions(list ?? []))
-      .catch((err: unknown) => {
-        console.error(err);
-        setPromotions([]);
-        setPromosError(typeof err === 'string' ? err : 'Không tải được danh sách mã');
-      })
-      .finally(() => setPromosLoading(false));
+    // KHÔNG fetch ở đây nữa; useEffect ở trên sẽ tự gọi dựa trên phone hiện tại
   };
 
   // Tiếp tục = PATCH phone (nếu có thay đổi) → apply promo (nếu chọn) → điều hướng payment
@@ -177,10 +221,16 @@ const OrderList: React.FC = () => {
     if (!selectedOrder) return;
     setError(null);
 
-    const trimmedPhone = phone.trim();
-    const prevPhone = (selectedOrder.phone ?? '').trim();
+    if (!phoneValid) {
+      setError('Số điện thoại không hợp lệ. Yêu cầu 10 số và bắt đầu bằng 0.');
+      return;
+    }
 
-    // 1) Cập nhật phone nếu có nhập và khác trước đó
+    const trimmedPhone = sanitizePhone(phone.trim());
+    const prevPhone = sanitizePhone((selectedOrder.phone ?? '').trim());
+
+
+    // 1) Cập nhật phone nếu thay đổi
     if (trimmedPhone && trimmedPhone !== prevPhone) {
       try {
         const res = await fetch(`/api/receptionist/orders/${selectedOrder.orderId}/phone`, {
@@ -336,6 +386,9 @@ const OrderList: React.FC = () => {
               placeholder="VD: 0372698544"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-4"
             />
+            {phoneInvalidMsg && (
+              <div className="text-xs text-red-600 mb-3">{phoneInvalidMsg}</div>
+            )}
 
             {/* Phương thức thanh toán */}
             <label className="block text-sm mb-1">Phương thức thanh toán</label>
@@ -375,8 +428,8 @@ const OrderList: React.FC = () => {
               </button>
               <button
                 onClick={handleProceed}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                disabled={promosLoading}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                disabled={!phoneValid || promosLoading}
               >
                 Tiếp tục
               </button>
