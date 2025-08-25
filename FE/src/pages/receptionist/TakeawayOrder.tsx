@@ -22,18 +22,17 @@ const formatVnd = (n?: number) =>
 
 // ===== Validate rules =====
 const PHONE_RE = /^\d{10}$/;           // đúng 10 chữ số
-const NAME_NO_DIGIT_RE = /^[^\d]+$/;   // không chứa số
-const MIN_NAME_LEN = 10;               // tối thiểu 10 ký tự
-const MAX_NOTE_LEN = 200;              // ghi chú tối đa 200 ký tự
+const MAX_NOTE_LEN = 100;              // tối đa 100 ký tự
 
 const TakeawayOrder: React.FC = () => {
   // ===== FORM STATE =====
-  const [customerName, setCustomerName] = useState('');
+  const [customerName, setCustomerName] = useState('');  // Free: không bắt buộc
   const [phone, setPhone] = useState('');
-  const [orderNotes, setOrderNotes] = useState('');
+  const [notes, setNotes] = useState('');                // vẫn là notes (payload & FE giữ nguyên)
   const [items, setItems] = useState<OrderItem[]>([]);
   const [subTotal, setSubTotal] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState<string[]>([]);    // Hiển thị lỗi trên đầu form
 
   // ===== Load giỏ từ localStorage =====
   const loadFromStorage = () => {
@@ -94,19 +93,21 @@ const TakeawayOrder: React.FC = () => {
   // ===== Validate form =====
   const validateForm = (): string[] => {
     const errs: string[] = [];
-    const nameTrim = customerName.trim();
     const phoneTrim = phone.trim();
+    const notesTrim = notes.trim();
 
-    if (!nameTrim) {
-      errs.push('Vui lòng nhập tên khách hàng.');
-    } else if (!NAME_NO_DIGIT_RE.test(nameTrim)) {
-      errs.push('Tên khách hàng không được chứa số.');
-    } else if (nameTrim.length < MIN_NAME_LEN) {
-      errs.push(`Tên khách hàng phải có ít nhất ${MIN_NAME_LEN} ký tự.`);
-    }
+    // Tên khách hàng: free -> KHÔNG validate/không bắt buộc
 
+    // Điện thoại vẫn yêu cầu 10 số
     if (!PHONE_RE.test(phoneTrim)) {
       errs.push('Số điện thoại phải gồm đúng 10 chữ số.');
+    }
+
+    // "Địa chỉ đơn hàng" hiển thị, nhưng dữ liệu là notes -> BẮT BUỘC
+    if (!notesTrim) {
+      errs.push('Vui lòng nhập địa chỉ đơn hàng.');
+    } else if (notesTrim.length > MAX_NOTE_LEN) {
+      errs.push(`Địa chỉ đơn hàng vượt quá ${MAX_NOTE_LEN} ký tự.`);
     }
 
     if (items.length === 0) {
@@ -122,10 +123,6 @@ const TakeawayOrder: React.FC = () => {
       }
     });
 
-    if (orderNotes.length > MAX_NOTE_LEN) {
-      errs.push(`Ghi chú đơn hàng vượt quá ${MAX_NOTE_LEN} ký tự.`);
-    }
-
     return errs;
   };
 
@@ -134,14 +131,17 @@ const TakeawayOrder: React.FC = () => {
     e.preventDefault();
 
     // Chuẩn hoá trước khi validate
-    const nameTrim = customerName.trim();
+    const nameTrim = customerName.trim(); // free -> có/không đều được
     const phoneTrim = phone.trim();
+    const notesTrim = notes.trim();
     if (nameTrim !== customerName) setCustomerName(nameTrim);
     if (phoneTrim !== phone) setPhone(phoneTrim);
+    if (notesTrim !== notes) setNotes(notesTrim);
 
     const errs = validateForm();
+    setErrors(errs);
     if (errs.length) {
-      alert(errs.join('\n'));
+      // CHỈ hiển thị box lỗi trên đầu form, KHÔNG alert
       return;
     }
 
@@ -163,14 +163,15 @@ const TakeawayOrder: React.FC = () => {
         .filter((x): x is NonNullable<typeof x> => x !== null);
 
     if (mapped.length === 0) {
-      alert('Các món đã chọn thiếu mã món/combo. Vui lòng chọn lại từ menu.');
+      setErrors(['Các món đã chọn thiếu mã món/combo. Vui lòng chọn lại từ menu.']);
       return;
     }
 
+    // Payload vẫn là notes
     const payload = {
-      customerName: nameTrim,
+      customerName: nameTrim,       // có thể rỗng
       phone: phoneTrim,
-      notes: orderNotes,
+      notes: notesTrim,             // dữ liệu "địa chỉ đơn hàng" map vào đây
       items: mapped,
       orderType: 'TAKEAWAY',
       source: 'RECEPTION_TAKEAWAY',
@@ -184,29 +185,26 @@ const TakeawayOrder: React.FC = () => {
 
       alert('Tạo đơn mang đi thành công');
 
-      // Lấy orderId (nếu có) để Chef biết đơn mới
       const orderId = (res?.data && (res.data.orderId ?? res.data.id)) as number | undefined;
       if (orderId) {
-        // Báo Chef tự reload + highlight đơn mới
         sessionStorage.setItem(
             'chef_force_reload',
             JSON.stringify({ orderId, ts: Date.now() })
         );
       }
 
-      // 1) Clear giỏ + reset form
       localStorage.removeItem(STORAGE_KEY);
       setItems([]);
       setCustomerName('');
       setPhone('');
-      setOrderNotes('');
+      setNotes('');
+      setErrors([]);
 
-      // 2) Refresh lại đúng trang hiện tại (không rời trang, không mở tab mới)
       window.location.reload();
       return;
     } catch (err) {
       console.error(err);
-      alert('Tạo đơn thất bại');
+      setErrors(['Tạo đơn thất bại']);
     } finally {
       setSubmitting(false);
     }
@@ -225,31 +223,33 @@ const TakeawayOrder: React.FC = () => {
         <div className="flex-1 min-w-0 p-8">
           <div className="mb-6">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Đơn Mang Đi</h1>
-            <p className="text-gray-600">
-              Trang tạo đơn mang đi cho khách hàng của lễ tân
-            </p>
+            <p className="text-gray-600">Trang tạo đơn mang đi cho khách hàng của lễ tân</p>
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Error box */}
+              {errors.length > 0 && (
+                  <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                    <ul className="list-disc list-inside">
+                      {errors.map((er, idx) => (
+                          <li key={idx}>{er}</li>
+                      ))}
+                    </ul>
+                  </div>
+              )}
+
               {/* Thông tin khách */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block mb-1 font-medium">Tên khách hàng</label>
+                  <label className="block mb-1 font-medium">Tên khách hàng (tuỳ chọn)</label>
                   <input
                       type="text"
                       className="w-full border rounded px-3 py-2"
                       value={customerName}
-                      onChange={e => {
-                        // Chặn số trong tên
-                        const v = e.target.value.replace(/\d+/g, '');
-                        setCustomerName(v);
-                      }}
-                      required
+                      onChange={e => setCustomerName(e.target.value)}
+                      placeholder="Ví dụ: Anh Nam (có thể để trống)"
                   />
-                  <div className="text-xs text-gray-500 mt-1">
-                    Không chứa số, tối thiểu {MIN_NAME_LEN} ký tự.
-                  </div>
                 </div>
                 <div>
                   <label className="block mb-1 font-medium">Số điện thoại</label>
@@ -261,15 +261,11 @@ const TakeawayOrder: React.FC = () => {
                       className="w-full border rounded px-3 py-2"
                       value={phone}
                       onChange={e => {
-                        // Chỉ cho phép số, tối đa 10
                         const onlyDigits = e.target.value.replace(/\D+/g, '').slice(0, 10);
                         setPhone(onlyDigits);
                       }}
                       required
                   />
-                  <div className="text-xs text-gray-500 mt-1">
-                    Yêu cầu đúng 10 chữ số.
-                  </div>
                 </div>
               </div>
 
@@ -315,9 +311,7 @@ const TakeawayOrder: React.FC = () => {
                             <tr key={i}>
                               <td className="border px-2 py-1">
                                 {it.name ||
-                                    (it.kind === 'dish'
-                                        ? `Món #${it.dishId}`
-                                        : `Combo #${it.comboId}`)}
+                                    (it.kind === 'dish' ? `Món #${it.dishId}` : `Combo #${it.comboId}`)}
                               </td>
                               <td className="border px-2 py-1 text-center">
                                 <input
@@ -344,11 +338,8 @@ const TakeawayOrder: React.FC = () => {
                                     onChange={e =>
                                         updateItemField(i, { notes: e.target.value.slice(0, MAX_NOTE_LEN) })
                                     }
-                                    placeholder="Ghi chú"
+                                    placeholder="Ghi chú cho món (tuỳ chọn)"
                                 />
-                                <div className="text-[10px] text-gray-500 mt-0.5">
-                                  Tối đa {MAX_NOTE_LEN} ký tự
-                                </div>
                               </td>
                             </tr>
                         ))}
@@ -369,16 +360,17 @@ const TakeawayOrder: React.FC = () => {
                 </div>
               </div>
 
-              {/* Ghi chú đơn */}
+              {/* Địa chỉ đơn hàng (hiển thị) — dữ liệu vẫn là notes */}
               <div>
-                <label className="block mb-1 font-medium">Ghi chú đơn hàng</label>
+                <label className="block mb-1 font-medium">Địa chỉ đơn hàng</label>
                 <textarea
                     className="w-full border rounded px-3 py-2"
                     rows={3}
-                    value={orderNotes}
-                    onChange={e => setOrderNotes(e.target.value.slice(0, MAX_NOTE_LEN))}
+                    value={notes}
+                    onChange={e => setNotes(e.target.value.slice(0, MAX_NOTE_LEN))}
+                    placeholder="Số nhà, đường, phường/xã, quận/huyện, thành phố..."
+                    required
                 />
-                <div className="text-xs text-gray-500 mt-1">Tối đa {MAX_NOTE_LEN} ký tự</div>
               </div>
 
               <div className="flex justify-end items-center gap-3 text-lg font-semibold">
@@ -392,8 +384,9 @@ const TakeawayOrder: React.FC = () => {
                     onClick={() => {
                       setCustomerName('');
                       setPhone('');
-                      setOrderNotes('');
+                      setNotes('');
                       handleClearItems();
+                      setErrors([]);
                     }}
                     className="px-4 py-2 border rounded-lg"
                     disabled={submitting}
