@@ -364,7 +364,9 @@ public class WaiterServiceImpl implements WaiterService {
 
         List<OrderDetail> details = orderDetailRepository.findByOrderId(orderId);
         for (OrderDetail od : details) {
-            od.setStatusId(done.getStatusId());
+            if(od.getStatusId().equals(2)){
+                od.setStatusId(done.getStatusId());
+            }
         }
         orderDetailRepository.saveAll(details);
 

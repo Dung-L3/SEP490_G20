@@ -3,9 +3,11 @@ package com.system.restaurant.management.service.serviceImpl;
 import com.system.restaurant.management.dto.ApplyPromotionRequest;
 import com.system.restaurant.management.dto.ApplyPromotionResponse;
 import com.system.restaurant.management.dto.PromotionRequestDto;
+import com.system.restaurant.management.entity.Customer;
 import com.system.restaurant.management.entity.Order;
 import com.system.restaurant.management.entity.PromoUsage;
 import com.system.restaurant.management.entity.Promotion;
+import com.system.restaurant.management.repository.CustomerRepository;
 import com.system.restaurant.management.repository.OrderRepository;
 import com.system.restaurant.management.repository.PromoUsageRepository;
 import com.system.restaurant.management.repository.PromotionRepository;
@@ -13,6 +15,7 @@ import com.system.restaurant.management.service.PromotionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.data.domain.*;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -21,6 +24,7 @@ import java.math.RoundingMode;
 import java.time.*;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 import static org.springframework.http.HttpStatus.*;
 
@@ -31,12 +35,13 @@ public class PromotionServiceImpl implements PromotionService {
      private final PromotionRepository promotionRepository;
      private final PromoUsageRepository promoUsageRepository;
      private final OrderRepository orderRepository;
+    private final CustomerRepository customerRepository;
+    private static final String LOYAL_CODE = "SALE FOR LOYAL CUSTOMER";
 
     @Override
     public Promotion create(PromotionRequestDto dto) {
         Promotion p = new Promotion();
         applyDto(p, dto);
-        // đảm bảo code unique ở DB, Optional để báo 409 nếu trùng
         promotionRepository.findByPromoCodeIgnoreCase(dto.getPromoCode())
                 .ifPresent(x -> { throw new ResponseStatusException(CONFLICT, "Promo code already exists"); });
         return promotionRepository.save(p);
@@ -75,18 +80,30 @@ public class PromotionServiceImpl implements PromotionService {
         return promotionRepository.findAll(pageable);
     }
 
-    @Override
-    public List<Promotion> listValidPromotions() {
+    public List<Promotion> listValidPromotions(String phone) {
         LocalDate today = LocalDate.now(ZoneId.of("Asia/Bangkok"));
+
+        boolean eligibleForLoyalCode;
+        if (phone != null && !phone.isBlank()) {
+            Integer points = customerRepository.findLoyaltyPointsByPhone(phone)
+                    .orElse(0);
+            eligibleForLoyalCode = points > 59;
+        } else {
+            eligibleForLoyalCode = false;
+        }
 
         return promotionRepository.findAll().stream()
                 .filter(p -> Boolean.TRUE.equals(p.getIsActive()))
                 .filter(p -> !today.isBefore(p.getStartDate()))
                 .filter(p -> !today.isAfter(p.getEndDate()))
                 .filter(p -> p.getUsageLimit() == null || p.getUsageLimit() > 0)
+                .filter(p -> {
+                    boolean isLoyalCode = p.getPromoCode().equalsIgnoreCase(LOYAL_CODE);
+                    return !(isLoyalCode && !eligibleForLoyalCode);})
                 .sorted(Comparator.comparing(Promotion::getEndDate))
                 .toList();
     }
+
 
     @Override
     @Transactional

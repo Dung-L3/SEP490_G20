@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.Nullable;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -44,8 +45,8 @@ public class PromotionController {
     }
 
     @GetMapping("/validPromotions")
-    public ResponseEntity<List<Promotion>> listValidPromotions() {
-        return ResponseEntity.ok(promotionService.listValidPromotions());
+    public ResponseEntity<List<Promotion>> listValidPromotions(@RequestParam(required = false) String phone) {
+        return ResponseEntity.ok(promotionService.listValidPromotions(phone));
     }
 
     @GetMapping
