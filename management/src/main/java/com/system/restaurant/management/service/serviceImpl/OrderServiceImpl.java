@@ -209,6 +209,7 @@ public class OrderServiceImpl implements OrderService {
         dto.setDiscountAmount(order.getDiscountAmount());
         dto.setFinalTotal(order.getFinalTotal());
         dto.setCreatedAt(order.getCreatedAt());
+        dto.setNotes(order.getNotes());
         return dto;
     }
 

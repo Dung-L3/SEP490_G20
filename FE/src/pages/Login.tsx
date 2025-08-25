@@ -35,7 +35,16 @@ const Login = () => {
         if (!res.role) {
           throw new Error('Không nhận được thông tin quyền truy cập');
         }
-        login(username, res.role);
+        console.log('Role từ server:', res.role);
+        
+        // Chuẩn hóa role
+        let normalizedRole = res.role.toUpperCase();
+        if (!normalizedRole.startsWith('ROLE_')) {
+          normalizedRole = `ROLE_${normalizedRole}`;
+        }
+        console.log('Role sau khi chuẩn hóa:', normalizedRole);
+        
+        login(username, normalizedRole);
 
         // Kiểm tra dữ liệu đã được lưu
         const savedData = {
@@ -52,31 +61,35 @@ const Login = () => {
         }
 
         // Điều hướng dựa trên role
-        const role = savedData.userRole.toUpperCase();
-        console.log('Redirecting with role:', role);
+        const role = savedData.userRole;
+        console.log('Role trước khi điều hướng:', {
+          raw: role,
+          uppercase: role.toUpperCase(),
+          isRolePrefix: role.startsWith('ROLE_')
+        });
+        console.log('User role for redirection:', role);
 
         switch(role) {
           case 'ROLE_MANAGER':
-          case 'MANAGER':
             window.location.href = '/manager';
             break;
           case 'ROLE_WAITER':
-          case 'WAITER':
             window.location.href = '/waiter/orders';
             break;
           case 'ROLE_CHEF':
-          case 'CHEF':
             window.location.href = '/chef';
             break;
           case 'ROLE_RECEPTIONIST':
-          case 'RECEPTIONIST':
-            window.location.href = '/receptionist';
+            window.location.href = '/receptionist/reservations';
             break;
           case 'ROLE_CUSTOMER':
-          case 'CUSTOMER':
-            window.location.href = '/';
+            window.location.href = '/menu';
             break;
           default:
+            console.error('Role không hợp lệ:', {
+              roleFromStorage: role,
+              expectedFormat: 'ROLE_XXXXX'
+            });
             throw new Error(`Role không hợp lệ: ${role}`);
         }
       } catch (error) {

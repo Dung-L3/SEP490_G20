@@ -39,13 +39,15 @@ export async function loginApi(data: { username: string; password: string }): Pr
     // Xóa data cũ trước khi lưu mới
     localStorage.clear();
     
-    // Lưu thông tin mới
+        // Chuẩn hóa role và lưu thông tin
+    const normalizedRole = result.role.toUpperCase().startsWith('ROLE_') ? 
+      result.role.toUpperCase() : 
+      `ROLE_${result.role.toUpperCase()}`;
+
     localStorage.setItem('token', token);
     localStorage.setItem('currentUser', data.username);
-    localStorage.setItem('userRole', result.role);
-    localStorage.setItem('isAuthenticated', 'true');
-    
-    console.log('Auth data saved:', {
+    localStorage.setItem('userRole', normalizedRole);
+    localStorage.setItem('isAuthenticated', 'true');    console.log('Auth data saved:', {
       username: data.username,
       role: result.role,
       isAuthenticated: true,

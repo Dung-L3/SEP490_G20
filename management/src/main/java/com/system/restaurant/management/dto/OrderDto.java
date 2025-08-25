@@ -16,4 +16,5 @@ public class OrderDto {
     private BigDecimal discountAmount;
     private BigDecimal finalTotal;
     private LocalDateTime createdAt;
+    private String notes;
 }
