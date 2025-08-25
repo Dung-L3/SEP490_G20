@@ -31,7 +31,11 @@ const Register = () => {
     if (!phone) errors.phone = 'Vui lòng nhập số điện thoại.';
     else if (!/^\d{10}$/.test(phone)) errors.phone = 'Số điện thoại phải đủ 10 số.';
     if (!username) errors.username = 'Vui lòng nhập tên đăng nhập.';
-    if (!password) errors.password = 'Vui lòng nhập mật khẩu.';
+    if (!password) {
+      errors.password = 'Vui lòng nhập mật khẩu.';
+    } else if (password.length < 8) {
+      errors.password = 'Mật khẩu phải có ít nhất 8 ký tự.';
+    }
     if (!confirmPassword) errors.confirmPassword = 'Vui lòng xác nhận mật khẩu.';
     else if (password !== confirmPassword) errors.confirmPassword = 'Mật khẩu xác nhận không khớp.';
     setFieldErrors(errors);
@@ -53,7 +57,29 @@ const Register = () => {
         navigate('/login');
       })
       .catch(err => {
-        setError(err.message || 'Đăng ký thất bại');
+        // Kiểm tra nếu có response từ server
+        if (err.response?.data?.message) {
+          const errorMessage = err.response.data.message;
+          const newFieldErrors = { ...fieldErrors };
+
+          // Kiểm tra email trùng
+          if (errorMessage.includes('Email đã tồn tại')) {
+            newFieldErrors.email = 'Email này đã được đăng ký';
+          }
+
+          // Kiểm tra username trùng
+          if (errorMessage.includes('duplicate key') && errorMessage.includes('Users')) {
+            newFieldErrors.username = 'Tên đăng nhập này đã tồn tại';
+          }
+
+          // Kiểm tra số điện thoại trùng
+          if (errorMessage.includes('Số điện thoại đã tồn tại') || (errorMessage.includes('duplicate key') && errorMessage.includes('phone'))) {
+            newFieldErrors.phone = 'Số điện thoại này đã được đăng ký';
+          }
+
+          setFieldErrors(newFieldErrors);
+        }
+        setError('Vui lòng kiểm tra lại thông tin đăng ký');
       });
   };
 
@@ -70,7 +96,14 @@ const Register = () => {
               type="text"
               className="w-full px-4 py-2 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
               value={fullName}
-              onChange={e => setFullName(e.target.value)}
+              onChange={e => {
+                const newFullName = e.target.value;
+                setFullName(newFullName);
+                // Xóa lỗi fullName nếu đã nhập
+                if (newFullName.trim()) {
+                  setFieldErrors(prev => ({ ...prev, fullName: '' }));
+                }
+              }}
               autoFocus
             />
             {fieldErrors.fullName && <div className="text-red-500 text-sm mt-1">{fieldErrors.fullName}</div>}
@@ -81,7 +114,17 @@ const Register = () => {
               type="email"
               className="w-full px-4 py-2 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
               value={email}
-              onChange={e => setEmail(e.target.value)}
+              onChange={e => {
+                const newEmail = e.target.value;
+                setEmail(newEmail);
+                // Chỉ xóa lỗi định dạng email, giữ nguyên lỗi trùng email
+                const currentError = fieldErrors.email;
+                if (currentError && currentError !== 'Email này đã được đăng ký') {
+                  if (/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/.test(newEmail)) {
+                    setFieldErrors(prev => ({ ...prev, email: '' }));
+                  }
+                }
+              }}
               placeholder="Nhập email của bạn"
             />
             {fieldErrors.email && <div className="text-red-500 text-sm mt-1">{fieldErrors.email}</div>}
@@ -96,6 +139,13 @@ const Register = () => {
                 // Chỉ cho phép nhập số
                 const value = e.target.value.replace(/[^0-9]/g, '');
                 setPhone(value);
+                // Chỉ xóa lỗi định dạng số điện thoại, giữ nguyên lỗi trùng
+                const currentPhoneError = fieldErrors.phone;
+                if (currentPhoneError && currentPhoneError !== 'Số điện thoại này đã được đăng ký') {
+                  if (/^\d{10}$/.test(value)) {
+                    setFieldErrors(prev => ({ ...prev, phone: '' }));
+                  }
+                }
               }}
               maxLength={10}
               pattern="[0-9]*"
@@ -109,7 +159,17 @@ const Register = () => {
               type="text"
               className="w-full px-4 py-2 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
               value={username}
-              onChange={e => setUsername(e.target.value)}
+              onChange={e => {
+                const newUsername = e.target.value;
+                setUsername(newUsername);
+                // Chỉ xóa lỗi trường trống, giữ nguyên lỗi trùng username
+                const currentUsernameError = fieldErrors.username;
+                if (currentUsernameError && currentUsernameError !== 'Tên đăng nhập này đã tồn tại') {
+                  if (newUsername.trim()) {
+                    setFieldErrors(prev => ({ ...prev, username: '' }));
+                  }
+                }
+              }}
             />
             {fieldErrors.username && <div className="text-red-500 text-sm mt-1">{fieldErrors.username}</div>}
           </div>
@@ -119,7 +179,14 @@ const Register = () => {
               type="password"
               className="w-full px-4 py-2 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
               value={password}
-              onChange={e => setPassword(e.target.value)}
+              onChange={e => {
+                const newPassword = e.target.value;
+                setPassword(newPassword);
+                // Xóa lỗi password nếu đủ 8 ký tự
+                if (newPassword.length >= 8) {
+                  setFieldErrors(prev => ({ ...prev, password: '' }));
+                }
+              }}
             />
             {fieldErrors.password && <div className="text-red-500 text-sm mt-1">{fieldErrors.password}</div>}
           </div>
@@ -129,7 +196,14 @@ const Register = () => {
               type="password"
               className="w-full px-4 py-2 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
               value={confirmPassword}
-              onChange={e => setConfirmPassword(e.target.value)}
+              onChange={e => {
+                const newConfirmPassword = e.target.value;
+                setConfirmPassword(newConfirmPassword);
+                // Xóa lỗi confirmPassword nếu khớp với password
+                if (newConfirmPassword === password) {
+                  setFieldErrors(prev => ({ ...prev, confirmPassword: '' }));
+                }
+              }}
             />
             {fieldErrors.confirmPassword && <div className="text-red-500 text-sm mt-1">{fieldErrors.confirmPassword}</div>}
           </div>

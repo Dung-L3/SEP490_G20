@@ -15,7 +15,7 @@ import RevenueManager from './pages/manager/RevenueManager'; // Import trang Qu�
 import TableManager from './pages/manager/TableManager'; // Import trang Quản lý bàn
 import StaffManager from './pages/manager/StaffManager'; // Import trang Quản lý nhân sự
 import DishManager from './pages/manager/DishManager'; // Import trang Quản lý món ăn
-import OrderManager from './pages/manager/OrderManager'; // Import trang Quản lý đơn hàng
+
 
 import { CartProvider } from './contexts/CartContext';
 import { TableCartProvider } from './contexts/TableCartContext';
@@ -56,8 +56,6 @@ function App() {
             <Route path="/manager/workshift" element={<WorkshiftManager />} /> {/* Route cho trang Quản lý ca làm việc */}
             <Route path="/manager/dish" element={<DishManager />} /> {/* Route cho trang Quản lý món ăn */}
             <Route path="/manager/combo" element={<ComboManager />} /> {/* Route cho trang Quản lý combo */}
-            <Route path="/manager/order" element={<OrderManager />} /> {/* Route cho trang Quản lý đơn hàng */}
-
             <Route path="/manager/purchase-history" element={<PurchaseHistoryManager />} /> {/* Route cho trang Lịch sử giao dịch */}
             <Route path="/manager/promotions" element={<PromotionsManager />} />
 

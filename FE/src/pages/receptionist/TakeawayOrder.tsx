@@ -97,6 +97,10 @@ const TakeawayOrder: React.FC = () => {
     const notesTrim = notes.trim();
 
     // Tên khách hàng: free -> KHÔNG validate/không bắt buộc
+    const nameTrim = customerName.trim();
+    if (!nameTrim) {
+      errs.push('Vui lòng nhập tên khách hàng.');
+    }
 
     // Điện thoại vẫn yêu cầu 10 số
     if (!PHONE_RE.test(phoneTrim)) {
