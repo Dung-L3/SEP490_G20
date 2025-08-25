@@ -35,7 +35,7 @@ public class ChefController {
     @PutMapping("/chef/orders/{orderDetailId}/cancel")
     public ResponseEntity<String> cancelOrder(@PathVariable Integer orderDetailId) {
         try {
-            chefService.updateOrderStatus(orderDetailId, "CANCELLED");
+            chefService.cancelOrder(orderDetailId);
             return ResponseEntity.ok("Order cancelled successfully");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Failed to cancel order: " + e.getMessage());

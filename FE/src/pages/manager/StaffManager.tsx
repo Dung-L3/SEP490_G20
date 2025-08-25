@@ -227,19 +227,27 @@ const StaffManager = () => {
 
       console.log('Current staff data:', editStaff);
       
-      // Đảm bảo role name có định dạng đúng
-      let role = editStaff.roleNames[0];
-      if (!role.startsWith('ROLE_')) {
-        role = `ROLE_${role}`;
-      }
+      // Log current state
+      console.log('=== Start Edit Staff Save ===');
+      console.log('Current editStaff state:', editStaff);
+      console.log('Current role:', editStaff.roleNames);
 
+      // Ensure role is in correct format
+      const currentRole = editStaff.roleNames[0];
+      if (!currentRole) {
+        setEditModalError('Vui lòng chọn chức vụ');
+        return;
+      }
+      console.log('Selected role:', currentRole);
+
+      // Prepare request
       const staffRequest: StaffRequest = {
         username: editStaff.username.trim(),
         fullName: editStaff.fullName.trim(),
         email: editStaff.email.trim(),
         phone: editStaff.phone.trim(),
         status: editStaff.status,
-        roleNames: [role],  // Gửi role đã được format
+        roleNames: [currentRole],
         passwordHash: '' // Empty password means no change
       };
       console.log('Sending update request:', staffRequest);
@@ -335,28 +343,34 @@ const StaffManager = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleToggleStatus = async (id: number, currentStatus: boolean) => {
     if (!id) {
       setError('ID nhân viên không hợp lệ');
       return;
     }
 
-    if (!window.confirm('Bạn có chắc chắn muốn xóa nhân viên này?')) return;
+    const action = currentStatus ? 'vô hiệu hóa' : 'kích hoạt';
+    if (!window.confirm(`Bạn có chắc chắn muốn ${action} tài khoản nhân viên này?`)) return;
 
     try {
       setLoading(true);
       setError('');
-      console.log('Deleting staff with ID:', id);
-      await staffApi.delete(id);
-      setStaff(staff => staff.filter(s => s.id !== id));
+      console.log(`${action} tài khoản nhân viên với ID:`, id);
+      
+      const updatedStaff = await staffApi.updateStatus(id, !currentStatus);
+      
+      setStaff(staff => staff.map(s => 
+        s.id === id ? mapStaffToDisplay(updatedStaff) : s
+      ));
+      
       // Show success message
-      alert('Xóa nhân viên thành công');
+      alert(`${action.charAt(0).toUpperCase() + action.slice(1)} tài khoản thành công`);
     } catch (err) {
-      console.error('Error deleting staff:', err);
+      console.error('Error toggling staff status:', err);
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError('Không thể xóa nhân viên');
+        setError(`Không thể ${action} tài khoản nhân viên`);
       }
     } finally {
       setLoading(false);
@@ -445,6 +459,7 @@ const StaffManager = () => {
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Email</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Số điện thoại</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Tài khoản</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Trạng thái</th>
                   <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Hành động</th>
                 </tr>
               </thead>
@@ -484,6 +499,15 @@ const StaffManager = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                        s.status
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-red-100 text-red-800'
+                      }`}>
+                        {s.status ? 'Hoạt động' : 'Đã khóa'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
                       <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={() => handleEdit(idx)}
@@ -493,11 +517,24 @@ const StaffManager = () => {
                           Sửa
                         </button>
                         <button
-                          onClick={() => handleDelete(s.id)}
-                          className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-red-700 bg-red-100 hover:bg-red-200 rounded-lg transition-colors"
+                          onClick={() => handleToggleStatus(s.id, s.status)}
+                          className={`flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                            s.status 
+                            ? "text-red-700 bg-red-100 hover:bg-red-200"
+                            : "text-green-700 bg-green-100 hover:bg-green-200"
+                          }`}
                         >
-                          <Trash2 className="w-4 h-4" />
-                          Xóa
+                          {s.status ? (
+                            <>
+                              <Trash2 className="w-4 h-4" />
+                              Vô hiệu hóa
+                            </>
+                          ) : (
+                            <>
+                              <Users className="w-4 h-4" />
+                              Kích hoạt
+                            </>
+                          )}
                         </button>
                       </div>
                     </td>
@@ -682,15 +719,25 @@ const StaffManager = () => {
                     <select
                       name="roleName"
                       value={editStaff.roleNames[0] || ''}
-                      onChange={(e) => setEditStaff(prev => ({ ...prev!, roleNames: [e.target.value] }))}
+                      onChange={(e) => {
+                        console.log('Role selection changed to:', e.target.value);
+                        setEditStaff(prev => {
+                          const newState = { ...prev!, roleNames: [e.target.value] };
+                          console.log('New editStaff state:', newState);
+                          return newState;
+                        });
+                      }}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                     >
                       <option value="">Chọn vai trò</option>
-                      {ROLE_OPTIONS.filter(role => role.value !== '').map(role => (
-                        <option key={role.value} value={role.value}>
-                          {role.label}
-                        </option>
-                      ))}
+                      {ROLE_OPTIONS.filter(role => role.value !== '').map(role => {
+                        console.log('Rendering role option:', role);
+                        return (
+                          <option key={role.value} value={role.value}>
+                            {role.label}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
                 </div>

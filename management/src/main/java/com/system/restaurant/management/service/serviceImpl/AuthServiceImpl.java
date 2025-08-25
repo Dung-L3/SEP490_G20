@@ -31,8 +31,14 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void registerEmployee(RegisterRequest req) {
+        // Validate password length
+        if (req.getPassword().length() < 8) {
+            throw new IllegalArgumentException("Mật khẩu phải có ít nhất 8 ký tự");
+        }
+
+        // Validate unique constraints
         if (userRepo.existsByUsername(req.getUsername())) {
-            throw new IllegalArgumentException("Username đã tồn tại");
+            throw new IllegalArgumentException("Tên đăng nhập đã tồn tại");
         }
         if (userRepo.existsByEmail(req.getEmail())) {
             throw new IllegalArgumentException("Email đã tồn tại");
@@ -92,6 +98,10 @@ public class AuthServiceImpl implements AuthService {
     public User validateLogin(LoginRequest request) {
         User user = userRepo.findByUsername(request.getUsername())
                 .orElseThrow(() -> new IllegalArgumentException("Tài khoản không tồn tại"));
+
+        if (!user.getStatus()) {
+            throw new IllegalArgumentException("Tài khoản của bạn đã bị vô hiệu hóa");
+        }
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new IllegalArgumentException("Sai mật khẩu");

@@ -28,7 +28,13 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<String> handleIllegalStateException(IllegalStateException e) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+    public ResponseEntity<?> handleIllegalStateException(IllegalStateException e) {
+        Map<String, String> errorResponse = new HashMap<>();
+        errorResponse.put("error", "Validation Error");
+        errorResponse.put("message", e.getMessage());
+        
+        return ResponseEntity
+            .status(HttpStatus.BAD_REQUEST)
+            .body(errorResponse);
     }
 }

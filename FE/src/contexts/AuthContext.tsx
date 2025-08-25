@@ -65,7 +65,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             MANAGER: '/manager',
             CHEF: '/chef',
             WAITER: '/waiter/tables',
-            RECEPTIONIST: '/receptionist'
+            RECEPTIONIST: '/receptionist/reservations'
           };
 
           const defaultPath = defaultPaths[normalizedRole];

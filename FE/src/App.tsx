@@ -22,7 +22,6 @@ import { TableCartProvider } from './contexts/TableCartContext';
 import { AuthProvider } from './contexts/AuthContext';
 import OrderList from './pages/receptionist/OrderList';
 import OrderPayment from './pages/receptionist/OrderPayment';
-import ReceptionistHome from './pages/receptionist/ReceptionistHome';
 import Chef from './pages/chef/Chef';
 import QRMenu from './pages/QRMenu';
 import QRCodeManager from './pages/manager/QRCodeManager';
@@ -68,7 +67,7 @@ function App() {
           <Route path="/waiter/orders" element={<WaiterOrder />} /> {/* Route cho waiter đặt món */}
           <Route path="/waiter/tables" element={<WaiterTableView />} /> {/* Route cho waiter xem bàn */}
           <Route path="/chef" element={<Chef />} /> {/* Route cho trang Chef (bếp trưởng) */}
-           <Route path="/takeaway-order" element={<TakeawayOrderPublic />} /> Route cho trang đơn hàng mang đi công khai
+           <Route path="/takeaway-order" element={<TakeawayOrderPublic />} /> {/*Route cho trang đơn hàng mang đi công khai*/}
          
           {/* QR Menu Routes */}
           <Route path="/menu/:tableId" element={<QRMenu />} /> {/* Route cho trang QR menu khách hàng */}
@@ -77,7 +76,6 @@ function App() {
           {/* Receptionist Routes */}
             <Route path="/receptionist/orders/unpaid" element={<OrderList />} /> {/* Route cho trang xử lý thanh toán của order */}
             <Route path="/receptionist/:orderId/payment" element={<OrderPayment />} />
-            <Route path="/receptionist"element={<ReceptionistHome/>} />
             <Route path="/receptionist/reservations"element={<ReservationList/>} />
               <Route path="/receptionist/takeaway" element={<TakeawayOrder />} /> {/* Route cho trang đơn hàng mang đi */}
             </Routes>
