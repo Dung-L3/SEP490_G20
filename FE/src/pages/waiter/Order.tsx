@@ -517,19 +517,23 @@ const Order: React.FC = () => {
                       };
                       
                       try {
-                        await createOrder(orderData);
-                        alert('Đơn hàng đã được gửi thành công!');
+                        const response = await createOrder(orderData) as { message?: string; id?: number; orderId?: number; };
+                        // Xử lý response từ orderApi mới
+                        const message = response?.message || 'Đơn hàng đã được gửi thành công!';
+                        const orderId = response?.orderId || response?.id;
+                        
+                        alert(message);
                         
                         // Xóa toàn bộ giỏ hàng ngay sau khi đặt món thành công
                         clearCart();
+                        window.location.reload(); // Tải lại trang để refresh hoàn toàn
                         
-                        // Cập nhật lại danh sách bàn và tải lại trang
                         const tables = await fetchOccupiedTables();
                         setTableList(tables);
-                        window.location.reload(); // Tải lại trang để refresh hoàn toàn
                       } catch (error) {
-                        // Không hiển thị thông báo lỗi "Failed to fetch" nữa
                         console.error('Error submitting order:', error);
+                        const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra khi gửi đơn hàng!';
+                        alert(errorMessage);
                       }
                     }}
                   >
