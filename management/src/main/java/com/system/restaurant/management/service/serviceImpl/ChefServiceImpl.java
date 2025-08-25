@@ -4,6 +4,7 @@ import com.system.restaurant.management.dto.KitchenOrderDTO;
 import com.system.restaurant.management.entity.OrderDetail;
 import com.system.restaurant.management.repository.OrderDetailRepository;
 import com.system.restaurant.management.service.ChefService;
+import com.system.restaurant.management.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
