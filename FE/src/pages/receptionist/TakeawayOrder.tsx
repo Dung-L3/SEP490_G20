@@ -97,6 +97,10 @@ const TakeawayOrder: React.FC = () => {
     const notesTrim = notes.trim();
 
     // Tên khách hàng: free -> KHÔNG validate/không bắt buộc
+    const nameTrim = customerName.trim();
+    if (!nameTrim) {
+      errs.push('Vui lòng nhập tên khách hàng.');
+    }
 
     // Điện thoại vẫn yêu cầu 10 số
     if (!PHONE_RE.test(phoneTrim)) {
@@ -248,7 +252,7 @@ const TakeawayOrder: React.FC = () => {
                       className="w-full border rounded px-3 py-2"
                       value={customerName}
                       onChange={e => setCustomerName(e.target.value)}
-                      placeholder="Ví dụ: Anh Nam (có thể để trống)"
+                      placeholder="Ví dụ: Anh Nam"
                   />
                 </div>
                 <div>

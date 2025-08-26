@@ -85,6 +85,10 @@ const TakeawayOrderPublic: React.FC = () => {
         const errs: string[] = [];
 
         // Tên khách hàng: FREE -> không bắt buộc
+        const nameTrim = customerName.trim();
+        if (!nameTrim) {
+            errs.push('Vui lòng nhập tên khách hàng.');
+        }
         // Điện thoại: yêu cầu 10 số
         if (!PHONE_RE.test(phone.trim())) {
             errs.push('Số điện thoại phải gồm đúng 10 chữ số.');
@@ -239,7 +243,7 @@ const TakeawayOrderPublic: React.FC = () => {
                                     className="w-full p-3 mt-2 text-lg text-gray-800 rounded-md"
                                     value={customerName}
                                     onChange={(e) => setCustomerName(e.target.value)} // FREE
-                                    placeholder="Ví dụ: Anh Nam (có thể để trống)"
+                                    placeholder="Ví dụ: Anh Nam"
                                 />
                             </div>
                             <div>

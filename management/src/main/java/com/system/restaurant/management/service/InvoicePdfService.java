@@ -141,8 +141,15 @@ public class InvoicePdfService {
 // Label và value dùng font size 12
         info.addCell(cell.apply("Ngày:", 12f));
         info.addCell(cell.apply(pr.getPaidAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")), 12f));
-        info.addCell(cell.apply("Bàn:", 12f));
-        info.addCell(cell.apply(String.valueOf(tableNumber), 12f));
+        if(tableNumber != null) {
+            info.addCell(cell.apply("Bàn:", 12f));
+            info.addCell(cell.apply(String.valueOf(tableNumber), 12f));
+        }else {
+            info.addCell(cell.apply("Địa chỉ: ", 12f));
+            info.addCell(cell.apply(String.valueOf(order.getNotes()), 12f));
+            info.addCell(cell.apply("Số điện thoại:", 12f));
+            info.addCell(cell.apply(String.valueOf(order.getPhone()), 12f));
+        }
         info.addCell(cell.apply("Thu ngân:", 12f));
         info.addCell(cell.apply(cashierName, 12f));
         info.addCell(cell.apply("Khách hàng:", 12f));

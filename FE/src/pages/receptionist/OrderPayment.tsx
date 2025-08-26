@@ -75,7 +75,7 @@ const handleConfirm = () => {
     })
     .then(() => {
       setConfirming(false);
-      navigate('/receptionist');
+      navigate('/receptionist/reservations');
     })
     .catch(err => {
       setError(String(err));
