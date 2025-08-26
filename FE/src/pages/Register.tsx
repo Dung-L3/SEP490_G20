@@ -117,13 +117,7 @@ const Register = () => {
               onChange={e => {
                 const newEmail = e.target.value;
                 setEmail(newEmail);
-                // Chỉ xóa lỗi định dạng email, giữ nguyên lỗi trùng email
-                const currentError = fieldErrors.email;
-                if (currentError && currentError !== 'Email này đã được đăng ký') {
-                  if (/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/.test(newEmail)) {
-                    setFieldErrors(prev => ({ ...prev, email: '' }));
-                  }
-                }
+                setFieldErrors(prev => ({ ...prev, email: '' }));
               }}
               placeholder="Nhập email của bạn"
             />
@@ -139,13 +133,7 @@ const Register = () => {
                 // Chỉ cho phép nhập số
                 const value = e.target.value.replace(/[^0-9]/g, '');
                 setPhone(value);
-                // Chỉ xóa lỗi định dạng số điện thoại, giữ nguyên lỗi trùng
-                const currentPhoneError = fieldErrors.phone;
-                if (currentPhoneError && currentPhoneError !== 'Số điện thoại này đã được đăng ký') {
-                  if (/^\d{10}$/.test(value)) {
-                    setFieldErrors(prev => ({ ...prev, phone: '' }));
-                  }
-                }
+                setFieldErrors(prev => ({ ...prev, phone: '' }));
               }}
               maxLength={10}
               pattern="[0-9]*"
@@ -162,13 +150,7 @@ const Register = () => {
               onChange={e => {
                 const newUsername = e.target.value;
                 setUsername(newUsername);
-                // Chỉ xóa lỗi trường trống, giữ nguyên lỗi trùng username
-                const currentUsernameError = fieldErrors.username;
-                if (currentUsernameError && currentUsernameError !== 'Tên đăng nhập này đã tồn tại') {
-                  if (newUsername.trim()) {
-                    setFieldErrors(prev => ({ ...prev, username: '' }));
-                  }
-                }
+                setFieldErrors(prev => ({ ...prev, username: '' }));
               }}
             />
             {fieldErrors.username && <div className="text-red-500 text-sm mt-1">{fieldErrors.username}</div>}
