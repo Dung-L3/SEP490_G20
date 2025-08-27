@@ -30,6 +30,12 @@ public class ManagePurchaseHistoryController {
         return ResponseEntity.ok(history);
     }
 
+    @GetMapping("/no-phone")
+    public ResponseEntity<List<PurchaseHistoryDto>> getHistoryWithoutPhone() {
+        List<PurchaseHistoryDto> history = managePurchaseHistoryService.getHistoryWithoutPhone();
+        return ResponseEntity.ok(history);
+    }
+
     @GetMapping("/statistics/{phone}")
     public ResponseEntity<PurchaseHistoryResponse> getCustomerStatistics(@PathVariable String phone) {
         PurchaseHistoryResponse statistics = managePurchaseHistoryService.getCustomerStatistics(phone);
