@@ -96,21 +96,34 @@ public class WaiterServiceImpl implements WaiterService {
                 Combo combo = comboRepository.findById(item.getComboId())
                         .orElseThrow(() -> new ResourceNotFoundException("Combo not found: " + item.getComboId()));
                 
+                // Calculate individual dish price based on combo price proportion
+                BigDecimal comboPricePerUnit = combo.getPrice().divide(BigDecimal.valueOf(item.getQuantity()));
+                BigDecimal totalComboItemQuantity = BigDecimal.valueOf(
+                    combo.getComboItems().stream()
+                        .mapToInt(ComboItem::getQuantity)
+                        .sum()
+                );
+                
                 // Tạo một order detail cho mỗi món trong combo
                 for (ComboItem comboItem : combo.getComboItems()) {
                     // Tìm dish tương ứng để lấy thông tin
                     Dish comboDish = dishRepository.findById(comboItem.getDishId())
                             .orElseThrow(() -> new ResourceNotFoundException("Dish not found: " + comboItem.getDishId()));
 
+                    // Calculate this dish's proportion of the combo price
+                    BigDecimal dishProportion = BigDecimal.valueOf(comboItem.getQuantity())
+                            .divide(totalComboItemQuantity, 2, java.math.RoundingMode.HALF_UP);
+                    BigDecimal adjustedUnitPrice = comboPricePerUnit.multiply(dishProportion);
+
                     OrderDetail comboDetail = OrderDetail.builder()
                             .orderId(order.getOrderId())
                             .dishId(comboDish.getDishId())
                             .comboId(combo.getComboId())
-                            .quantity(comboItem.getQuantity() * item.getQuantity()) // Số lượng = số lượng trong combo * số lượng combo
+                            .quantity(comboItem.getQuantity() * item.getQuantity())
                             .statusId(1) // Pending
                             .isRefunded(0)
                             .notes(item.getNotes() != null ? item.getNotes() + " (Từ combo: " + combo.getComboName() + ")" : "(Từ combo: " + combo.getComboName() + ")")
-                            .unitPrice(comboDish.getPrice()) // Giữ nguyên giá gốc của món
+                            .unitPrice(adjustedUnitPrice)
                             .build();
                     
                     allDetails.add(orderDetailRepository.save(comboDetail));
@@ -127,7 +140,7 @@ public class WaiterServiceImpl implements WaiterService {
                         .statusId(1) // Pending
                         .isRefunded(0)
                         .notes(item.getNotes())
-                        .unitPrice(dish.getPrice())
+                        .unitPrice(item.getUnitPrice() != null ? item.getUnitPrice() : dish.getPrice())
                         .build();
                 
                 allDetails.add(orderDetailRepository.save(detail));
