@@ -24,6 +24,54 @@ const formatVnd = (n?: number) =>
 const PHONE_RE = /^\d{10}$/;           // đúng 10 chữ số
 const MAX_NOTE_LEN = 100;              // tối đa 100 ký tự
 
+// ===== Helpers: chuẩn hoá dữ liệu giỏ (hỗ trợ combo & dữ liệu cũ) =====
+const toPosInt = (v: any, def = 1) => {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : def;
+};
+const toNumOrNull = (v: any) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+function normalizeSelectionItem(raw: any): OrderItem | null {
+  if (!raw || typeof raw !== 'object') return null;
+
+  // Một số dữ liệu cũ dùng 'type' thay vì 'kind'
+  const guessedKind: ItemKind =
+      raw.kind === 'combo' || raw.type === 'combo' ? 'combo' : 'dish';
+
+  const dishId = toNumOrNull(raw.dishId);
+  const comboId = toNumOrNull(raw.comboId);
+
+  // Ưu tiên theo id thực có
+  const finalKind: ItemKind =
+      comboId != null ? 'combo' : dishId != null ? 'dish' : guessedKind;
+
+  const quantity = toPosInt(raw.quantity, 1);
+  const unitPrice = Number.isFinite(Number(raw.unitPrice))
+      ? Number(raw.unitPrice)
+      : undefined;
+
+  const nameFromId =
+      finalKind === 'combo'
+          ? comboId != null
+              ? `Combo #${comboId}`
+              : 'Combo'
+          : dishId != null
+              ? `Món #${dishId}`
+              : 'Món';
+
+  return {
+    kind: finalKind,
+    dishId: finalKind === 'dish' ? dishId : null,
+    comboId: finalKind === 'combo' ? comboId : null,
+    name: typeof raw.name === 'string' && raw.name.trim() ? raw.name : nameFromId,
+    quantity,
+    unitPrice,
+    notes: typeof raw.notes === 'string' ? raw.notes : undefined,
+  };
+}
+
 const TakeawayOrder: React.FC = () => {
   // ===== FORM STATE =====
   const [customerName, setCustomerName] = useState('');  // Free: không bắt buộc
@@ -42,8 +90,11 @@ const TakeawayOrder: React.FC = () => {
       return;
     }
     try {
-      const arr = JSON.parse(raw) as OrderItem[];
-      setItems(Array.isArray(arr) ? arr : []);
+      const arr = JSON.parse(raw);
+      const normalized = Array.isArray(arr)
+          ? arr.map(normalizeSelectionItem).filter(Boolean) as OrderItem[]
+          : [];
+      setItems(normalized);
     } catch {
       setItems([]);
     }
@@ -124,6 +175,13 @@ const TakeawayOrder: React.FC = () => {
       }
       if (typeof it.notes === 'string' && it.notes.length > MAX_NOTE_LEN) {
         errs.push(`Ghi chú của món #${idx + 1} vượt quá ${MAX_NOTE_LEN} ký tự.`);
+      }
+      // Bổ sung: kiểm tra id theo kind (đảm bảo combo/dish hợp lệ)
+      if (it.kind === 'dish' && typeof it.dishId !== 'number') {
+        errs.push(`Món #${idx + 1} thiếu dishId hợp lệ.`);
+      }
+      if (it.kind === 'combo' && typeof it.comboId !== 'number') {
+        errs.push(`Món #${idx + 1} là combo nhưng thiếu comboId hợp lệ.`);
       }
     });
 
