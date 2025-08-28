@@ -5,7 +5,13 @@ import { canAccessPath } from '../config/roleConfig';
 import { useAuth } from '../hooks/useAuth';
 
 // Các đường dẫn không cần xác thực
-const publicPaths = ['/login', '/register', '/forgot-password'];
+const publicPaths = ['/', '/login', '/register', '/forgot-password', '/booking'];
+
+// Kiểm tra xem một đường dẫn có phải là public path không
+const isPublicMenuPath = (path: string): boolean => {
+  // Cho phép truy cập /menu/:tableId (ví dụ: /menu/1, /menu/23, etc.)
+  return /^\/menu\/\d+$/.test(path);
+};
 
 interface ProtectedComponentProps {
   Component: ComponentType;
@@ -17,7 +23,8 @@ const DEFAULT_PATHS: Record<Role, string> = {
   MANAGER: '/manager',
   CHEF: '/chef',
   WAITER: '/waiter/orders',
-  RECEPTIONIST: '/receptionist'
+  RECEPTIONIST: '/receptionist',
+  CUSTOMER: '/menu'
 };
 
 export const ProtectedComponent = ({ Component, requiredRole }: ProtectedComponentProps) => {
@@ -25,7 +32,7 @@ export const ProtectedComponent = ({ Component, requiredRole }: ProtectedCompone
   const location = useLocation();
   
   // Cho phép truy cập các trang công khai mà không cần xác thực
-  if (publicPaths.includes(location.pathname)) {
+  if (publicPaths.includes(location.pathname) || isPublicMenuPath(location.pathname)) {
     return <Component />;
   }
 

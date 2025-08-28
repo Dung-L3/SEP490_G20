@@ -15,16 +15,15 @@ public class CorsConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/api/**")
-                .allowedOriginPatterns(
-                    "http://localhost:*",
-                    "http://127.0.0.1:*",
-                    "http://192.168.*:*",  // Chấp nhận tất cả IP trong mạng 192.168.*.*
-                    "http://172.16.*:*",   // Chấp nhận tất cả IP trong mạng 172.16.*.*
-                    "http://10.*:*"        // Chấp nhận tất cả IP trong mạng 10.*.*.*
+        registry.addMapping("/**")
+                .allowedOrigins(
+                        "http://localhost:5173",
+                        "http://127.0.0.1:5173",
+                        "http://192.168.24.103:5173"
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
                 .allowedHeaders("*")
+                .exposedHeaders("*")
                 .allowCredentials(true)
                 .maxAge(3600);
     }
@@ -33,19 +32,18 @@ public class CorsConfig implements WebMvcConfigurer {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOriginPatterns(Arrays.asList(
-            "http://localhost:*",
-            "http://127.0.0.1:*",
-            "http://192.168.*:*",  // Chấp nhận tất cả IP trong mạng 192.168.*.*
-            "http://172.16.*:*",   // Chấp nhận tất cả IP trong mạng 172.16.*.*
-            "http://10.*:*"        // Chấp nhận tất cả IP trong mạng 10.*.*.*
+            "http://192.168.*:[*]",
+            "http://localhost:[*]",
+            "http://127.0.0.1:[*]"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setExposedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/api/**", configuration);
+        source.registerCorsConfiguration("/**", configuration);
         return source;
     }
 }

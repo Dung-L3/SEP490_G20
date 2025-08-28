@@ -11,7 +11,6 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.bind.annotation.CrossOrigin;
 
 @Configuration
-@CrossOrigin
 public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -22,7 +21,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
-                .cors(cors -> {})
+                .cors(cors -> cors.configure(http))
                 .authorizeHttpRequests(auth -> auth
                         .anyRequest().permitAll()
                 );

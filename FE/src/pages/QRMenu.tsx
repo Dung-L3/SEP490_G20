@@ -2,13 +2,12 @@
 import { useState, useEffect } from 'react';
 import type { FC } from 'react';
 import { useParams } from 'react-router-dom';
-import { tableApi } from '../api/tableApi';
-import { dishApi, type Dish } from '../api/dishApi';
-import { categoryApi, type Category } from '../api/categoryApi';
-import { createOrder, type CreateOrderResponse } from '../api/orderApi';
+import { publicApi } from '../api/publicApi';
+import type { Dish } from '../api/dishApi';
+import type { Category } from '../api/categoryApi';
 import { type UiTable, mapApiTableToUiTable } from '../utils/tableMapping';
 import { Plus, Minus, ShoppingCart } from 'lucide-react';
-import { comboApi, type ComboDTO } from '../api/comboApi';
+import type { ComboDTO } from '../api/comboApi';
 
 interface CartItem {
   id: string;  // Changed to string to support prefix identifiers
@@ -48,19 +47,29 @@ const QRMenu: FC = () => {
       try {
         setLoading(true);
         
-        // Fetch table info, dishes and categories simultaneously
+        // Fetch all data using public API
         const [tableResponse, dishesResponse, categoriesResponse, comboResponse] = await Promise.all([
-          tableApi.getById(parseInt(tableId)),
-          dishApi.getByStatus(true), // Only active dishes
-          categoryApi.getAll(),
-          comboApi.getAllCombos()
+          publicApi.getTableById(parseInt(tableId)),
+          publicApi.getDishes(),
+          publicApi.getCategories(),
+          publicApi.getCombos()
         ]);
 
+        // Validate responses
+        if (!tableResponse || !dishesResponse || !categoriesResponse || !comboResponse) {
+          throw new Error('Không thể tải một số dữ liệu cần thiết');
+        }
+
+        // Map and filter data
         const uiTable = mapApiTableToUiTable(tableResponse);
+        const activeDishes = dishesResponse.filter(dish => dish.status);
+        const activeCombos = comboResponse.filter(combo => combo.status);
+
+        // Set state with filtered data
         setTable(uiTable);
-        setDishes(dishesResponse);
+        setDishes(activeDishes);
         setCategories(categoriesResponse);
-        setCombos(comboResponse);
+        setCombos(activeCombos);
       } catch (err) {
         console.error('Lỗi khi tải dữ liệu:', err);
         setError(err instanceof Error ? err.message : 'Không thể tải dữ liệu');
@@ -188,7 +197,7 @@ const QRMenu: FC = () => {
         items: orderItems
       };
 
-      await createOrder(orderData);
+      await publicApi.createOrder(orderData);
       
       // Clear cart after successful order
       setCart([]);

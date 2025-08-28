@@ -1,13 +1,21 @@
 import type { Table } from '../types/Table';
+import { BACKEND_URL } from '../config/networkConfig';
 
-const API_URL = '/api/v1/tables'; // Make sure this matches your backend URL
+const API_URL = `${BACKEND_URL}/api/public/tables`; // Use public tables endpoint instead of private v1
 
 export const tableApi = {
   getAll: async (): Promise<Table[]> => {
     try {
-      const response = await fetch(`${API_URL}/getAll`);
+      const response = await fetch(API_URL, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.error('Server error response:', errorText);
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
       }
       const data = await response.json();
       return data;
@@ -62,9 +70,16 @@ export const tableApi = {
 
   getById: async (id: number): Promise<Table> => {
     try {
-      const response = await fetch(`${API_URL}/getById/${id}`);
+      const response = await fetch(`${API_URL}/${id}`, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.error('Server error response:', errorText);
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
       }
       return await response.json();
     } catch (error) {
@@ -78,7 +93,7 @@ export const tableApi = {
       // Log the request for debugging
       console.log('Creating table with data:', table);
       
-      const response = await fetch(`${API_URL}/create`, {
+      const response = await fetch(API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -111,7 +126,7 @@ export const tableApi = {
       // Log the request for debugging
       console.log('Updating table with data:', { id, table });
 
-      const response = await fetch(`${API_URL}/update/${id}`, {
+      const response = await fetch(`${API_URL}/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -146,18 +161,17 @@ export const tableApi = {
     }
   },
 
-  delete: async (id: number, status: string = ''): Promise<void> => {
+  delete: async (id: number): Promise<void> => {
     try {
       // Log the request for debugging
-      console.log('Deleting table with id:', id, 'status:', status);
+      console.log('Deleting table with id:', id);
 
-      const response = await fetch(`${API_URL}/delete/${id}`, {
+      const response = await fetch(`${API_URL}/${id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
-        },
-        body: JSON.stringify({ status })
+        }
       });
 
       if (!response.ok) {

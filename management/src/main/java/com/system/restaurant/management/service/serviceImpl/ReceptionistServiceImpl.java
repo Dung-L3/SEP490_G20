@@ -14,7 +14,9 @@ import org.springframework.transaction.annotation.Transactional;
 import com.system.restaurant.management.dto.OrderDetailDTO;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -37,6 +39,118 @@ public class ReceptionistServiceImpl implements ReceptionistService {
 
     @PersistenceContext
     private EntityManager em;
+
+    @Override
+    @Transactional
+    public Order createDineInOrder(CreateDineInOrderRequest request) {
+        // Validate table exists and is occupied
+        RestaurantTable table = em.find(RestaurantTable.class, request.getTableId());
+        if (table == null) {
+            throw new EntityNotFoundException("Table not found with id: " + request.getTableId());
+        }
+        
+        if (!"OCCUPIED".equals(table.getStatus())) {
+            throw new IllegalStateException("Table must be OCCUPIED to place an order");
+        }
+
+        // Create new order
+        Order order = Order.builder()
+                .orderType("DINE_IN")
+                .tableId(request.getTableId())
+                .statusId(1) // Pending
+                .subTotal(BigDecimal.ZERO)
+                .discountAmount(BigDecimal.ZERO)
+                .finalTotal(BigDecimal.ZERO)
+                .createdAt(LocalDateTime.now())
+                .build();
+        
+        order = orderRepo.save(order);
+
+        // Create order details with proper price calculation for combos
+        List<OrderDetail> details = createOrderDetails(request.getItems(), order);
+        BigDecimal subTotal = calculateOrderSubTotal(details);
+        
+        // Update order totals
+        order.setSubTotal(subTotal);
+        order.setFinalTotal(subTotal);
+        return orderRepo.save(order);
+    }
+
+    private List<OrderDetail> createOrderDetails(List<OrderItemRequest> items, Order order) {
+        if (items == null || items.isEmpty()) {
+            throw new IllegalArgumentException("Order must have at least one item");
+        }
+
+        List<OrderDetail> allDetails = new ArrayList<>();
+
+        for (OrderItemRequest item : items) {
+            if (item.getComboId() != null && Boolean.TRUE.equals(item.getIsCombo())) {
+                // Xử lý combo
+                Combo combo = comboRepo.findById(item.getComboId())
+                        .orElseThrow(() -> new EntityNotFoundException("Combo not found: " + item.getComboId()));
+                
+                // Calculate individual dish price based on combo price proportion
+                BigDecimal comboPricePerUnit = combo.getPrice().divide(BigDecimal.valueOf(item.getQuantity()));
+                BigDecimal totalComboItemQuantity = BigDecimal.valueOf(
+                    combo.getComboItems().stream()
+                        .mapToInt(ComboItem::getQuantity)
+                        .sum()
+                );
+                
+                // Tạo một order detail cho mỗi món trong combo
+                for (ComboItem comboItem : combo.getComboItems()) {
+                    // Tìm dish tương ứng để lấy thông tin
+                    Dish comboDish = dishRepo.findById(comboItem.getDishId())
+                            .orElseThrow(() -> new EntityNotFoundException("Dish not found: " + comboItem.getDishId()));
+
+                    // Calculate this dish's proportion of the combo price
+                    BigDecimal dishProportion = BigDecimal.valueOf(comboItem.getQuantity())
+                            .divide(totalComboItemQuantity, 2, RoundingMode.HALF_UP);
+                    BigDecimal adjustedUnitPrice = comboPricePerUnit.multiply(dishProportion);
+
+                    OrderDetail comboDetail = OrderDetail.builder()
+                            .orderId(order.getOrderId())
+                            .dishId(comboDish.getDishId())
+                            .comboId(combo.getComboId())
+                            .quantity(comboItem.getQuantity() * item.getQuantity())
+                            .statusId(1) // Pending
+                            .isRefunded(0)
+                            .notes(item.getNotes() != null ? item.getNotes() + " (Từ combo: " + combo.getComboName() + ")" : "(Từ combo: " + combo.getComboName() + ")")
+                            .unitPrice(adjustedUnitPrice)
+                            .build();
+                    
+                    allDetails.add(orderDetailRepository.save(comboDetail));
+                }
+            } else if (item.getDishId() != null && !Boolean.TRUE.equals(item.getIsCombo())) {
+                // Xử lý món lẻ
+                Dish dish = dishRepo.findById(item.getDishId())
+                        .orElseThrow(() -> new EntityNotFoundException("Dish not found: " + item.getDishId()));
+                
+                OrderDetail detail = OrderDetail.builder()
+                        .orderId(order.getOrderId())
+                        .dishId(dish.getDishId())
+                        .quantity(item.getQuantity())
+                        .statusId(1) // Pending
+                        .isRefunded(0)
+                        .notes(item.getNotes())
+                        .unitPrice(item.getUnitPrice() != null ? item.getUnitPrice() : dish.getPrice())
+                        .build();
+                
+                allDetails.add(orderDetailRepository.save(detail));
+            } else {
+                throw new IllegalArgumentException("Either dishId or comboId must be provided");
+            }
+        }
+
+        return allDetails;
+    }
+
+    private BigDecimal calculateOrderSubTotal(List<OrderDetail> details) {
+        return details.stream()
+                .map(detail -> detail.getUnitPrice()
+                        .multiply(BigDecimal.valueOf(detail.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
 
     @Override
     @Transactional

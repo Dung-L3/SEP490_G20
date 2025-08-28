@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpSession;
 import java.util.List;
 
 public interface ReceptionistService {
+    Order createDineInOrder(CreateDineInOrderRequest request);
     TakeawayOrderResponse createTakeawayOrder(CreateTakeawayOrderRequest dto);
     Invoice generateInvoice(Integer orderId, HttpSession session);
     Invoice applyDiscount(Integer orderId, double amount);
