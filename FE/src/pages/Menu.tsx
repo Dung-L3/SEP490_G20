@@ -134,15 +134,14 @@ const Menu = () => {
                         <p className="text-gray-300 mb-4 line-clamp-2">
                           {(combo.comboItems?.map(item => item.dishName).join(', ')) ?? ''}
                         </p>
-                        <div
-                            className="w-full bg-red-600 text-yellow-400 py-2 rounded-lg font-semibold text-center cursor-pointer hover:bg-red-700"
-                            onClick={() => {
-                              if (isTakeawayMode) handleChooseCombo(combo);
-                              else nav(`/combos/${combo.comboId}`);
-                            }}
-                        >
-                          {isTakeawayMode ? 'Chọn combo' : 'Xem Chi Tiết'}
-                        </div>
+                        {isTakeawayMode && (
+                            <div
+                                className="w-full bg-red-600 text-yellow-400 py-2 rounded-lg font-semibold text-center cursor-pointer hover:bg-red-700"
+                                onClick={() => handleChooseCombo(combo)}
+                            >
+                                Chọn combo
+                            </div>
+                        )}
                       </div>
                     </div>
                 ))}
@@ -169,15 +168,14 @@ const Menu = () => {
                           <div className="p-6">
                             <h3 className="text-xl font-bold text-white mb-2">{dish.dishName}</h3>
                             <p className="text-gray-300 mb-4">Món {dish.dishName} đặc biệt</p>
-                            <div
-                                className="w-full bg-red-600 text-yellow-400 py-2 rounded-lg font-semibold text-center cursor-pointer hover:bg-red-700"
-                                onClick={() => {
-                                  if (isTakeawayMode) handleChooseDish(dish);
-                                  else nav(`/dishes/${dish.dishId}`);
-                                }}
-                            >
-                              {isTakeawayMode ? 'Chọn món' : 'Xem Chi Tiết'}
-                            </div>
+                            {isTakeawayMode && (
+                                <div
+                                    className="w-full bg-red-600 text-yellow-400 py-2 rounded-lg font-semibold text-center cursor-pointer hover:bg-red-700"
+                                    onClick={() => handleChooseDish(dish)}
+                                >
+                                    Chọn món
+                                </div>
+                            )}
                           </div>
                         </div>
                     ))}
