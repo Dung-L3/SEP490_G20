@@ -17,23 +17,74 @@ const Booking = () => {
 
   const today = new Date().toISOString().split('T')[0];
 
-  const validateTime = (timeStr: string): boolean => {
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    const time = hours * 60 + minutes;
+  const validateForm = () => {
+    // Kiểm tra các trường bắt buộc
+    if (!name.trim()) {
+      setError('Vui lòng nhập họ và tên');
+      return false;
+    }
+
+    if (!phone.trim()) {
+      setError('Vui lòng nhập số điện thoại');
+      return false;
+    }
+
+    if (!/^\d{10}$/.test(phone)) {
+      setError('Số điện thoại phải đủ 10 số');
+      return false;
+    }
+
+    if (!email.trim()) {
+      setError('Vui lòng nhập email');
+      return false;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError('Email không hợp lệ');
+      return false;
+    }
+
+    if (!date) {
+      setError('Vui lòng chọn ngày đặt bàn');
+      return false;
+    }
+
+    if (!time) {
+      setError('Vui lòng chọn giờ đặt bàn');
+      return false;
+    }
+
+    // Kiểm tra giờ đặt bàn
+    const [hours, minutes] = time.split(':').map(Number);
+    const selectedTime = hours * 60 + minutes;
     const openTime = 7 * 60 + 30;  // 7:30
     const closeTime = 20 * 60 + 30; // 20:30
-    return time >= openTime && time <= closeTime;
+
+    if (selectedTime < openTime || selectedTime > closeTime) {
+      setError('Vui lòng chọn thời gian từ 7:30 đến 20:30');
+      return false;
+    }
+
+    // Kiểm tra thời gian đặt bàn có hợp lệ không
+    const now = new Date();
+    const selectedDate = new Date(date);
+    const selectedDateTime = new Date(date + 'T' + time);
+
+    // Tính thời gian chênh lệch theo phút
+    const diffInMinutes = (selectedDateTime.getTime() - now.getTime()) / (1000 * 60);
+
+    // Kiểm tra xem thời gian đặt bàn có trước ít nhất 1 tiếng không
+    if (diffInMinutes < 60) {
+      setError('Vui lòng đặt bàn trước thời hiện tại ít nhất 1 tiếng');
+      return false;
+    }
+
+    return true;
   };
 
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!/^\d{10}$/.test(phone)) {
-      setError('Số điện thoại phải đủ 10 số.');
-      return;
-    }
-
-    if (!validateTime(time)) {
-      setError('Vui lòng chọn thời gian từ 7:30 đến 20:30.');
+    if (!validateForm()) {
       return;
     }
 
@@ -55,7 +106,8 @@ const Booking = () => {
       navigate('/menu');
     } catch (error) {
       console.error('Lỗi khi đặt bàn:', error);
-      setError('Có lỗi xảy ra khi đặt bàn. Vui lòng thử lại sau.');
+      const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra khi đặt bàn. Vui lòng thử lại sau.';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -171,7 +223,8 @@ const Booking = () => {
                 <option value="20:30">20:30</option>
               </select>
               <div className="mt-1 text-sm text-gray-400">
-                Nhà hàng phục vụ từ 7:30 sáng đến 20:30 tối, mỗi lượt 30 phút
+                Nhà hàng phục vụ từ 7:30 sáng đến 20:30 tối, mỗi lượt 30 phút.
+                Vui lòng đặt bàn trước thời điểm đến ít nhất 1 tiếng.
               </div>
             </div>
 

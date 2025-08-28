@@ -25,7 +25,12 @@ public class ManagePurchaseHistoryServiceImpl implements ManagePurchaseHistorySe
 
     @Override
     public List<PurchaseHistoryDto> getHistoryByPhone(String phone) {
-        return purchaseHistoryRepository.findHistoryByPhone(phone, Sort.by(Sort.Direction.DESC, "date"));
+        return purchaseHistoryRepository.findHistoryByPhone(phone);
+    }
+
+    @Override
+    public List<PurchaseHistoryDto> getHistoryWithoutPhone() {
+        return purchaseHistoryRepository.findHistoryWithoutPhone();
     }
 
     @Override

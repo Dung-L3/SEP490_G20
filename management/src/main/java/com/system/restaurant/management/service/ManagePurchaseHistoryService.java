@@ -9,5 +9,6 @@ import java.util.List;
 public interface ManagePurchaseHistoryService {
      List<PurchaseHistoryDto> getAllHistory();
      List<PurchaseHistoryDto> getHistoryByPhone(String phone);
+     List<PurchaseHistoryDto> getHistoryWithoutPhone();
      PurchaseHistoryResponse getCustomerStatistics(String phone);
 }
