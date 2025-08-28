@@ -349,22 +349,29 @@ public class WaiterServiceImpl implements WaiterService {
                         "Payment method not found: " + pmName));
         Integer methodId = pmEntity.getMethodId();
 
+        // Calculate the real total from all order details
+        List<OrderDetail> orderDetails = orderDetailRepository.findByOrderId(orderId);
+        BigDecimal realSubTotal = orderDetails.stream()
+                .map(detail -> detail.getUnitPrice().multiply(BigDecimal.valueOf(detail.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
         Invoice invoice = invoiceRepository.findByOrderId(orderId)
                 .orElseGet(() -> {
                     Invoice inv = Invoice.builder()
                             .orderId(orderId)
-                            .subTotal(order.getSubTotal())
+                            .subTotal(realSubTotal)
                             .discountAmount(order.getDiscountAmount())
-                            .finalTotal(order.getFinalTotal())
+                            .finalTotal(realSubTotal.subtract(order.getDiscountAmount()))
                             .issuedBy(issuedBy)
                             .build();
                     return invoiceRepository.save(inv);
                 });
 
+        // Use invoice final total instead of order final total
         PaymentRecord pr = PaymentRecord.builder()
                 .invoiceId(invoice.getInvoiceId())
                 .methodId(methodId)
-                .amount(order.getFinalTotal())
+                .amount(invoice.getFinalTotal())
                 .notes("Paid via " + pmEntity.getMethodName())
                 .paidAt(LocalDateTime.now())
                 .build();
