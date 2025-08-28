@@ -261,7 +261,7 @@ const TakeawayOrderPublic: React.FC = () => {
     };
 
     // tạo URL quay lại đúng trang hiện tại sau khi chọn món
-    const returnTo = encodeURIComponent('/takeaway-public'); // đổi theo route thực tế của bạn
+    const returnTo = encodeURIComponent('/takeaway-order'); // đổi theo route thực tế của bạn
 
     return (
         <div className="min-h-screen bg-gray-900">
@@ -297,7 +297,7 @@ const TakeawayOrderPublic: React.FC = () => {
                         {/* Thông tin khách */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-lg font-medium">Tên khách hàng (tuỳ chọn)</label>
+                                <label className="block text-lg font-medium">Tên khách hàng</label>
                                 <input
                                     type="text"
                                     className="w-full p-3 mt-2 text-lg text-gray-800 rounded-md"

@@ -304,7 +304,7 @@ const TakeawayOrder: React.FC = () => {
               {/* Thông tin khách */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block mb-1 font-medium">Tên khách hàng (tuỳ chọn)</label>
+                  <label className="block mb-1 font-medium">Tên khách hàng</label>
                   <input
                       type="text"
                       className="w-full border rounded px-3 py-2"

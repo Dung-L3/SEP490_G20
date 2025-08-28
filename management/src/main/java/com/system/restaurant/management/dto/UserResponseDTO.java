@@ -34,7 +34,6 @@ public class UserResponseDTO {
         dto.setStatus(u.getStatus());
         dto.setCreatedAt(u.getCreatedAt());
 
-        // vì chỉ có 1 role, lấy role đầu tiên
         String rn = u.getRoles()
                 .stream()
                 .findFirst()

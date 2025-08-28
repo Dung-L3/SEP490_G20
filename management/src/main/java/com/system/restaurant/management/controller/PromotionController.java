@@ -45,8 +45,8 @@ public class PromotionController {
     }
 
     @GetMapping("/validPromotions")
-    public ResponseEntity<List<Promotion>> listValidPromotions(@RequestParam(required = false) String phone) {
-        return ResponseEntity.ok(promotionService.listValidPromotions(phone));
+    public ResponseEntity<List<Promotion>> listValidPromotions() {
+        return ResponseEntity.ok(promotionService.listValidPromotions());
     }
 
     @GetMapping

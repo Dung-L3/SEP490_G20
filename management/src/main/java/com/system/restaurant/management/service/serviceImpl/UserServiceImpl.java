@@ -1,10 +1,12 @@
 package com.system.restaurant.management.service.serviceImpl;
 
+import com.system.restaurant.management.dto.CustomerResponseDto;
 import com.system.restaurant.management.dto.UserRequestDto;
 import com.system.restaurant.management.dto.UserResponseDTO;
 import com.system.restaurant.management.entity.Role;
 import com.system.restaurant.management.entity.User;
 import com.system.restaurant.management.exception.ResourceNotFoundException;
+import com.system.restaurant.management.repository.CustomerRepository;
 import com.system.restaurant.management.repository.RoleRepository;
 import com.system.restaurant.management.repository.UserRepository;
 import com.system.restaurant.management.service.UserService;
@@ -26,6 +28,7 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private static final int CUSTOMER_ROLE_ID = 5;
+    private final CustomerRepository customerRepository;
 
     @Override
     public User create(UserRequestDto dto) {
@@ -66,6 +69,15 @@ public class UserServiceImpl implements UserService {
                 .findAllWithoutRole(CUSTOMER_ROLE_ID)
                 .stream()
                 .map(UserResponseDTO::fromEntity)
+                .toList();
+    }
+
+    @Override
+    public List<CustomerResponseDto> findAllCustomers() {
+        return customerRepository
+                .findAll()
+                .stream()
+                .map(CustomerResponseDto::fromEntity)
                 .toList();
     }
 

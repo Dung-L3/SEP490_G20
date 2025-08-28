@@ -33,7 +33,7 @@ import TakeawayOrder from './pages/receptionist/TakeawayOrder';
 import ComboManager from './pages/manager/ComboManager';
 import PromotionsManager from './pages/manager/PromotionsManager';
 import TakeawayOrderPublic from './pages/TakeawayOrderPublic';
-
+import CustomerList from './pages/receptionist/CustomerList';
 
 function App() {
   return (
@@ -76,6 +76,7 @@ function App() {
             <Route path="/receptionist/:orderId/payment" element={<OrderPayment />} />
             <Route path="/receptionist/reservations"element={<ReservationList/>} />
               <Route path="/receptionist/takeaway" element={<TakeawayOrder />} /> {/* Route cho trang đơn hàng mang đi */}
+              <Route path="/receptionist/customer/list" element={<CustomerList />} /> {/* Route cho trang đơn hàng mang đi */}
             </Routes>
           </AuthProvider>
         </Router>

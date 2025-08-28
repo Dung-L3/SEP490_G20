@@ -1,5 +1,6 @@
 package com.system.restaurant.management.service;
 
+import com.system.restaurant.management.dto.CustomerResponseDto;
 import com.system.restaurant.management.dto.UserRequestDto;
 import com.system.restaurant.management.dto.UserResponseDTO;
 import com.system.restaurant.management.entity.User;
@@ -11,6 +12,7 @@ public interface UserService {
     User findById(Integer id);
     List<User> findAll();
     List<UserResponseDTO> findAllStaffs();
+    List<CustomerResponseDto> findAllCustomers();
     User update(Integer id, UserRequestDto dto);
     User updateStatus(Integer id, boolean status);
     void delete(Integer id);

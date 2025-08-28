@@ -1,5 +1,6 @@
 package com.system.restaurant.management.controller;
 
+import com.system.restaurant.management.dto.CustomerResponseDto;
 import com.system.restaurant.management.dto.UserRequestDto;
 import com.system.restaurant.management.dto.UserResponseDTO;
 import com.system.restaurant.management.entity.User;
@@ -25,6 +26,11 @@ public class UserController {
     @GetMapping("/getAllStaffs")
     public ResponseEntity<List<UserResponseDTO>> getAllStaffs() {
         return ResponseEntity.ok(userService.findAllStaffs());
+    }
+
+    @GetMapping("/getAllCustomers")
+    public ResponseEntity<List<CustomerResponseDto>> getAllCustomers() {
+        return ResponseEntity.ok(userService.findAllCustomers());
     }
 
     @GetMapping("/{id}")

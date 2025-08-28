@@ -16,7 +16,7 @@ public interface PromotionService {
     void delete(Integer promoId);
     Promotion get(Integer promoId);
     Page<Promotion> list(Pageable pageable);
-    List<Promotion> listValidPromotions(String phone);
+    List<Promotion> listValidPromotions();
 
     ApplyPromotionResponse applyToOrder(ApplyPromotionRequest request);
 }

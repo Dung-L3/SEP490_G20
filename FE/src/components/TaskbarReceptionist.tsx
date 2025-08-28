@@ -100,6 +100,26 @@ const TaskbarReceptionist = () => {
           >
               Tạo đơn mang đi
           </button>
+           <button
+              style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#111827',
+                  fontSize: '16px',
+                  padding: '10px 0',
+                  textAlign: 'left',
+                  width: '100%',
+                  cursor: 'pointer',
+                  marginBottom: '8px',
+                  borderRadius: '4px',
+                  transition: 'background 0.2s'
+              }}
+              onMouseOver={e => (e.currentTarget.style.background = '#e5e7eb')}
+              onMouseOut={e => (e.currentTarget.style.background = 'none')}
+              onClick={() => navigate('/receptionist/customer/list')}
+          >
+              Danh sách khách hàng
+          </button>
       </div>
         <button
             className="flex items-center gap-2 px-4 py-2 w-full text-left text-red-600 hover:bg-red-50 rounded transition-colors"
