@@ -90,8 +90,7 @@ const StaffManager = () => {
     { value: 'ROLE_MANAGER', label: 'Quản lý' },
     { value: 'ROLE_WAITER', label: 'Phục vụ' },
     { value: 'ROLE_CHEF', label: 'Đầu bếp' },
-    { value: 'ROLE_RECEPTIONIST', label: 'Thu ngân' },
-    { value: 'ROLE_CUSTOMER', label: 'Khách hàng' }
+    { value: 'ROLE_RECEPTIONIST', label: 'Thu ngân' }
   ];
 
   const formatRole = (role: string): string => {
@@ -105,7 +104,6 @@ const StaffManager = () => {
       case 'WAITER': return 'Phục vụ';
       case 'CHEF': return 'Đầu bếp';
       case 'RECEPTIONIST': return 'Thu ngân';
-      case 'CUSTOMER': return 'Khách hàng';
       default: return baseRole;
     }
   };
@@ -610,7 +608,6 @@ const StaffManager = () => {
                       <option value="ROLE_WAITER">Phục vụ</option>
                       <option value="ROLE_CHEF">Đầu bếp</option>
                       <option value="ROLE_RECEPTIONIST">Thu ngân</option>
-                      <option value="ROLE_CUSTOMER">Khách hàng</option>
                     </select>
                   </div>
                   <div>
