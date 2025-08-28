@@ -35,37 +35,81 @@ public class PublicTakeawayServiceImpl implements PublicTakeawayService {
         order.setFinalTotal(BigDecimal.ZERO);
         order = orderRepo.save(order);
 
+        // ... giữ nguyên phần tạo Order ...
+
         BigDecimal subTotal = BigDecimal.ZERO;
 
         for (var it : req.getItems()) {
-            BigDecimal unitPrice;
+            Integer dishId  = it.getDishId();
+            Integer comboId = it.getComboId();
 
-            if (it.getDishId() != null) {
-                Dish d = dishRepo.findById(it.getDishId())
-                        .orElseThrow(() -> new IllegalArgumentException("Dish not found: " + it.getDishId()));
-                unitPrice = d.getPrice();
-            } else {
-                Combo c = comboRepo.findById(it.getComboId())
-                        .orElseThrow(() -> new IllegalArgumentException("Combo not found: " + it.getComboId()));
-                unitPrice = c.getPrice();
+            // CHỈ 1 loại: dish XOR combo
+            if ((dishId == null && comboId == null) || (dishId != null && comboId != null)) {
+                throw new IllegalArgumentException("Mỗi món phải CHỈ chọn 1: dishId hoặc comboId.");
+            }
+            int reqQty = (it.getQuantity() == null || it.getQuantity() <= 0) ? 1 : it.getQuantity();
+
+            // ===== MÓN LẺ =====
+            if (dishId != null) {
+                Dish d = dishRepo.findById(dishId)
+                        .orElseThrow(() -> new IllegalArgumentException("Dish not found: " + dishId));
+
+                OrderDetail od = new OrderDetail();
+                od.setOrderId(order.getOrderId());      // dùng cột thô vì mapping insertable=false
+                od.setDishId(d.getDishId());            // KHÔNG để null
+                od.setComboId(null);
+                od.setQuantity(reqQty);
+                od.setUnitPrice(d.getPrice());          // luôn lấy từ DB
+                od.setNotes(it.getNotes());
+                od.setStatusId(1);
+                orderDetailRepo.save(od);
+
+                subTotal = subTotal.add(d.getPrice().multiply(BigDecimal.valueOf(reqQty)));
+                continue;
             }
 
-            OrderDetail od = new OrderDetail();
-            od.setOrder(order);
-            od.setDishId(it.getDishId());
-            od.setComboId(it.getComboId());
-            od.setQuantity(it.getQuantity());
-            od.setUnitPrice(unitPrice);      // LUÔN lấy từ DB
-            od.setNotes(it.getNotes());
-            od.setStatusId(1);               // 1 = PENDING => hiện bên /chef
-            orderDetailRepo.save(od);
+            // ===== COMBO =====
+            Combo combo = comboRepo.findByIdWithDetails(comboId)
+                    .orElseThrow(() -> new IllegalArgumentException("Combo not found: " + comboId));
 
-            subTotal = subTotal.add(unitPrice.multiply(BigDecimal.valueOf(it.getQuantity())));
+            if (combo.getComboItems() == null || combo.getComboItems().isEmpty()) {
+                throw new IllegalArgumentException("Combo không có món: " + comboId);
+            }
+
+            boolean first = true; // dòng đầu gánh giá combo
+            for (var ci : combo.getComboItems()) {
+                Dish dish = ci.getDish();
+                if (dish == null) {
+                    throw new IllegalStateException("ComboItem thiếu dish trong combo " + comboId);
+                }
+                int perComboQty = (ci.getQuantity() == null || ci.getQuantity() <= 0) ? 1 : ci.getQuantity();
+                int totalDishQty = perComboQty * reqQty;
+
+                OrderDetail od = new OrderDetail();
+                od.setOrderId(order.getOrderId());
+                od.setDishId(dish.getDishId());         // bắt buộc có DishID
+                od.setComboId(combo.getComboId());      // lưu dấu vết thuộc combo
+                od.setQuantity(totalDishQty);
+                od.setNotes(((it.getNotes() != null) ? it.getNotes() + " | " : "") + "Thuộc combo " + combo.getComboName());
+                od.setStatusId(1);
+
+                if (first) {
+                    od.setUnitPrice(combo.getPrice());  // chỉ dòng đầu có giá combo
+                    subTotal = subTotal.add(combo.getPrice().multiply(BigDecimal.valueOf(reqQty)));
+                    first = false;
+                } else {
+                    od.setUnitPrice(BigDecimal.ZERO);   // các dòng còn lại 0đ
+                }
+
+                orderDetailRepo.save(od);
+            }
         }
 
+// cập nhật tổng tiền
         order.setSubTotal(subTotal);
         order.setFinalTotal(subTotal);
         orderRepo.save(order);
+
 
         return order.getOrderId();
     }

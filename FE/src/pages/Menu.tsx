@@ -65,11 +65,18 @@ const Menu = () => {
   }) => {
     const raw = localStorage.getItem(STORAGE_KEY);
     const arr: any[] = raw ? JSON.parse(raw) : [];
-    const idx = arr.findIndex(
-        x => (x.dishId ?? 0) === (item.dishId ?? 0) && (x.comboId ?? 0) === (item.comboId ?? 0)
+    const idx = arr.findIndex(x =>
+        x?.kind === item.kind &&
+        (Number(x?.dishId) || 0) === (Number(item.dishId) || 0) &&
+        (Number(x?.comboId) || 0) === (Number(item.comboId) || 0)
     );
     if (idx >= 0) arr[idx].quantity += item.quantity;
-    else arr.push(item);
+    else arr.push({
+      ...item,
+      dishId: item.kind === 'dish' ? Number(item.dishId) : null,
+      comboId: item.kind === 'combo' ? Number(item.comboId) : null,
+      quantity: Math.max(1, Number(item.quantity) || 1),
+    });
     localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
   };
 

@@ -1,6 +1,6 @@
 // src/pages/TakeawayOrderPublic.tsx
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { createTakeawayOrder } from '../api/publicTakeawayApi';
@@ -26,6 +26,55 @@ const formatVnd = (n?: number) =>
 const PHONE_RE = /^\d{10}$/;          // 10 chữ số
 const MAX_NOTE_LEN = 100;             // tối đa 100 ký tự cho địa chỉ (notes)
 
+// === helper: ép kiểu an toàn số nguyên dương
+const toPosInt = (v: any, def = 1) => {
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? Math.floor(n) : def;
+};
+
+// === helper: ép số (hoặc null) từ string/number
+const toNumOrNull = (v: any) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+};
+
+// === Chuẩn hoá 1 item lấy từ localStorage để đảm bảo hỗ trợ combo
+function normalizeSelectionItem(raw: any): TakeawayItem | null {
+    if (!raw || typeof raw !== 'object') return null;
+
+    // Một số menu cũ dùng 'type' thay vì 'kind'
+    const kind: 'dish' | 'combo' =
+        raw.kind === 'combo' || raw.type === 'combo'
+            ? 'combo'
+            : 'dish';
+
+    // Ép id về number|null (tránh trường hợp là string)
+    const dishId = toNumOrNull(raw.dishId);
+    const comboId = toNumOrNull(raw.comboId);
+
+    // Nếu là combo nhưng không có comboId (hoặc ngược lại) thì cố đoán theo id nào tồn tại
+    const finalKind: 'dish' | 'combo' =
+        comboId != null ? 'combo' : dishId != null ? 'dish' : kind;
+
+    const quantity = toPosInt(raw.quantity, 1);
+    const unitPrice = Number.isFinite(Number(raw.unitPrice)) ? Number(raw.unitPrice) : undefined;
+
+    const nameFromId =
+        finalKind === 'combo'
+            ? (comboId != null ? `Combo #${comboId}` : 'Combo')
+            : (dishId != null ? `Món #${dishId}` : 'Món');
+
+    return {
+        kind: finalKind,
+        dishId: finalKind === 'dish' ? dishId : null,
+        comboId: finalKind === 'combo' ? comboId : null,
+        name: typeof raw.name === 'string' && raw.name.trim() ? raw.name : nameFromId,
+        quantity,
+        unitPrice,
+        notes: typeof raw.notes === 'string' ? raw.notes : undefined,
+    };
+}
+
 const TakeawayOrderPublic: React.FC = () => {
     const [customerName, setCustomerName] = useState(''); // FREE: không bắt buộc
     const [phone, setPhone] = useState('');
@@ -34,18 +83,25 @@ const TakeawayOrderPublic: React.FC = () => {
     const [subTotal, setSubTotal] = useState(0);
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState<string[]>([]);
+    const location = useLocation();
 
-    // Đọc món từ localStorage do /menu lưu
+    // Đọc món từ localStorage do /menu lưu + CHUẨN HOÁ (support combo)
     useEffect(() => {
         const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return;
+        if (!raw) {
+            setItems([]);
+            return;
+        }
         try {
-            const arr = JSON.parse(raw) as TakeawayItem[];
-            setItems(Array.isArray(arr) ? arr : []);
+            const arr = JSON.parse(raw);
+            const normalized = Array.isArray(arr)
+                ? arr.map(normalizeSelectionItem).filter(Boolean) as TakeawayItem[]
+                : [];
+            setItems(normalized);
         } catch {
             setItems([]);
         }
-    }, []);
+    }, [location.key]); // reload khi quay lại từ trang menu
 
     // Tính tổng tiền
     useEffect(() => {
@@ -60,16 +116,16 @@ const TakeawayOrderPublic: React.FC = () => {
     const updateItemField = (idx: number, patch: Partial<TakeawayItem>) => {
         setItems((prev) => {
             const next = [...prev];
-            next[idx] = { ...next[idx], ...patch };
-            // Chuẩn hóa quantity nếu patch có
+            const merged = { ...next[idx], ...patch };
+
             if (patch.quantity != null) {
-                const q = Number(patch.quantity);
-                next[idx].quantity = Number.isFinite(q) && q >= 1 ? Math.floor(q) : 1;
+                merged.quantity = toPosInt(patch.quantity, 1);
             }
-            // Giới hạn độ dài ghi chú 1 món
             if (typeof patch.notes === 'string' && patch.notes.length > MAX_NOTE_LEN) {
-                next[idx].notes = patch.notes.slice(0, MAX_NOTE_LEN);
+                merged.notes = patch.notes.slice(0, MAX_NOTE_LEN);
             }
+
+            next[idx] = merged;
             localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
             return next;
         });
@@ -84,17 +140,16 @@ const TakeawayOrderPublic: React.FC = () => {
     const validateForm = (): string[] => {
         const errs: string[] = [];
 
-        // Tên khách hàng: FREE -> không bắt buộc
+        // Tên khách: ở yêu cầu trước bạn muốn bắt buộc tên — giữ nguyên như code bạn gửi
         const nameTrim = customerName.trim();
         if (!nameTrim) {
             errs.push('Vui lòng nhập tên khách hàng.');
         }
-        // Điện thoại: yêu cầu 10 số
+
         if (!PHONE_RE.test(phone.trim())) {
             errs.push('Số điện thoại phải gồm đúng 10 chữ số.');
         }
 
-        // "Địa chỉ đơn hàng" (UI) nhưng dữ liệu là notes -> BẮT BUỘC
         const notesTrim = notes.trim();
         if (!notesTrim) {
             errs.push('Vui lòng nhập địa chỉ đơn hàng.');
@@ -110,8 +165,16 @@ const TakeawayOrderPublic: React.FC = () => {
             if (!Number.isInteger(it.quantity) || it.quantity < 1) {
                 errs.push(`Món #${idx + 1} (“${it.name ?? 'Không tên'}”) có SL không hợp lệ.`);
             }
+            // ghi chú từng món dùng cùng MAX_NOTE_LEN cho đơn giản
             if (typeof it.notes === 'string' && it.notes.length > MAX_NOTE_LEN) {
                 errs.push(`Ghi chú của món #${idx + 1} vượt quá ${MAX_NOTE_LEN} ký tự.`);
+            }
+            // BỔ SUNG: kiểm tra id tuỳ theo kind (đảm bảo combo được submit)
+            if (it.kind === 'dish' && typeof it.dishId !== 'number') {
+                errs.push(`Món #${idx + 1} thiếu dishId hợp lệ.`);
+            }
+            if (it.kind === 'combo' && typeof it.comboId !== 'number') {
+                errs.push(`Món #${idx + 1} là combo nhưng thiếu comboId hợp lệ.`);
             }
         });
 
@@ -121,8 +184,7 @@ const TakeawayOrderPublic: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
-        // Chuẩn hóa input trước khi validate
-        const trimmedName = customerName.trim(); // free: có thể rỗng
+        const trimmedName = customerName.trim();
         const trimmedPhone = phone.trim();
         const trimmedNotes = notes.trim();
         if (trimmedName !== customerName) setCustomerName(trimmedName);
@@ -131,10 +193,7 @@ const TakeawayOrderPublic: React.FC = () => {
 
         const errs = validateForm();
         setErrors(errs);
-        if (errs.length) {
-            // CHỈ hiển thị box lỗi trên đầu form, KHÔNG alert
-            return;
-        }
+        if (errs.length) return;
 
         const mapped: CreateTakeawayOrderRequest['items'] = items
             .map((it) => {
@@ -162,14 +221,12 @@ const TakeawayOrderPublic: React.FC = () => {
             setLoading(true);
             setErrors([]);
 
-            // (tuỳ chọn) nhớ tên & ĐT cho lần sau
             localStorage.setItem(INFO_KEY, JSON.stringify({ customerName: trimmedName, phone: trimmedPhone }));
 
-            // Payload: notes chính là "địa chỉ đơn hàng"
             const payload: CreateTakeawayOrderRequest = {
-                customerName: trimmedName,     // có thể rỗng
+                customerName: trimmedName,
                 phone: trimmedPhone,
-                notes: trimmedNotes,           // giữ nguyên tên field notes
+                notes: trimmedNotes,   // "Địa chỉ đơn hàng"
                 items: mapped,
                 orderType: 'TAKEAWAY',
                 source: 'PUBLIC_TAKEAWAY',
@@ -177,7 +234,7 @@ const TakeawayOrderPublic: React.FC = () => {
 
             const resp = await createTakeawayOrder(payload);
 
-            // Thông báo bếp reload & highlight (không rời trang)
+            // Chef: reload + highlight
             sessionStorage.setItem(
                 'chef_force_reload',
                 JSON.stringify({ orderId: resp.orderId, ts: Date.now() })
@@ -202,6 +259,9 @@ const TakeawayOrderPublic: React.FC = () => {
             setLoading(false);
         }
     };
+
+    // tạo URL quay lại đúng trang hiện tại sau khi chọn món
+    const returnTo = encodeURIComponent('/takeaway-public'); // đổi theo route thực tế của bạn
 
     return (
         <div className="min-h-screen bg-gray-900">
@@ -242,7 +302,7 @@ const TakeawayOrderPublic: React.FC = () => {
                                     type="text"
                                     className="w-full p-3 mt-2 text-lg text-gray-800 rounded-md"
                                     value={customerName}
-                                    onChange={(e) => setCustomerName(e.target.value)} // FREE
+                                    onChange={(e) => setCustomerName(e.target.value)}
                                     placeholder="Ví dụ: Anh Nam"
                                 />
                             </div>
@@ -283,7 +343,7 @@ const TakeawayOrderPublic: React.FC = () => {
                                 <h3 className="font-semibold">Món đã chọn</h3>
                                 <div className="flex gap-2">
                                     <Link
-                                        to="/menu?mode=takeaway"
+                                        to={`/menu?mode=takeaway&return=${returnTo}`} // THÊM: return để quay lại sau khi chọn
                                         className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
                                     >
                                         + Chọn món

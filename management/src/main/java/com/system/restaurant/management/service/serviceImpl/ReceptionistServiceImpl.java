@@ -78,38 +78,72 @@ public class ReceptionistServiceImpl implements ReceptionistService {
             if ((dishId == null && comboId == null) || (dishId != null && comboId != null)) {
                 throw new IllegalArgumentException("Mỗi món phải CHỈ chọn 1: dishId hoặc comboId.");
             }
-            if (it.getQuantity() == null || it.getQuantity() <= 0) {
-                throw new IllegalArgumentException("Số lượng phải > 0.");
-            }
+            int reqQty = (it.getQuantity() == null || it.getQuantity() <= 0) ? 1 : it.getQuantity();
 
-            BigDecimal unitPrice;
+            // ===== MÓN LẺ =====
             if (dishId != null) {
                 Dish d = dishRepo.findById(dishId)
                         .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy món id=" + dishId));
-                unitPrice = d.getPrice();
-            } else {
-                Combo c = comboRepo.findById(comboId)
-                        .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy combo id=" + comboId));
-                unitPrice = c.getPrice();
+
+                // CHỈNH: chuẩn hoá số lượng (mặc định 1 nếu null/<=0)
+                final int dishQty = (it.getQuantity() == null || it.getQuantity() <= 0) ? 1 : it.getQuantity();
+
+                OrderDetail od = new OrderDetail();
+                od.setOrderId(order.getOrderId());    // ghi cột thô vì insertable=false trên mapping
+                od.setDishId(d.getDishId());          // KHÔNG để null
+                od.setComboId(null);
+                od.setQuantity(dishQty);
+                od.setUnitPrice(d.getPrice());        // luôn lấy giá từ DB
+                od.setNotes(it.getNotes());
+                od.setStatusId(1);
+                orderDetailRepository.save(od);
+
+                subTotal = subTotal.add(d.getPrice().multiply(BigDecimal.valueOf(dishQty))); // CHỈNH: dùng dishQty
+                continue;
             }
 
-            OrderDetail od = new OrderDetail();
-            od.setOrderId(order.getOrderId());
-            od.setDishId(dishId);
-            od.setComboId(comboId);
-            od.setQuantity(it.getQuantity());
-            od.setUnitPrice(unitPrice);
-            od.setNotes(it.getNotes());
-            od.setStatusId(1);
-            orderDetailRepository.save(od);
+            // ===== COMBO =====
+            // Lấy combo kèm items + dish để bung
+            Combo combo = comboRepo.findByIdWithDetails(comboId)
+                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy combo id=" + comboId));
 
-            subTotal = subTotal.add(unitPrice.multiply(BigDecimal.valueOf(it.getQuantity())));
+            if (combo.getComboItems() == null || combo.getComboItems().isEmpty()) {
+                throw new IllegalArgumentException("Combo không có món: " + comboId);
+            }
+
+            boolean first = true;                     // dòng đầu gánh giá combo
+            for (var ci : combo.getComboItems()) {
+                Dish dish = ci.getDish();
+                if (dish == null) {
+                    throw new IllegalStateException("ComboItem thiếu dish trong combo " + comboId);
+                }
+                int perComboQty = (ci.getQuantity() == null || ci.getQuantity() <= 0) ? 1 : ci.getQuantity();
+                int totalDishQty = perComboQty * reqQty;
+
+                OrderDetail od = new OrderDetail();
+                od.setOrderId(order.getOrderId());
+                od.setDishId(dish.getDishId());       // bắt buộc có DishID
+                od.setComboId(combo.getComboId());    // lưu dấu vết thuộc combo
+                od.setQuantity(totalDishQty);
+                od.setNotes(((it.getNotes() != null) ? it.getNotes() + " | " : "") + "Thuộc combo " + combo.getComboName());
+                od.setStatusId(1);
+
+                if (first) {
+                    od.setUnitPrice(combo.getPrice());                         // chỉ dòng đầu có giá combo
+                    subTotal = subTotal.add(combo.getPrice().multiply(BigDecimal.valueOf(reqQty)));
+                    first = false;
+                } else {
+                    od.setUnitPrice(BigDecimal.ZERO);                          // các dòng còn lại 0đ
+                }
+
+                orderDetailRepository.save(od);
+            }
         }
-
-        // 4) Cập nhật tổng tiền
+        // 4) Cập nhật tổng tiền (giữ nguyên phần dưới)
         order.setSubTotal(subTotal);
-        order.setFinalTotal(subTotal);           // chưa áp dụng khuyến mãi
+        order.setFinalTotal(subTotal);
         orderRepo.save(order);
+
 
         // 5) Trả response: cần repo load kèm dish/combo (EntityGraph có "dish","combo")
         var details = orderDetailRepository.findByOrderId(order.getOrderId())
