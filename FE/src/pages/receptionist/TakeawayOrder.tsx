@@ -18,48 +18,55 @@ interface OrderItem {
 const STORAGE_KEY = 'takeaway_selection';
 
 const formatVnd = (n?: number) =>
-    typeof n === 'number' ? `${n.toLocaleString('vi-VN')} đ` : '0 đ';
+  typeof n === 'number' ? `${n.toLocaleString('vi-VN')} đ` : '0 đ';
 
 // ===== Validate rules =====
 const PHONE_RE = /^\d{10}$/;           // đúng 10 chữ số
 const MAX_NOTE_LEN = 100;              // tối đa 100 ký tự
 
-// ===== Helpers: chuẩn hoá dữ liệu giỏ (hỗ trợ combo & dữ liệu cũ) =====
+// ===== Helpers =====
+
+// Số nguyên dương hoặc null (0/âm/NaN => null)
+const toPosIntOrNull = (v: any) => {
+  const n = Number(v);
+  return Number.isInteger(n) && n > 0 ? n : null;
+};
+
+// Ép số nguyên dương có default
 const toPosInt = (v: any, def = 1) => {
   const n = Number(v);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : def;
 };
-const toNumOrNull = (v: any) => {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-};
+
+// Chuẩn hoá 1 item lấy từ localStorage (loại bỏ id <= 0, hỗ trợ dữ liệu cũ)
 function normalizeSelectionItem(raw: any): OrderItem | null {
   if (!raw || typeof raw !== 'object') return null;
 
   // Một số dữ liệu cũ dùng 'type' thay vì 'kind'
   const guessedKind: ItemKind =
-      raw.kind === 'combo' || raw.type === 'combo' ? 'combo' : 'dish';
+    raw.kind === 'combo' || raw.type === 'combo' ? 'combo' : 'dish';
 
-  const dishId = toNumOrNull(raw.dishId);
-  const comboId = toNumOrNull(raw.comboId);
+  // ❗ 0/âm -> null
+  const dishId = toPosIntOrNull(raw.dishId);
+  const comboId = toPosIntOrNull(raw.comboId);
 
   // Ưu tiên theo id thực có
   const finalKind: ItemKind =
-      comboId != null ? 'combo' : dishId != null ? 'dish' : guessedKind;
+    comboId != null ? 'combo' : dishId != null ? 'dish' : guessedKind;
 
   const quantity = toPosInt(raw.quantity, 1);
   const unitPrice = Number.isFinite(Number(raw.unitPrice))
-      ? Number(raw.unitPrice)
-      : undefined;
+    ? Number(raw.unitPrice)
+    : undefined;
 
   const nameFromId =
-      finalKind === 'combo'
-          ? comboId != null
-              ? `Combo #${comboId}`
-              : 'Combo'
-          : dishId != null
-              ? `Món #${dishId}`
-              : 'Món';
+    finalKind === 'combo'
+      ? comboId != null
+        ? `Combo #${comboId}`
+        : 'Combo'
+      : dishId != null
+        ? `Món #${dishId}`
+        : 'Món';
 
   return {
     kind: finalKind,
@@ -74,7 +81,7 @@ function normalizeSelectionItem(raw: any): OrderItem | null {
 
 const TakeawayOrder: React.FC = () => {
   // ===== FORM STATE =====
-  const [customerName, setCustomerName] = useState('');  // Free: không bắt buộc
+  const [customerName, setCustomerName] = useState('');  // BẮT BUỘC theo yêu cầu trước
   const [phone, setPhone] = useState('');
   const [notes, setNotes] = useState('');                // vẫn là notes (payload & FE giữ nguyên)
   const [items, setItems] = useState<OrderItem[]>([]);
@@ -82,7 +89,7 @@ const TakeawayOrder: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);    // Hiển thị lỗi trên đầu form
 
-  // ===== Load giỏ từ localStorage =====
+  // ===== Load giỏ từ localStorage + normalize + ghi đè lại (tẩy id=0) =====
   const loadFromStorage = () => {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
@@ -92,8 +99,10 @@ const TakeawayOrder: React.FC = () => {
     try {
       const arr = JSON.parse(raw);
       const normalized = Array.isArray(arr)
-          ? arr.map(normalizeSelectionItem).filter(Boolean) as OrderItem[]
-          : [];
+        ? (arr.map(normalizeSelectionItem).filter(Boolean) as OrderItem[])
+        : [];
+      // ❗ ghi đè lại để loại id=0 trong storage
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
       setItems(normalized);
     } catch {
       setItems([]);
@@ -123,7 +132,7 @@ const TakeawayOrder: React.FC = () => {
   const updateItemField = (idx: number, patch: Partial<OrderItem>) => {
     setItems(prev => {
       const next = [...prev];
-      const merged = { ...next[idx], ...patch };
+      const merged: OrderItem = { ...next[idx], ...patch };
 
       // Chuẩn hoá quantity nếu có
       if (patch.quantity != null) {
@@ -144,21 +153,19 @@ const TakeawayOrder: React.FC = () => {
   // ===== Validate form =====
   const validateForm = (): string[] => {
     const errs: string[] = [];
+    const nameTrim = customerName.trim();
     const phoneTrim = phone.trim();
     const notesTrim = notes.trim();
 
-    // Tên khách hàng: free -> KHÔNG validate/không bắt buộc
-    const nameTrim = customerName.trim();
+    // Bắt buộc tên khách
     if (!nameTrim) {
       errs.push('Vui lòng nhập tên khách hàng.');
     }
-
-    // Điện thoại vẫn yêu cầu 10 số
+    // Điện thoại 10 số
     if (!PHONE_RE.test(phoneTrim)) {
       errs.push('Số điện thoại phải gồm đúng 10 chữ số.');
     }
-
-    // "Địa chỉ đơn hàng" hiển thị, nhưng dữ liệu là notes -> BẮT BUỘC
+    // "Địa chỉ đơn hàng" hiển thị, map vào notes -> BẮT BUỘC
     if (!notesTrim) {
       errs.push('Vui lòng nhập địa chỉ đơn hàng.');
     } else if (notesTrim.length > MAX_NOTE_LEN) {
@@ -176,12 +183,12 @@ const TakeawayOrder: React.FC = () => {
       if (typeof it.notes === 'string' && it.notes.length > MAX_NOTE_LEN) {
         errs.push(`Ghi chú của món #${idx + 1} vượt quá ${MAX_NOTE_LEN} ký tự.`);
       }
-      // Bổ sung: kiểm tra id theo kind (đảm bảo combo/dish hợp lệ)
-      if (it.kind === 'dish' && typeof it.dishId !== 'number') {
-        errs.push(`Món #${idx + 1} thiếu dishId hợp lệ.`);
+      // ❗ kiểm id theo kind: phải là number > 0
+      if (it.kind === 'dish' && !(typeof it.dishId === 'number' && it.dishId > 0)) {
+        errs.push(`Món #${idx + 1} thiếu dishId hợp lệ (> 0).`);
       }
-      if (it.kind === 'combo' && typeof it.comboId !== 'number') {
-        errs.push(`Món #${idx + 1} là combo nhưng thiếu comboId hợp lệ.`);
+      if (it.kind === 'combo' && !(typeof it.comboId === 'number' && it.comboId > 0)) {
+        errs.push(`Món #${idx + 1} là combo nhưng thiếu comboId hợp lệ (> 0).`);
       }
     });
 
@@ -191,9 +198,10 @@ const TakeawayOrder: React.FC = () => {
   // ===== Submit =====
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (submitting) return;
 
     // Chuẩn hoá trước khi validate
-    const nameTrim = customerName.trim(); // free -> có/không đều được
+    const nameTrim = customerName.trim();
     const phoneTrim = phone.trim();
     const notesTrim = notes.trim();
     if (nameTrim !== customerName) setCustomerName(nameTrim);
@@ -203,26 +211,25 @@ const TakeawayOrder: React.FC = () => {
     const errs = validateForm();
     setErrors(errs);
     if (errs.length) {
-      // CHỈ hiển thị box lỗi trên đầu form, KHÔNG alert
-      return;
+      return; // hiển thị box lỗi
     }
 
     const mapped = items
-        .map(it => {
-          const base = {
-            quantity: it.quantity,
-            unitPrice: it.unitPrice ?? 0,
-            notes: it.notes,
-          };
-          if (it.kind === 'dish' && typeof it.dishId === 'number') {
-            return { ...base, dishId: it.dishId, comboId: null };
-          }
-          if (it.kind === 'combo' && typeof it.comboId === 'number') {
-            return { ...base, comboId: it.comboId, dishId: null };
-          }
-          return null;
-        })
-        .filter((x): x is NonNullable<typeof x> => x !== null);
+      .map(it => {
+        const base = {
+          quantity: it.quantity,
+          unitPrice: it.unitPrice ?? 0,
+          notes: it.notes,
+        };
+        if (it.kind === 'dish' && typeof it.dishId === 'number' && it.dishId > 0) {
+          return { ...base, dishId: it.dishId, comboId: null };
+        }
+        if (it.kind === 'combo' && typeof it.comboId === 'number' && it.comboId > 0) {
+          return { ...base, comboId: it.comboId, dishId: null };
+        }
+        return null;
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null);
 
     if (mapped.length === 0) {
       setErrors(['Các món đã chọn thiếu mã món/combo. Vui lòng chọn lại từ menu.']);
@@ -231,7 +238,7 @@ const TakeawayOrder: React.FC = () => {
 
     // Payload vẫn là notes
     const payload = {
-      customerName: nameTrim,       // có thể rỗng
+      customerName: nameTrim,       // bắt buộc theo rule hiện tại
       phone: phoneTrim,
       notes: notesTrim,             // dữ liệu "địa chỉ đơn hàng" map vào đây
       items: mapped,
@@ -250,8 +257,8 @@ const TakeawayOrder: React.FC = () => {
       const orderId = (res?.data && (res.data.orderId ?? res.data.id)) as number | undefined;
       if (orderId) {
         sessionStorage.setItem(
-            'chef_force_reload',
-            JSON.stringify({ orderId, ts: Date.now() })
+          'chef_force_reload',
+          JSON.stringify({ orderId, ts: Date.now() })
         );
       }
 
@@ -264,9 +271,14 @@ const TakeawayOrder: React.FC = () => {
 
       window.location.reload();
       return;
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setErrors(['Tạo đơn thất bại']);
+      // cố gắng lấy message từ server nếu có
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        'Tạo đơn thất bại';
+      setErrors([msg]);
     } finally {
       setSubmitting(false);
     }
@@ -275,198 +287,199 @@ const TakeawayOrder: React.FC = () => {
   const returnTo = '/receptionist/takeaway';
 
   return (
-      <div className="flex min-h-screen bg-gray-50">
-        {/* Sidebar */}
-        <div className="w-64 min-h-screen sticky top-0 z-10">
-          <TaskbarReceptionist />
+    <div className="flex min-h-screen bg-gray-50">
+      {/* Sidebar */}
+      <div className="w-64 min-h-screen sticky top-0 z-10">
+        <TaskbarReceptionist />
+      </div>
+
+      {/* Main */}
+      <div className="flex-1 min-w-0 p-8">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Đơn Mang Đi</h1>
+          <p className="text-gray-600">Trang tạo đơn mang đi cho khách hàng của lễ tân</p>
         </div>
 
-        {/* Main */}
-        <div className="flex-1 min-w-0 p-8">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Đơn Mang Đi</h1>
-            <p className="text-gray-600">Trang tạo đơn mang đi cho khách hàng của lễ tân</p>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Error box */}
-              {errors.length > 0 && (
-                  <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-                    <ul className="list-disc list-inside">
-                      {errors.map((er, idx) => (
-                          <li key={idx}>{er}</li>
-                      ))}
-                    </ul>
-                  </div>
-              )}
-
-              {/* Thông tin khách */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block mb-1 font-medium">Tên khách hàng</label>
-                  <input
-                      type="text"
-                      className="w-full border rounded px-3 py-2"
-                      value={customerName}
-                      onChange={e => setCustomerName(e.target.value)}
-                      placeholder="Ví dụ: Anh Nam"
-                  />
-                </div>
-                <div>
-                  <label className="block mb-1 font-medium">Số điện thoại</label>
-                  <input
-                      type="tel"
-                      inputMode="numeric"
-                      pattern="\d{10}"
-                      maxLength={10}
-                      className="w-full border rounded px-3 py-2"
-                      value={phone}
-                      onChange={e => {
-                        const onlyDigits = e.target.value.replace(/\D+/g, '').slice(0, 10);
-                        setPhone(onlyDigits);
-                      }}
-                      required
-                  />
-                </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Error box */}
+            {errors.length > 0 && (
+              <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                <ul className="list-disc list-inside">
+                  {errors.map((er, idx) => (
+                    <li key={idx}>{er}</li>
+                  ))}
+                </ul>
               </div>
+            )}
 
-              {/* Món đã chọn */}
-              <div className="bg-white border rounded-lg">
-                <div className="flex items-center justify-between p-3 border-b">
-                  <h2 className="font-semibold">Món đã chọn</h2>
-                  <div className="flex gap-2">
-                    <Link
-                        to={`/menu?mode=takeaway&return=${encodeURIComponent(returnTo)}`}
-                        className="px-3 py-1 rounded bg-blue-600 text-white"
+            {/* Thông tin khách */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block mb-1 font-medium">Tên khách hàng</label>
+                <input
+                  type="text"
+                  className="w-full border rounded px-3 py-2"
+                  value={customerName}
+                  onChange={e => setCustomerName(e.target.value)}
+                  placeholder="Ví dụ: Anh Nam"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block mb-1 font-medium">Số điện thoại</label>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="\d{10}"
+                  maxLength={10}
+                  className="w-full border rounded px-3 py-2"
+                  value={phone}
+                  onChange={e => {
+                    const onlyDigits = e.target.value.replace(/\D+/g, '').slice(0, 10);
+                    setPhone(onlyDigits);
+                  }}
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Món đã chọn */}
+            <div className="bg-white border rounded-lg">
+              <div className="flex items-center justify-between p-3 border-b">
+                <h2 className="font-semibold">Món đã chọn</h2>
+                <div className="flex gap-2">
+                  <Link
+                    to={`/menu?mode=takeaway&return=${encodeURIComponent(returnTo)}`}
+                    className="px-3 py-1 rounded bg-blue-600 text-white"
+                  >
+                    + Chọn món
+                  </Link>
+                  {items.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleClearItems}
+                      className="px-3 py-1 rounded bg-gray-200"
                     >
-                      + Chọn món
-                    </Link>
-                    {items.length > 0 && (
-                        <button
-                            type="button"
-                            onClick={handleClearItems}
-                            className="px-3 py-1 rounded bg-gray-200"
-                        >
-                          Xoá hết
-                        </button>
-                    )}
-                  </div>
-                </div>
-
-                <div className="p-3">
-                  {items.length === 0 ? (
-                      <div className="text-gray-500">Chưa có món nào. Bấm “+ Chọn món”.</div>
-                  ) : (
-                      <table className="w-full border-collapse">
-                        <thead>
-                        <tr className="bg-gray-50">
-                          <th className="border px-2 py-1 text-left">Tên</th>
-                          <th className="border px-2 py-1">SL</th>
-                          <th className="border px-2 py-1 text-right">Đơn giá</th>
-                          <th className="border px-2 py-1 text-right">Tạm tính</th>
-                          <th className="border px-2 py-1">Ghi chú</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {items.map((it, i) => (
-                            <tr key={i}>
-                              <td className="border px-2 py-1">
-                                {it.name ||
-                                    (it.kind === 'dish' ? `Món #${it.dishId}` : `Combo #${it.comboId}`)}
-                              </td>
-                              <td className="border px-2 py-1 text-center">
-                                <input
-                                    type="number"
-                                    min={1}
-                                    className="w-16 border rounded px-2 py-1 text-center"
-                                    value={it.quantity}
-                                    onChange={e =>
-                                        updateItemField(i, {
-                                          quantity: Math.max(1, Number(e.target.value) || 1),
-                                        })
-                                    }
-                                />
-                              </td>
-                              <td className="border px-2 py-1 text-right">{formatVnd(it.unitPrice)}</td>
-                              <td className="border px-2 py-1 text-right">
-                                {formatVnd((it.unitPrice ?? 0) * (it.quantity ?? 0))}
-                              </td>
-                              <td className="border px-2 py-1">
-                                <input
-                                    type="text"
-                                    className="w-full border rounded px-1 py-1 text-sm"
-                                    value={it.notes ?? ''}
-                                    onChange={e =>
-                                        updateItemField(i, { notes: e.target.value.slice(0, MAX_NOTE_LEN) })
-                                    }
-                                    placeholder="Ghi chú cho món (tuỳ chọn)"
-                                />
-                              </td>
-                            </tr>
-                        ))}
-                        </tbody>
-                        <tfoot>
-                        <tr>
-                          <td className="border px-2 py-2 text-right font-semibold" colSpan={3}>
-                            Tổng
-                          </td>
-                          <td className="border px-2 py-2 text-right font-semibold">
-                            {formatVnd(subTotal)}
-                          </td>
-                          <td className="border" />
-                        </tr>
-                        </tfoot>
-                      </table>
+                      Xoá hết
+                    </button>
                   )}
                 </div>
               </div>
 
-              {/* Địa chỉ đơn hàng (hiển thị) — dữ liệu vẫn là notes */}
-              <div>
-                <label className="block mb-1 font-medium">Địa chỉ đơn hàng</label>
-                <textarea
-                    className="w-full border rounded px-3 py-2"
-                    rows={3}
-                    value={notes}
-                    onChange={e => setNotes(e.target.value.slice(0, MAX_NOTE_LEN))}
-                    placeholder="Số nhà, đường, phường/xã, quận/huyện, thành phố..."
-                    required
-                />
+              <div className="p-3">
+                {items.length === 0 ? (
+                  <div className="text-gray-500">Chưa có món nào. Bấm “+ Chọn món”.</div>
+                ) : (
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="border px-2 py-1 text-left">Tên</th>
+                        <th className="border px-2 py-1">SL</th>
+                        <th className="border px-2 py-1 text-right">Đơn giá</th>
+                        <th className="border px-2 py-1 text-right">Tạm tính</th>
+                        <th className="border px-2 py-1">Ghi chú</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map((it, i) => (
+                        <tr key={i}>
+                          <td className="border px-2 py-1">
+                            {it.name ||
+                              (it.kind === 'dish' ? `Món #${it.dishId}` : `Combo #${it.comboId}`)}
+                          </td>
+                          <td className="border px-2 py-1 text-center">
+                            <input
+                              type="number"
+                              min={1}
+                              className="w-16 border rounded px-2 py-1 text-center"
+                              value={it.quantity}
+                              onChange={e =>
+                                updateItemField(i, {
+                                  quantity: Math.max(1, Number(e.target.value) || 1),
+                                })
+                              }
+                            />
+                          </td>
+                          <td className="border px-2 py-1 text-right">{formatVnd(it.unitPrice)}</td>
+                          <td className="border px-2 py-1 text-right">
+                            {formatVnd((it.unitPrice ?? 0) * (it.quantity ?? 0))}
+                          </td>
+                          <td className="border px-2 py-1">
+                            <input
+                              type="text"
+                              className="w-full border rounded px-1 py-1 text-sm"
+                              value={it.notes ?? ''}
+                              onChange={e =>
+                                updateItemField(i, { notes: e.target.value.slice(0, MAX_NOTE_LEN) })
+                              }
+                              placeholder="Ghi chú cho món (tuỳ chọn)"
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td className="border px-2 py-2 text-right font-semibold" colSpan={3}>
+                          Tổng
+                        </td>
+                        <td className="border px-2 py-2 text-right font-semibold">
+                          {formatVnd(subTotal)}
+                        </td>
+                        <td className="border" />
+                      </tr>
+                    </tfoot>
+                  </table>
+                )}
               </div>
+            </div>
 
-              <div className="flex justify-end items-center gap-3 text-lg font-semibold">
-                <span>SubTotal:</span>
-                <span>{formatVnd(subTotal)}</span>
-              </div>
+            {/* Địa chỉ đơn hàng (hiển thị) — dữ liệu vẫn là notes */}
+            <div>
+              <label className="block mb-1 font-medium">Địa chỉ đơn hàng</label>
+              <textarea
+                className="w-full border rounded px-3 py-2"
+                rows={3}
+                value={notes}
+                onChange={e => setNotes(e.target.value.slice(0, MAX_NOTE_LEN))}
+                placeholder="Số nhà, đường, phường/xã, quận/huyện, thành phố..."
+                required
+              />
+            </div>
 
-              <div className="flex justify-end gap-2">
-                <button
-                    type="button"
-                    onClick={() => {
-                      setCustomerName('');
-                      setPhone('');
-                      setNotes('');
-                      handleClearItems();
-                      setErrors([]);
-                    }}
-                    className="px-4 py-2 border rounded-lg"
-                    disabled={submitting}
-                >
-                  Xóa form
-                </button>
-                <button
-                    type="submit"
-                    className="bg-emerald-600 text-white px-6 py-2 rounded hover:bg-emerald-700 disabled:opacity-60"
-                    disabled={submitting || items.length === 0}
-                >
-                  {submitting ? 'Đang tạo…' : 'Tạo đơn'}
-                </button>
-              </div>
-            </form>
-          </div>
+            <div className="flex justify-end items-center gap-3 text-lg font-semibold">
+              <span>SubTotal:</span>
+              <span>{formatVnd(subTotal)}</span>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomerName('');
+                  setPhone('');
+                  setNotes('');
+                  handleClearItems();
+                  setErrors([]);
+                }}
+                className="px-4 py-2 border rounded-lg"
+                disabled={submitting}
+              >
+                Xóa form
+              </button>
+              <button
+                type="submit"
+                className="bg-emerald-600 text-white px-6 py-2 rounded hover:bg-emerald-700 disabled:opacity-60"
+                disabled={submitting || items.length === 0}
+              >
+                {submitting ? 'Đang tạo…' : 'Tạo đơn'}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
+    </div>
   );
 };
 
