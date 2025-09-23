@@ -63,17 +63,6 @@ const Chef = () => {
                 <p className="text-slate-600 text-sm">Quản lý đơn hàng và chế biến món ăn</p>
               </div>
             </div>
-            <div className="text-right">
-              <div className="flex items-center gap-2 text-slate-600 mb-1">
-                <Clock className="w-4 h-4" />
-                <span className="text-sm font-medium">
-                  {currentTime.toLocaleTimeString('vi-VN')}
-                </span>
-              </div>
-              <div className="text-sm text-slate-500">
-                {totalOrders} đơn hàng đang chờ
-              </div>
-            </div>
           </div>
         </div>
 
