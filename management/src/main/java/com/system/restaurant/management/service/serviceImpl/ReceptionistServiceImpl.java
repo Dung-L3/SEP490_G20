@@ -49,7 +49,7 @@ public class ReceptionistServiceImpl implements ReceptionistService {
             throw new EntityNotFoundException("Table not found with id: " + request.getTableId());
         }
         
-        if (!"OCCUPIED".equals(table.getStatus())) {
+        if (!"Occupied".equals(table.getStatus())) {
             throw new IllegalStateException("Table must be OCCUPIED to place an order");
         }
 
