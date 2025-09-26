@@ -55,7 +55,7 @@ public class ReceptionistServiceImpl implements ReceptionistService {
 
         // Create new order
         Order order = Order.builder()
-                .orderType("DINE_IN")
+                .orderType("DINEIN")
                 .tableId(request.getTableId())
                 .statusId(1) // Pending
                 .subTotal(BigDecimal.ZERO)

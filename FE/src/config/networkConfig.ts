@@ -2,7 +2,7 @@
 // Chỉ cần thay đổi LOCAL_IP khi chuyển máy khác
 export const NETWORK_CONFIG = {
   // IP của máy tính (chỉ cần thay đổi duy nhất giá trị này)
-  LOCAL_IP: '172.20.10.2',
+  LOCAL_IP: '192.168.2.2',
   
   // Các cấu hình cố định
   FRONTEND_PORT: 5173,

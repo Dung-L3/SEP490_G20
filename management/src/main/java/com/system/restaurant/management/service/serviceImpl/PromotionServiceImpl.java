@@ -78,7 +78,7 @@ public class PromotionServiceImpl implements PromotionService {
         return promotionRepository.findAll(pageable);
     }
 
-    public List<Promotion> listValidPromotions() {
+    public List<Promotion> listValidPromotions(String phone) {
         LocalDate today = LocalDate.now(ZoneId.of("Asia/Bangkok"));
         return promotionRepository.findAll().stream()
                 .filter(p -> Boolean.TRUE.equals(p.getIsActive()))

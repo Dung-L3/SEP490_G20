@@ -59,7 +59,7 @@ public class WaiterServiceImpl implements WaiterService {
         }
 
         Order order = Order.builder()
-                .orderType("DINE_IN")
+                .orderType("DINEIN")
                 .tableId(request.getTableId())
                 .statusId(1) // Pending
                 .subTotal(BigDecimal.ZERO)
@@ -361,11 +361,17 @@ public class WaiterServiceImpl implements WaiterService {
                             .orderId(orderId)
                             .subTotal(realSubTotal)
                             .discountAmount(order.getDiscountAmount())
-                            .finalTotal(realSubTotal.subtract(order.getDiscountAmount()))
+                            .finalTotal(order.getSubTotal().subtract(order.getDiscountAmount()))
                             .issuedBy(issuedBy)
                             .build();
                     return invoiceRepository.save(inv);
                 });
+
+        if (order.getTable() != null) {
+            RestaurantTable table = order.getTable();
+            table.setStatus(RestaurantTable.Status.AVAILABLE);
+            restaurantTableRepository.save(table);
+        }
 
         // Use invoice final total instead of order final total
         PaymentRecord pr = PaymentRecord.builder()

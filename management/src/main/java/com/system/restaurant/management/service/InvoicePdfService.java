@@ -39,32 +39,26 @@ public class InvoicePdfService {
 
     @Transactional(readOnly = true)
     public byte[] buildInvoicePdf(Integer orderId, Integer cashierUserId) throws Exception {
-        // 1) Lấy invoice theo orderId
         Invoice inv = invoiceRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new EntityNotFoundException("Invoice không tồn tại cho order " + orderId));
 
-        // 2) Lấy chi tiết món
         List<OrderDetail> items = orderDetailRepository.findByOrderIdAndStatusId(orderId, 3);
 
-        // 3) Lấy payment record mới nhất
         PaymentRecord pr = paymentRecordRepository
                 .findTopByInvoiceIdOrderByPaidAtDesc(inv.getInvoiceId())
                 .orElseThrow(() -> new EntityNotFoundException(
                         "PaymentRecord không tồn tại cho invoice " + inv.getInvoiceId()));
 
-        // 4) Tính toán các giá trị hiển thị
         double discount = inv.getDiscountAmount().doubleValue();
         double total    = inv.getFinalTotal().doubleValue();
         Integer tableNumber = (inv.getOrder() != null && inv.getOrder().getTable() != null)
                 ? inv.getOrder().getTable().getTableId()
-                : null; // an toàn khi order không gắn bàn
+                : null;
 
-        // 5) Lấy tên thu ngân từ session userId
         String cashierName = userRepository.findById(cashierUserId)
                 .orElseThrow(() -> new EntityNotFoundException("User không tồn tại: " + cashierUserId))
                 .getFullName();
 
-        // 6) Gọi service render PDF
         return generateInvoicePdf(
                 orderId,
                 tableNumber,
@@ -104,9 +98,9 @@ public class InvoicePdfService {
         doc.setFontProvider(fontProvider);
         doc.setFontFamily("Arial");
 
-        // 1. Tên nhà hàng, địa chỉ, điện thoại (giữa)
+        // 1. Tên nhà hàng, địa chỉ, điện thoại
         Paragraph header = new Paragraph()
-                .add("NHÀ HÀNG ABC\n")
+                .add("NHÀ HÀNG HƯƠNG QUÊ\n")
                 .add("Địa chỉ: Đại học FPT, Hòa Lạc\n")
                 .add("ĐT: 0372698544")
                 .setFontSize(14)
@@ -114,7 +108,7 @@ public class InvoicePdfService {
                 .setTextAlignment(TextAlignment.CENTER);
         doc.add(header);
 
-        // 2. Tiêu đề và số hóa đơn (giữa)
+        // 2. Tiêu đề và số hóa đơn
         doc.add(new Paragraph("HÓA ĐƠN")
                 .setFontSize(18)
                 .setBold()
@@ -127,18 +121,16 @@ public class InvoicePdfService {
                 .setMarginBottom(15f)
         );
 
-        // 3. Thông tin bàn và thu ngân (rút gọn khoảng cách)
+        // 3. Thông tin bàn và thu ngân
         Table info = new Table(UnitValue.createPercentArray(new float[]{1, 3}))
                 .useAllAvailableWidth()
                 .setMarginBottom(15f);
 
-// helper để tạo cell với padding nhỏ
         BiFunction<String, Float, Cell> cell = (text, fontSize) -> new Cell()
                 .setBorder(Border.NO_BORDER)
-                .setPadding(1f)                      // chỉ padding 2pt
+                .setPadding(1f)
                 .add(new Paragraph(text).setFontSize(fontSize));
 
-// Label và value dùng font size 12
         info.addCell(cell.apply("Ngày:", 12f));
         info.addCell(cell.apply(pr.getPaidAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")), 12f));
         if(tableNumber != null) {
@@ -178,8 +170,7 @@ public class InvoicePdfService {
 
 
 // 5. Bảng tổng hợp: Tổng tiền → Chiết khấu → Tiền thanh toán
-        double subTotal = total + discount;  // tính lại tổng tiền gốc
-// Chuẩn bị border ngang mỏng màu xám
+        double subTotal = total + discount;
         float lineWidth = 0.5f;
         SolidBorder horizontalLine = new SolidBorder(ColorConstants.LIGHT_GRAY, lineWidth);
 
@@ -190,7 +181,7 @@ public class InvoicePdfService {
         Cell cell1 = new Cell()
                 .add(new Paragraph("Tổng tiền").setFontSize(14))
                 .setBorder(Border.NO_BORDER)
-                .setBorderBottom(horizontalLine)       // vẽ đường dưới
+                .setBorderBottom(horizontalLine)
                 .setTextAlignment(TextAlignment.LEFT);
         Cell cell2 = new Cell()
                 .add(new Paragraph(String.format("%,.0f₫", subTotal)).setFontSize(14))
@@ -218,7 +209,6 @@ public class InvoicePdfService {
         Cell cell5 = new Cell()
                 .add(new Paragraph("Tiền thanh toán").setFontSize(16).setBold())
                 .setBorder(Border.NO_BORDER)
-                // không cần line dưới nếu đây là dòng cuối, hoặc có thể giữ consistency
                 .setBorderBottom(horizontalLine)
                 .setTextAlignment(TextAlignment.LEFT);
         Cell cell6 = new Cell()
